@@ -1,0 +1,38 @@
+# OS files
+# 操作系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor files
+# 编辑器文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+# 日志文件
+*.log
+npm-debug.log*
+
+# Temporary files
+# 临时文件
+*.tmp
+*.temp
+
+# Node modules (if you add any in future)
+# Node模块（如果将来添加）
+node_modules/
+
+# Environment variables
+# 环境变量
+.env
+.env.local
+
+# Build files (if you add build step)
+# 构建文件（如果添加构建步骤）
+dist/
+build/
+
