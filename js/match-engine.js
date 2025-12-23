@@ -75,26 +75,26 @@ class MatchEngine {
         // 更新局比分
         this.updateGameScore(currentGame, winner);
         
-        // Check if game is won BEFORE adding to log (so we use the correct game number)
-        // 在添加到日志之前检查局是否结束（这样我们使用正确的game number）
+        // Check if game is won
+        // 检查局是否结束
         const gameWasWon = !!currentGame.winner;
         
-        // Add to match log AFTER updating score (so log shows the score after the action)
-        // 更新比分后添加到日志（这样日志显示的是执行动作后的比分），使用当前game
+        // Handle game won BEFORE adding to log (so games score is updated)
+        // 在添加到日志之前处理局结束（这样games比分已更新）
+        if (gameWasWon) {
+            this.onGameWon(currentSet, currentGame);
+        }
+        
+        // Add to match log AFTER updating score and handling game won (so log shows correct games score)
+        // 更新比分和处理局结束后添加到日志（这样日志显示正确的games比分），使用刚刚结束的game
         if (isDoubleFault) {
             // Double fault - log the server who made the fault, not the winner
             // 双误 - 记录犯错的发球方，而不是得分方
             this.addToLog(server, 'Double Fault', null, currentGame);
         } else if (pointType !== 'Serve Fault') {
             // Normal point - log with updated score
-            // 正常得分 - 记录更新后的比分，使用当前game
+            // 正常得分 - 记录更新后的比分，使用刚刚结束的game（如果game结束了）
             this.addToLog(winner, pointType, shotType, currentGame);
-        }
-        
-        // Check if game is won and handle it
-        // 检查局是否结束并处理
-        if (gameWasWon) {
-            this.onGameWon(currentSet, currentGame);
         }
         
         // Auto-save match
@@ -324,22 +324,6 @@ class MatchEngine {
             tieBreak.player2Points++;
         }
         
-        // Get the last game before tie-break for logging (tie-break happens after game 6-6)
-        // 获取抢七前的最后一个game用于日志记录（抢七发生在game 6-6之后）
-        const lastGame = set.games[set.games.length - 1];
-        
-        // Add to match log AFTER updating score (so log shows the score after the action)
-        // 更新比分后添加到日志（这样日志显示的是执行动作后的比分）
-        if (isDoubleFault) {
-            // Double fault - log the server who made the fault, not the winner
-            // 双误 - 记录犯错的发球方，而不是得分方
-            this.addToLog(tieBreakServer, 'Double Fault', null, lastGame);
-        } else if (pointType !== 'Serve Fault') {
-            // Normal point - log with updated score
-            // 正常得分 - 记录更新后的比分
-            this.addToLog(winner, pointType, shotType, lastGame);
-        }
-        
         // Switch server in tie-break
         // 抢七中换发
         // Rule: First server serves 1 point, then switch, then each player serves 2 points alternately
@@ -364,6 +348,22 @@ class MatchEngine {
             }
             set.winner = tieBreak.winner;
             this.checkMatchWinner();
+        }
+        
+        // Get the last game before tie-break for logging (tie-break happens after game 6-6)
+        // 获取抢七前的最后一个game用于日志记录（抢七发生在game 6-6之后）
+        const lastGame = set.games[set.games.length - 1];
+        
+        // Add to match log AFTER updating score and handling tie-break won (so log shows correct sets score)
+        // 更新比分和处理抢七结束后添加到日志（这样日志显示正确的sets比分）
+        if (isDoubleFault) {
+            // Double fault - log the server who made the fault, not the winner
+            // 双误 - 记录犯错的发球方，而不是得分方
+            this.addToLog(tieBreakServer, 'Double Fault', null, lastGame);
+        } else if (pointType !== 'Serve Fault') {
+            // Normal point - log with updated score
+            // 正常得分 - 记录更新后的比分
+            this.addToLog(winner, pointType, shotType, lastGame);
         }
         
         storage.saveMatch(this.match);
