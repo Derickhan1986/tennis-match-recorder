@@ -14,6 +14,7 @@ class MatchRecorder {
         this.player2 = null;
         this.pendingAction = null; // Store action waiting for shot type selection
         this.pendingPlayer = null; // Store player for pending action
+        this.isUndoing = false; // Flag to prevent multiple undo operations
         this.setupEventListeners();
     }
 
@@ -436,12 +437,32 @@ class MatchRecorder {
     // Undo last point
     // 撤销最后一分
     async undoPoint() {
+        // Prevent multiple undo operations
+        // 防止多次撤销操作
+        if (this.isUndoing) {
+            return;
+        }
+        
         if (!this.matchEngine) {
             app.showToast('Match not initialized', 'error');
             return;
         }
         
+        // Disable undo button and set flag
+        // 禁用撤销按钮并设置标志
+        const undoBtn = document.getElementById('undo-btn');
+        if (undoBtn) {
+            undoBtn.disabled = true;
+            undoBtn.style.opacity = '0.5';
+            undoBtn.style.cursor = 'not-allowed';
+        }
+        this.isUndoing = true;
+        
         try {
+            // Add a small delay to prevent rapid clicks
+            // 添加短暂延迟以防止快速点击
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
             this.matchEngine.undoLastPoint();
             
             // Reload match to get updated log
@@ -455,6 +476,17 @@ class MatchRecorder {
         } catch (error) {
             console.error('Error undoing point:', error);
             app.showToast('Error undoing point', 'error');
+        } finally {
+            // Re-enable undo button after a delay
+            // 延迟后重新启用撤销按钮
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            if (undoBtn) {
+                undoBtn.disabled = false;
+                undoBtn.style.opacity = '1';
+                undoBtn.style.cursor = 'pointer';
+            }
+            this.isUndoing = false;
         }
     }
 
