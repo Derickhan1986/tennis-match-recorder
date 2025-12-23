@@ -480,6 +480,13 @@ class MatchEngine {
         let player1Score = currentGame.player1Score;
         let player2Score = currentGame.player2Score;
         
+        // If in tie-break, use tie-break score instead of game score
+        // 如果在抢七，使用抢七比分而不是局比分
+        if (this.isInTieBreak(currentSet) && currentSet.tieBreak) {
+            player1Score = currentSet.tieBreak.player1Points || 0;
+            player2Score = currentSet.tieBreak.player2Points || 0;
+        }
+        
         // Format score for display
         // 格式化比分用于显示
         if (typeof player1Score === 'number') {
