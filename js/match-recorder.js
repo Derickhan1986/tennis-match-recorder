@@ -391,32 +391,32 @@ class MatchRecorder {
         this.updateButtonVisibility(state.currentServer);
     }
 
-    // Update set scores
-    // 更新盘比分
-    updateSetScores(sets) {
-        let player1Sets = 0;
-        let player2Sets = 0;
-        
-        sets.forEach(set => {
-            if (set.winner === 'player1') player1Sets++;
-            else if (set.winner === 'player2') player2Sets++;
-        });
-        
-        document.getElementById('player1-sets').textContent = player1Sets;
-        document.getElementById('player2-sets').textContent = player2Sets;
-        
-        // Update set score badge
-        // 更新盘比分徽章
-        const currentSet = sets[sets.length - 1];
-        if (currentSet) {
-            const badge = document.getElementById('set-score-badge');
-            if (badge) {
-                badge.querySelector('div:first-child').textContent = currentSet.setNumber;
-                badge.querySelector('div:last-child').textContent = 
-                    `${currentSet.player1Games}-${currentSet.player2Games}`;
+        // Update set scores
+        // 更新盘比分
+        updateSetScores(sets) {
+            let player1Sets = 0;
+            let player2Sets = 0;
+            
+            sets.forEach(set => {
+                if (set.winner === 'player1') player1Sets++;
+                else if (set.winner === 'player2') player2Sets++;
+            });
+            
+            document.getElementById('player1-sets').textContent = player1Sets;
+            document.getElementById('player2-sets').textContent = player2Sets;
+            
+            // Update set score badge (shows current set number and games in current set)
+            // 更新盘比分徽章（显示当前盘数和当前盘的局数）
+            const currentSet = sets[sets.length - 1];
+            if (currentSet) {
+                const badge = document.getElementById('set-score-badge');
+                if (badge) {
+                    badge.querySelector('div:first-child').textContent = currentSet.setNumber;
+                    badge.querySelector('div:last-child').textContent = 
+                        `${currentSet.player1Games}-${currentSet.player2Games}`;
+                }
             }
         }
-    }
 
     // Update serve indicators
     // 更新发球指示器

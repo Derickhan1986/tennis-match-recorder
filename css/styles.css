@@ -356,9 +356,10 @@ body {
 }
 
 .sets-scores {
-    font-size: 48px;
-    font-weight: 700;
+    font-size: 24px;
+    font-weight: 600;
     margin-bottom: 8px;
+    color: #888;
 }
 
 .serve-indicator {
