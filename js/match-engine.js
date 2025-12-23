@@ -56,7 +56,8 @@ class MatchEngine {
                 // 一发失误添加到日志（比分不变），使用当前game
                 this.addToLog(server, pointType, null, currentGame);
                 storage.saveMatch(this.match);
-                return this.getMatchState();
+                return; // Display will read from log, no need to return state
+                // 显示将从日志读取，不需要返回状态
             } else {
                 // Double fault, opponent wins point
                 // 双误，对手得分
@@ -118,7 +119,8 @@ class MatchEngine {
         // 自动保存比赛
         storage.saveMatch(this.match);
         
-        return this.getMatchState();
+        // Display will read from log, no need to return state
+        // 显示将从日志读取，不需要返回状态
     }
 
     // Update game score based on winner
@@ -330,7 +332,8 @@ class MatchEngine {
                 // 一发失误添加到日志（比分不变）
                 this.addToLog(tieBreakServer, pointType, null, lastGame);
                 storage.saveMatch(this.match);
-                return this.getMatchState();
+                return; // Display will read from log, no need to return state
+                // 显示将从日志读取，不需要返回状态
             } else {
                 // Double fault, opponent wins point
                 // 双误，对手得分
@@ -400,7 +403,9 @@ class MatchEngine {
         }
         
         storage.saveMatch(this.match);
-        return this.getMatchState();
+        
+        // Display will read from log, no need to return state
+        // 显示将从日志读取，不需要返回状态
     }
 
     // Check tie-break winner
@@ -1014,7 +1019,9 @@ class MatchEngine {
         }
         
         storage.saveMatch(this.match);
-        return this.getMatchState();
+        
+        // Display will read from log, no need to return state
+        // 显示将从日志读取，不需要返回状态
     }
     
     // Old undo logic below (keep for reference)
