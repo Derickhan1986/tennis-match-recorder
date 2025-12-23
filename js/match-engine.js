@@ -544,10 +544,131 @@ class MatchEngine {
                 }
                 tieBreak.winner = null;
                 
-                // Restore server if needed
-                // 如需要恢复发球方
-                if (tieBreak.points.length > 0 && tieBreak.points.length % 2 === 0) {
-                    this.match.currentServer = this.match.currentServer === 'player1' ? 'player2' : 'player1';
+                // Restore server based on tie-break serve rotation
+                // 根据抢七发球轮换恢复发球方
+                if (tieBreak.points.length === 0) {
+                    // If no points left in tie-break, restore to last game's server
+                    // 如果抢七没有点了，恢复到最后一局的发球方
+                    const lastGame = currentSet.games[currentSet.games.length - 1];
+                    if (lastGame && lastGame.server) {
+                        this.match.currentServer = lastGame.server;
+                    }
+                } else {
+                    // Restore server based on tie-break rotation rule
+                    // 根据抢七轮换规则恢复发球方
+                    // Rule: first point switches, then every 2 points
+                    // 规则：第1分后换发，然后每2分换发
+                    if (tieBreak.points.length === 1 || (tieBreak.points.length > 1 && tieBreak.points.length % 2 === 1)) {
+                        // Should switch server
+                        // 应该换发
+                        this.match.currentServer = this.match.currentServer === 'player1' ? 'player2' : 'player1';
+                    }
+                }
+                
+                // If tie-break is now empty, remove it and go back to last game
+                // 如果抢七现在为空，删除它并回到最后一局
+                if (tieBreak.points.length === 0) {
+                    // Get the last game before tie-break started
+                    // 获取抢七开始前的最后一局
+                    const lastGame = currentSet.games[currentSet.games.length - 1];
+                    if (lastGame) {
+                        // Remove tie-break
+                        // 删除抢七
+                        currentSet.tieBreak = null;
+                        
+                        // If last game was won, undo it to restore game state
+                        // 如果最后一局已结束，撤销它以恢复局状态
+                        if (lastGame.winner) {
+                            // Remove last point from game
+                            // 从局中删除最后一分
+                            if (lastGame.points.length > 0) {
+                                const lastGamePoint = lastGame.points.pop();
+                                
+                                // Remove corresponding log entry
+                                // 删除对应的日志条目
+                                if (this.match.log && this.match.log.length > 0) {
+                                    this.match.log.pop();
+                                }
+                                
+                                // Recalculate game score
+                                // 重新计算局比分
+                                this.resetGameScore(lastGame);
+                                
+                                // Restore game winner state
+                                // 恢复局获胜者状态
+                                lastGame.winner = null;
+                                
+                                // Restore server to last game's server
+                                // 恢复到最后一局的发球方
+                                if (lastGame.server) {
+                                    this.match.currentServer = lastGame.server;
+                                }
+                                
+                                // Restore serve number
+                                // 恢复发球次数
+                                if (lastGamePoint && lastGamePoint.serveNumber) {
+                                    this.match.currentServeNumber = lastGamePoint.serveNumber;
+                                } else {
+                                    this.match.currentServeNumber = 1;
+                                }
+                            }
+                        } else {
+                            // Restore server to last game's server
+                            // 恢复到最后一局的发球方
+                            if (lastGame.server) {
+                                this.match.currentServer = lastGame.server;
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Tie-break exists but has no points - remove it and restore game state
+                // 抢七存在但没有点 - 删除它并恢复局状态
+                const lastGame = currentSet.games[currentSet.games.length - 1];
+                if (lastGame) {
+                    // Remove tie-break
+                    // 删除抢七
+                    currentSet.tieBreak = null;
+                    
+                    // If last game was won, undo it to restore game state
+                    // 如果最后一局已结束，撤销它以恢复局状态
+                    if (lastGame.winner && lastGame.points.length > 0) {
+                        // Remove last point from game
+                        // 从局中删除最后一分
+                        const lastGamePoint = lastGame.points.pop();
+                        
+                        // Remove corresponding log entry
+                        // 删除对应的日志条目
+                        if (this.match.log && this.match.log.length > 0) {
+                            this.match.log.pop();
+                        }
+                        
+                        // Recalculate game score
+                        // 重新计算局比分
+                        this.resetGameScore(lastGame);
+                        
+                        // Restore game winner state
+                        // 恢复局获胜者状态
+                        lastGame.winner = null;
+                        
+                        // Restore server to last game's server
+                        // 恢复到最后一局的发球方
+                        if (lastGame.server) {
+                            this.match.currentServer = lastGame.server;
+                        }
+                        
+                        // Restore serve number
+                        // 恢复发球次数
+                        if (lastGamePoint && lastGamePoint.serveNumber) {
+                            this.match.currentServeNumber = lastGamePoint.serveNumber;
+                        } else {
+                            this.match.currentServeNumber = 1;
+                        }
+                    } else if (lastGame.server) {
+                        // Restore server to last game's server
+                        // 恢复到最后一局的发球方
+                        this.match.currentServer = lastGame.server;
+                    }
                 }
             }
         } else {
