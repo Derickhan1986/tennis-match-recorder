@@ -442,13 +442,23 @@ body {
 /* Action Buttons */
 .action-buttons-container {
     padding: 20px 16px;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+}
+
+.player-buttons-left, .player-buttons-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; /* Prevent overflow */
 }
 
 .server-buttons, .receiver-buttons {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    margin-bottom: 20px;
+    width: 100%;
 }
 
 .action-btn {
@@ -486,7 +496,28 @@ body {
 }
 
 .server-buttons.hidden, .receiver-buttons.hidden {
-    display: none;
+    display: none !important;
+}
+
+/* Button alignment */
+.player-buttons-left {
+    align-items: flex-start;
+}
+
+.player-buttons-right {
+    align-items: flex-end;
+}
+
+.player-buttons-left .action-btn,
+.player-buttons-left .button-row {
+    width: 100%;
+    max-width: 200px;
+}
+
+.player-buttons-right .action-btn,
+.player-buttons-right .button-row {
+    width: 100%;
+    max-width: 200px;
 }
 
 /* Undo Button */

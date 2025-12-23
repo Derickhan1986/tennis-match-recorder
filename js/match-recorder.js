@@ -43,7 +43,8 @@ class MatchRecorder {
             if (e.target.closest('.action-btn')) {
                 const button = e.target.closest('.action-btn');
                 const action = button.dataset.action;
-                this.handleActionButton(action);
+                const player = button.dataset.player; // 'player1' or 'player2'
+                this.handleActionButton(action, player);
             }
         });
 
@@ -197,7 +198,7 @@ class MatchRecorder {
 
     // Handle action button click
     // 处理操作按钮点击
-    handleActionButton(action) {
+    handleActionButton(action, player) {
         if (!this.matchEngine) {
             app.showToast('Match not initialized', 'error');
             return;
@@ -205,40 +206,69 @@ class MatchRecorder {
         
         const state = this.matchEngine.getMatchState();
         const server = state.currentServer;
+        const receiver = server === 'player1' ? 'player2' : 'player1';
         let winner = null;
         let pointType = null;
         
-        // Determine winner and point type based on action
-        // 根据操作确定获胜者和分类型
+        // Determine winner and point type based on action and which player clicked
+        // 根据操作和点击的玩家确定获胜者和分类型
         switch (action) {
             case 'serve-fault':
-                // Serve fault doesn't change score yet, handled in engine
-                // 发球失误暂时不改变比分，在引擎中处理
-                this.matchEngine.recordPoint(server, 'Serve Fault');
-                this.updateDisplay();
-                return;
+                // Serve fault - only valid if clicked by server
+                // 发球失误 - 只有发球方点击才有效
+                if (player === server) {
+                    this.matchEngine.recordPoint(server, 'Serve Fault');
+                    this.updateDisplay();
+                    return;
+                }
+                break;
                 
             case 'ace':
             case 'winner':
-                // Server wins point
-                // 发球方得分
-                winner = server;
-                pointType = action === 'ace' ? 'ACE' : 'Winner';
+                // Server wins point - only valid if clicked by server
+                // 发球方得分 - 只有发球方点击才有效
+                if (player === server) {
+                    winner = server;
+                    pointType = action === 'ace' ? 'ACE' : 'Winner';
+                }
                 break;
                 
             case 'unforced-error':
             case 'forced-error':
-                // Receiver wins point (server made error)
-                // 接发球方得分（发球方失误）
-                winner = server === 'player1' ? 'player2' : 'player1';
-                pointType = action === 'unforced-error' ? 'Unforced Error' : 'Forced Error';
+                // Server made error - receiver wins point
+                // 发球方失误 - 接发球方得分
+                if (player === server) {
+                    winner = receiver;
+                    pointType = action === 'unforced-error' ? 'Unforced Error' : 'Forced Error';
+                }
                 break;
                 
             case 'return-error':
-                // Receiver made error, server wins point
-                // 接发球方失误，发球方得分
-                winner = server;
-                pointType = 'Return Error';
+                // Receiver made error - server wins point
+                // 接发球方失误 - 发球方得分
+                if (player === receiver) {
+                    winner = server;
+                    pointType = 'Return Error';
+                }
+                break;
+                
+            case 'receiver-winner':
+                // Receiver wins point
+                // 接发球方得分
+                if (player === receiver) {
+                    winner = receiver;
+                    pointType = 'Winner';
+                }
+                break;
+                
+            case 'receiver-unforced-error':
+            case 'receiver-forced-error':
+                // Receiver made error - server wins point
+                // 接发球方失误 - 发球方得分
+                if (player === receiver) {
+                    winner = server;
+                    pointType = action === 'receiver-unforced-error' ? 'Unforced Error' : 'Forced Error';
+                }
                 break;
         }
         
@@ -461,15 +491,41 @@ class MatchRecorder {
     // Update button visibility based on server
     // 根据发球方更新按钮可见性
     updateButtonVisibility(currentServer) {
-        const serverButtons = document.getElementById('server-buttons');
-        const receiverButtons = document.getElementById('receiver-buttons');
+        const receiver = currentServer === 'player1' ? 'player2' : 'player1';
         
-        // Always show server buttons - they work for whoever is serving
-        // 始终显示发球方按钮 - 它们适用于任何发球的人
-        // The buttons will record points for the current server
-        // 按钮将为当前发球方记录分
-        if (serverButtons) serverButtons.classList.remove('hidden');
-        if (receiverButtons) receiverButtons.classList.add('hidden');
+        // Player 1 buttons
+        // Player 1按钮
+        const p1Server = document.getElementById('player1-server-buttons');
+        const p1Receiver = document.getElementById('player1-receiver-buttons');
+        
+        if (currentServer === 'player1') {
+            // Player 1 is serving - show server buttons
+            // Player 1发球 - 显示发球方按钮
+            if (p1Server) p1Server.classList.remove('hidden');
+            if (p1Receiver) p1Receiver.classList.add('hidden');
+        } else {
+            // Player 2 is serving - Player 1 is receiving - show receiver buttons
+            // Player 2发球 - Player 1接发球 - 显示接发球方按钮
+            if (p1Server) p1Server.classList.add('hidden');
+            if (p1Receiver) p1Receiver.classList.remove('hidden');
+        }
+        
+        // Player 2 buttons
+        // Player 2按钮
+        const p2Server = document.getElementById('player2-server-buttons');
+        const p2Receiver = document.getElementById('player2-receiver-buttons');
+        
+        if (currentServer === 'player2') {
+            // Player 2 is serving - show server buttons
+            // Player 2发球 - 显示发球方按钮
+            if (p2Server) p2Server.classList.remove('hidden');
+            if (p2Receiver) p2Receiver.classList.add('hidden');
+        } else {
+            // Player 1 is serving - Player 2 is receiving - show receiver buttons
+            // Player 1发球 - Player 2接发球 - 显示接发球方按钮
+            if (p2Server) p2Server.classList.add('hidden');
+            if (p2Receiver) p2Receiver.classList.remove('hidden');
+        }
     }
 
     // Load match for recording (resume)

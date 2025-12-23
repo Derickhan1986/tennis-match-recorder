@@ -276,25 +276,46 @@
                     </div>
                 </div>
 
-                <!-- Action Buttons -->
+                <!-- Action Buttons - Left Side (Player 1) -->
                 <div class="action-buttons-container">
-                    <!-- Server Buttons -->
-                    <div class="server-buttons" id="server-buttons">
-                        <button class="action-btn error-btn" data-action="serve-fault">SERVE FAULT</button>
-                        <div class="button-row">
-                            <button class="action-btn success-btn" data-action="ace">ACE</button>
-                            <button class="action-btn success-btn" data-action="winner">WINNER</button>
+                    <div class="player-buttons-left">
+                        <!-- Player 1 as Server -->
+                        <div class="server-buttons hidden" id="player1-server-buttons">
+                            <button class="action-btn error-btn" data-action="serve-fault" data-player="player1">SERVE FAULT</button>
+                            <div class="button-row">
+                                <button class="action-btn success-btn" data-action="ace" data-player="player1">ACE</button>
+                                <button class="action-btn success-btn" data-action="winner" data-player="player1">WINNER</button>
+                            </div>
+                            <button class="action-btn error-btn" data-action="unforced-error" data-player="player1">UNFORCED ERROR</button>
+                            <button class="action-btn error-btn" data-action="forced-error" data-player="player1">FORCED ERROR</button>
                         </div>
-                        <button class="action-btn error-btn" data-action="unforced-error">UNFORCED ERROR</button>
-                        <button class="action-btn error-btn" data-action="forced-error">FORCED ERROR</button>
+                        <!-- Player 1 as Receiver -->
+                        <div class="receiver-buttons hidden" id="player1-receiver-buttons">
+                            <button class="action-btn error-btn" data-action="return-error" data-player="player1">RETURN ERROR</button>
+                            <button class="action-btn success-btn" data-action="receiver-winner" data-player="player1">WINNER</button>
+                            <button class="action-btn error-btn" data-action="receiver-unforced-error" data-player="player1">UNFORCED ERROR</button>
+                            <button class="action-btn error-btn" data-action="receiver-forced-error" data-player="player1">FORCED ERROR</button>
+                        </div>
                     </div>
 
-                    <!-- Receiver Buttons -->
-                    <div class="receiver-buttons" id="receiver-buttons">
-                        <button class="action-btn error-btn" data-action="return-error">RETURN ERROR</button>
-                        <button class="action-btn success-btn" data-action="receiver-winner">WINNER</button>
-                        <button class="action-btn error-btn" data-action="receiver-unforced-error">UNFORCED ERROR</button>
-                        <button class="action-btn error-btn" data-action="receiver-forced-error">FORCED ERROR</button>
+                    <div class="player-buttons-right">
+                        <!-- Player 2 as Server -->
+                        <div class="server-buttons hidden" id="player2-server-buttons">
+                            <button class="action-btn error-btn" data-action="serve-fault" data-player="player2">SERVE FAULT</button>
+                            <div class="button-row">
+                                <button class="action-btn success-btn" data-action="ace" data-player="player2">ACE</button>
+                                <button class="action-btn success-btn" data-action="winner" data-player="player2">WINNER</button>
+                            </div>
+                            <button class="action-btn error-btn" data-action="unforced-error" data-player="player2">UNFORCED ERROR</button>
+                            <button class="action-btn error-btn" data-action="forced-error" data-player="player2">FORCED ERROR</button>
+                        </div>
+                        <!-- Player 2 as Receiver -->
+                        <div class="receiver-buttons hidden" id="player2-receiver-buttons">
+                            <button class="action-btn error-btn" data-action="return-error" data-player="player2">RETURN ERROR</button>
+                            <button class="action-btn success-btn" data-action="receiver-winner" data-player="player2">WINNER</button>
+                            <button class="action-btn error-btn" data-action="receiver-unforced-error" data-player="player2">UNFORCED ERROR</button>
+                            <button class="action-btn error-btn" data-action="receiver-forced-error" data-player="player2">FORCED ERROR</button>
+                        </div>
                     </div>
                 </div>
 
