@@ -965,9 +965,13 @@ class MatchEngine {
             if (lastLogEntry.currentServer) {
                 this.match.currentServer = lastLogEntry.currentServer;
             }
-            // Note: currentServeNumber is not in log, so we reset to 1
-            // 注意：currentServeNumber不在日志中，所以重置为1
-            this.match.currentServeNumber = 1;
+            if (lastLogEntry.currentServeNumber !== null && lastLogEntry.currentServeNumber !== undefined) {
+                this.match.currentServeNumber = lastLogEntry.currentServeNumber;
+            } else {
+                // Fallback: reset to 1 if not in log (for backward compatibility)
+                // 备用方案：如果不在日志中则重置为1（向后兼容）
+                this.match.currentServeNumber = 1;
+            }
         } else {
             // No log entries, restore to initial state
             // 没有日志条目，恢复到初始状态
@@ -1346,7 +1350,8 @@ class MatchEngine {
             gameScore: gameScore,
             gamesScore: gamesScore,
             setsScore: setsScore,
-            currentServer: this.match.currentServer // Record current server for undo tracking
+            currentServer: this.match.currentServer, // Record current server for undo tracking
+            currentServeNumber: this.match.currentServeNumber // Record current serve number for undo tracking
         });
         
         this.match.log.push(logEntry);

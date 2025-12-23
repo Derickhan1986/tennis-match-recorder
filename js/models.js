@@ -141,7 +141,8 @@ function createLogEntry(data = {}) {
         gameScore: data.gameScore || null, // Current game score (e.g., "0-40")
         gamesScore: data.gamesScore || null, // Current games score in set (e.g., "1-2")
         setsScore: data.setsScore || null, // Current sets score in match (e.g., "0-1")
-        currentServer: data.currentServer || null // Current server at this point ('player1' | 'player2')
+        currentServer: data.currentServer || null, // Current server at this point ('player1' | 'player2')
+        currentServeNumber: data.currentServeNumber || null // Current serve number (1 or 2) for undo tracking
     };
 }
 
