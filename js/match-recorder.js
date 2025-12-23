@@ -408,41 +408,8 @@ class MatchRecorder {
     // Update serve indicators
     // 更新发球指示器
     updateServeIndicators(currentServer, serveNumber) {
-        // Top indicators
-        // 顶部指示器
-        const p1Top = document.getElementById('player1-serve-indicator');
-        const p2Top = document.getElementById('player2-serve-indicator');
-        
-        if (p1Top) {
-            const balls = p1Top.querySelectorAll('.tennis-ball');
-            if (currentServer === 'player1') {
-                balls[0].classList.add('active');
-                if (serveNumber === 1) {
-                    balls[1].classList.add('active');
-                } else {
-                    balls[1].classList.remove('active');
-                }
-            } else {
-                balls.forEach(b => b.classList.remove('active'));
-            }
-        }
-        
-        if (p2Top) {
-            const balls = p2Top.querySelectorAll('.tennis-ball');
-            if (currentServer === 'player2') {
-                balls[0].classList.add('active');
-                if (serveNumber === 1) {
-                    balls[1].classList.add('active');
-                } else {
-                    balls[1].classList.remove('active');
-                }
-            } else {
-                balls.forEach(b => b.classList.remove('active'));
-            }
-        }
-        
-        // Bottom indicators
-        // 底部指示器
+        // Only update bottom indicators (under game score)
+        // 只更新底部指示器（局比分下方）
         const p1Bottom = document.getElementById('player1-serve-under');
         const p2Bottom = document.getElementById('player2-serve-under');
         
