@@ -53,8 +53,8 @@ class MatchEngine {
                 // 一发失误，尝试二发（比分不变）
                 this.match.currentServeNumber = 2;
                 // Add to log for first serve fault (score doesn't change)
-                // 一发失误添加到日志（比分不变）
-                this.addToLog(server, pointType, null);
+                // 一发失误添加到日志（比分不变），使用当前game
+                this.addToLog(server, pointType, null, currentGame);
                 storage.saveMatch(this.match);
                 return this.getMatchState();
             } else {
@@ -75,21 +75,25 @@ class MatchEngine {
         // 更新局比分
         this.updateGameScore(currentGame, winner);
         
+        // Check if game is won BEFORE adding to log (so we use the correct game number)
+        // 在添加到日志之前检查局是否结束（这样我们使用正确的game number）
+        const gameWasWon = !!currentGame.winner;
+        
         // Add to match log AFTER updating score (so log shows the score after the action)
-        // 更新比分后添加到日志（这样日志显示的是执行动作后的比分）
+        // 更新比分后添加到日志（这样日志显示的是执行动作后的比分），使用当前game
         if (isDoubleFault) {
             // Double fault - log the server who made the fault, not the winner
             // 双误 - 记录犯错的发球方，而不是得分方
-            this.addToLog(server, 'Double Fault', null);
+            this.addToLog(server, 'Double Fault', null, currentGame);
         } else if (pointType !== 'Serve Fault') {
             // Normal point - log with updated score
-            // 正常得分 - 记录更新后的比分
-            this.addToLog(winner, pointType, shotType);
+            // 正常得分 - 记录更新后的比分，使用当前game
+            this.addToLog(winner, pointType, shotType, currentGame);
         }
         
-        // Check if game is won
-        // 检查局是否结束
-        if (currentGame.winner) {
+        // Check if game is won and handle it
+        // 检查局是否结束并处理
+        if (gameWasWon) {
             this.onGameWon(currentSet, currentGame);
         }
         
@@ -291,9 +295,12 @@ class MatchEngine {
         if (pointType === 'Serve Fault') {
             if (this.match.currentServeNumber === 1) {
                 this.match.currentServeNumber = 2;
+                // Get the last game before tie-break for logging
+                // 获取抢七前的最后一个game用于日志记录
+                const lastGame = set.games[set.games.length - 1];
                 // Add to log for first serve fault (score doesn't change)
                 // 一发失误添加到日志（比分不变）
-                this.addToLog(tieBreakServer, pointType, null);
+                this.addToLog(tieBreakServer, pointType, null, lastGame);
                 storage.saveMatch(this.match);
                 return this.getMatchState();
             } else {
@@ -317,16 +324,20 @@ class MatchEngine {
             tieBreak.player2Points++;
         }
         
+        // Get the last game before tie-break for logging (tie-break happens after game 6-6)
+        // 获取抢七前的最后一个game用于日志记录（抢七发生在game 6-6之后）
+        const lastGame = set.games[set.games.length - 1];
+        
         // Add to match log AFTER updating score (so log shows the score after the action)
         // 更新比分后添加到日志（这样日志显示的是执行动作后的比分）
         if (isDoubleFault) {
             // Double fault - log the server who made the fault, not the winner
             // 双误 - 记录犯错的发球方，而不是得分方
-            this.addToLog(tieBreakServer, 'Double Fault', null);
+            this.addToLog(tieBreakServer, 'Double Fault', null, lastGame);
         } else if (pointType !== 'Serve Fault') {
             // Normal point - log with updated score
             // 正常得分 - 记录更新后的比分
-            this.addToLog(winner, pointType, shotType);
+            this.addToLog(winner, pointType, shotType, lastGame);
         }
         
         // Switch server in tie-break
@@ -524,19 +535,36 @@ class MatchEngine {
     // Rebuild match state from all points
     // 从所有points重新构建比赛状态
     rebuildMatchState() {
-        // Save all existing points first
-        // 首先保存所有现有的points
-        const allGamePoints = [];
-        const allTieBreakPoints = [];
+        // Save all existing points with their game/set information
+        // 保存所有现有的points及其game/set信息
+        const allPointsWithContext = [];
         
-        for (const set of this.match.sets) {
-            for (const game of set.games) {
+        for (let setIdx = 0; setIdx < this.match.sets.length; setIdx++) {
+            const set = this.match.sets[setIdx];
+            for (let gameIdx = 0; gameIdx < set.games.length; gameIdx++) {
+                const game = set.games[gameIdx];
                 if (game.points && game.points.length > 0) {
-                    allGamePoints.push(...game.points);
+                    for (const point of game.points) {
+                        allPointsWithContext.push({
+                            point: point,
+                            setIndex: setIdx,
+                            gameIndex: gameIdx,
+                            gameNumber: game.gameNumber,
+                            isTieBreak: false
+                        });
+                    }
                 }
             }
             if (set.tieBreak && set.tieBreak.points && set.tieBreak.points.length > 0) {
-                allTieBreakPoints.push(...set.tieBreak.points);
+                for (const point of set.tieBreak.points) {
+                    allPointsWithContext.push({
+                        point: point,
+                        setIndex: setIdx,
+                        gameIndex: -1, // Tie-break doesn't have game index
+                        gameNumber: null, // Tie-break doesn't have game number
+                        isTieBreak: true
+                    });
+                }
             }
         }
         
@@ -556,9 +584,9 @@ class MatchEngine {
         this.match.status = 'in-progress';
         this.match.endTime = null;
         
-        // Replay all points
-        // 重放所有points
-        for (const point of [...allGamePoints, ...allTieBreakPoints]) {
+        // Replay all points in order
+        // 按顺序重放所有points
+        for (const { point, setIndex, gameIndex, gameNumber, isTieBreak } of allPointsWithContext) {
             // Skip serve faults that didn't result in points
             // 跳过没有得分的发球失误
             if (point.pointType === 'Serve Fault' && point.serveNumber === 1) {
@@ -566,9 +594,74 @@ class MatchEngine {
             }
             
             if (point.winner) {
-                this.recordPoint(point.winner, point.pointType, point.shotType);
+                // Get the correct set and game
+                // 获取正确的set和game
+                const currentSet = this.match.sets[setIndex];
+                
+                if (isTieBreak) {
+                    // Record tie-break point
+                    // 记录抢七分
+                    this.recordTieBreakPoint(currentSet, point.winner, point.pointType, point.shotType);
+                } else {
+                    // Ensure we have the correct game
+                    // 确保我们有正确的game
+                    while (currentSet.games.length <= gameIndex) {
+                        const nextGameNumber = currentSet.games.length + 1;
+                        currentSet.games.push(createGame({ gameNumber: nextGameNumber }));
+                    }
+                    
+                    // Get the game and record point directly
+                    // 获取game并直接记录分
+                    const targetGame = currentSet.games[gameIndex];
+                    targetGame.gameNumber = gameNumber; // Ensure correct game number
+                    
+                    // Set server for this game if not set
+                    // 如果未设置，为此game设置发球方
+                    if (!targetGame.server) {
+                        targetGame.server = this.match.currentServer;
+                    } else {
+                        this.match.currentServer = targetGame.server;
+                    }
+                    
+                    // Record point directly to avoid creating new games
+                    // 直接记录分以避免创建新games
+                    const pointObj = createPoint({
+                        pointNumber: targetGame.points.length + 1,
+                        winner: point.winner,
+                        pointType: point.pointType,
+                        shotType: point.shotType,
+                        server: point.server || this.match.currentServer,
+                        serveNumber: point.serveNumber || 1
+                    });
+                    targetGame.points.push(pointObj);
+                    
+                    // Handle serve fault
+                    // 处理发球失误
+                    if (point.pointType === 'Serve Fault' && point.serveNumber === 1) {
+                        this.match.currentServeNumber = 2;
+                        // Don't add to log for first serve fault (it will be added when double fault occurs)
+                        // 一发失误不添加到日志（双误时会添加）
+                        continue;
+                    }
+                    
+                    // Update game score
+                    // 更新局比分
+                    this.updateGameScore(targetGame, point.winner);
+                    
+                    // Check if game is won
+                    // 检查局是否结束
+                    if (targetGame.winner) {
+                        this.onGameWon(currentSet, targetGame);
+                    } else {
+                        this.match.currentServeNumber = 1;
+                    }
+                }
             }
         }
+        
+        // Save match after rebuild
+        // 重建后保存比赛
+        storage.saveMatch(this.match);
     }
 
     // Undo last point
@@ -913,13 +1006,15 @@ class MatchEngine {
     
     // Add entry to match log
     // 添加条目到比赛日志
-    addToLog(player, action, shotType = null) {
+    addToLog(player, action, shotType = null, game = null) {
         if (!this.match.log) {
             this.match.log = [];
         }
         
         const currentSet = this.getCurrentSet();
-        const currentGame = this.getCurrentGame(currentSet);
+        // Use provided game, or get current game if not provided
+        // 使用提供的game，如果未提供则获取当前game
+        const currentGame = game || this.getCurrentGame(currentSet);
         const state = this.getMatchState();
         
         // Format score for display
