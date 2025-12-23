@@ -1075,14 +1075,33 @@ class MatchEngine {
         // Use provided game, or get current game if not provided
         // 使用提供的game，如果未提供则获取当前game
         const currentGame = game || this.getCurrentGame(currentSet);
-        const state = this.getMatchState();
         
-        // Calculate game score (current point score in the game)
-        // 计算game比分（当前game内的分）
-        let gameScore = `${state.player1Score}-${state.player2Score}`;
-        if (currentSet.tieBreak && this.isInTieBreak(currentSet)) {
+        // Check if we're in tie-break
+        // 检查是否在抢七
+        const isInTieBreak = currentSet.tieBreak && this.isInTieBreak(currentSet);
+        
+        // Calculate game score from the provided game (not from getMatchState which might return new game)
+        // 从提供的game计算game比分（不从getMatchState获取，因为它可能返回新game）
+        let gameScore;
+        if (isInTieBreak) {
             const tb = currentSet.tieBreak;
             gameScore = `TB: ${tb.player1Points || 0}-${tb.player2Points || 0}`;
+        } else {
+            // Use the game's score directly (the game where the point was recorded)
+            // 直接使用game的比分（记录point的game）
+            let player1Score = currentGame.player1Score;
+            let player2Score = currentGame.player2Score;
+            
+            // Format score for display
+            // 格式化比分用于显示
+            if (typeof player1Score === 'number') {
+                player1Score = player1Score.toString();
+            }
+            if (typeof player2Score === 'number') {
+                player2Score = player2Score.toString();
+            }
+            
+            gameScore = `${player1Score}-${player2Score}`;
         }
         
         // Calculate games score (games won in current set)
