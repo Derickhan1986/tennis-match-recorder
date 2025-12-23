@@ -329,9 +329,13 @@ class MatchEngine {
             this.addToLog(winner, pointType, shotType);
         }
         
-        // Switch server every 2 points in tie-break
-        // 抢七中每2分换发
-        if (tieBreak.points.length % 2 === 0) {
+        // Switch server in tie-break
+        // 抢七中换发
+        // Rule: First server serves 1 point, then switch, then each player serves 2 points alternately
+        // 规则：第一个发球方发1个球，然后换发，之后每人依次发2个球
+        // Switch after: 1st point, then after every 2 points (3rd, 5th, 7th, etc.)
+        // 换发时机：第1分后，然后每2分后（第3分、第5分、第7分等）
+        if (tieBreak.points.length === 1 || (tieBreak.points.length > 1 && tieBreak.points.length % 2 === 1)) {
             this.match.currentServer = this.match.currentServer === 'player1' ? 'player2' : 'player1';
         }
         
