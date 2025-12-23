@@ -366,11 +366,9 @@ class MatchRecorder {
         // Update player names
         // 更新玩家名称
         document.getElementById('player1-name').textContent = this.player1.name;
-        document.getElementById('player1-name-short').textContent = this.player1.name.split(' ').map(n => n[0]).join('') || 'P1';
         document.getElementById('player1-name-under').textContent = this.player1.name;
         
         document.getElementById('player2-name').textContent = this.player2.name;
-        document.getElementById('player2-name-short').textContent = this.player2.name.split(' ').map(n => n[0]).join('') || 'P2';
         document.getElementById('player2-name-under').textContent = this.player2.name;
         
         // Update set scores
