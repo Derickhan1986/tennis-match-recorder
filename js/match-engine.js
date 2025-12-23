@@ -266,9 +266,19 @@ class MatchEngine {
         // In tie-break, the player who was receiving in the last game serves first
         // Then, after 1 point, the serve switches. After that, it switches every 2 points.
         // 抢七中，上一局的接发球方先发球。然后发1分后换发，之后每2分换发。
-        // Since onGameWon already switched the server, we need to switch back
-        // 因为onGameWon已经交换了发球方，我们需要换回来
-        this.match.currentServer = this.match.currentServer === 'player1' ? 'player2' : 'player1';
+        // Get the last game to determine who was receiving
+        // 获取最后一局以确定谁在接发球
+        const lastGame = set.games[set.games.length - 1];
+        if (lastGame && lastGame.server) {
+            // The receiver of the last game serves first in tie-break
+            // 上一局的接发球方在抢七中先发球
+            const lastGameReceiver = lastGame.server === 'player1' ? 'player2' : 'player1';
+            this.match.currentServer = lastGameReceiver;
+        } else {
+            // Fallback: switch server (since onGameWon already switched it)
+            // 备用方案：交换发球方（因为onGameWon已经交换了）
+            this.match.currentServer = this.match.currentServer === 'player1' ? 'player2' : 'player1';
+        }
         this.match.currentServeNumber = 1;
     }
 
