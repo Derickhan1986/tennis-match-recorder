@@ -109,9 +109,38 @@ function createPoint(data = {}) {
         pointNumber: data.pointNumber || 0,
         winner: data.winner || null, // 'player1' | 'player2'
         pointType: data.pointType || null, // 'ACE', 'Winner', 'Serve Fault', 'Return Error', 'Unforced Error', 'Forced Error'
+        shotType: data.shotType || null, // 'Forehand Ground Stroke', 'Backhand Ground Stroke', 'Forehand Slice', 'Backhand Slice', 'Volley', 'Swing Volley', 'Lob', 'Overhead'
         server: data.server || null, // 'player1' | 'player2' - who was serving
         serveNumber: data.serveNumber || null, // 1 or 2 - first or second serve
         timestamp: data.timestamp || new Date().toISOString()
+    };
+}
+
+// Shot Types
+// 击球类型
+const ShotType = {
+    FOREHAND_GROUND_STROKE: 'Forehand Ground Stroke',
+    BACKHAND_GROUND_STROKE: 'Backhand Ground Stroke',
+    FOREHAND_SLICE: 'Forehand Slice',
+    BACKHAND_SLICE: 'Backhand Slice',
+    VOLLEY: 'Volley',
+    SWING_VOLLEY: 'Swing Volley',
+    LOB: 'Lob',
+    OVERHEAD: 'Overhead'
+};
+
+// Match Log Entry
+// 比赛日志条目
+function createLogEntry(data = {}) {
+    return {
+        id: data.id || generateUUID(),
+        timestamp: data.timestamp || new Date().toISOString(),
+        player: data.player || null, // 'player1' | 'player2'
+        action: data.action || null, // 'ACE', 'Winner', 'Serve Fault', etc.
+        shotType: data.shotType || null, // Shot type if applicable
+        score: data.score || null, // Current score at this point
+        setNumber: data.setNumber || null,
+        gameNumber: data.gameNumber || null
     };
 }
 

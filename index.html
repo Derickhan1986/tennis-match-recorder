@@ -247,7 +247,6 @@
                 <div class="current-game-score">
                     <div class="game-score-left">
                         <div class="game-score-value" id="player1-game-score">0</div>
-                        <div class="player-name-under-score" id="player1-name-under">Player 1</div>
                         <div class="serve-indicator-under" id="player1-serve-under">
                             <span class="tennis-ball-small">🎾</span>
                             <span class="tennis-ball-small">🎾</span>
@@ -256,7 +255,6 @@
                     <div class="game-score-divider"></div>
                     <div class="game-score-right">
                         <div class="game-score-value" id="player2-game-score">0</div>
-                        <div class="player-name-under-score" id="player2-name-under">Player 2</div>
                         <div class="serve-indicator-under" id="player2-serve-under">
                             <span class="tennis-ball-small">🎾</span>
                             <span class="tennis-ball-small">🎾</span>
@@ -312,6 +310,21 @@
                     <span class="undo-icon">↶</span>
                     <span>UNDO</span>
                 </button>
+            </div>
+        </div>
+
+        <!-- Shot Type Selection Modal -->
+        <div id="shot-type-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modal-title">Select Shot Type</h3>
+                    <button class="modal-close" id="modal-close">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="shot-type-grid" id="shot-type-options">
+                        <!-- Shot type buttons will be generated here -->
+                    </div>
+                </div>
             </div>
         </div>
 

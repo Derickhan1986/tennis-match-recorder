@@ -18,15 +18,15 @@ class MatchEngine {
         }
     }
 
-    // Record a point with point type
-    // 记录一分（带类型）
-    recordPoint(winner, pointType = null) {
+    // Record a point with point type and shot type
+    // 记录一分（带类型和击球类型）
+    recordPoint(winner, pointType = null, shotType = null) {
         const currentSet = this.getCurrentSet();
         
         // Check if we're in a tie-break
         // 检查是否在抢七
         if (this.isInTieBreak(currentSet)) {
-            return this.recordTieBreakPoint(currentSet, winner, pointType);
+            return this.recordTieBreakPoint(currentSet, winner, pointType, shotType);
         }
         
         const currentGame = this.getCurrentGame(currentSet);
@@ -38,10 +38,15 @@ class MatchEngine {
             pointNumber: currentGame.points.length + 1,
             winner: winner,
             pointType: pointType,
+            shotType: shotType,
             server: server,
             serveNumber: this.match.currentServeNumber
         });
         currentGame.points.push(point);
+        
+        // Add to match log
+        // 添加到比赛日志
+        this.addToLog(winner, pointType, shotType);
         
         // Handle serve fault
         // 处理发球失误
@@ -252,7 +257,7 @@ class MatchEngine {
 
     // Record tie-break point
     // 记录抢七分
-    recordTieBreakPoint(set, winner, pointType) {
+    recordTieBreakPoint(set, winner, pointType, shotType = null) {
         const tieBreak = set.tieBreak;
         const isPlayer1Point = winner === 'player1';
         
@@ -260,16 +265,24 @@ class MatchEngine {
             pointNumber: tieBreak.points.length + 1,
             winner: winner,
             pointType: pointType,
+            shotType: shotType,
             server: this.match.currentServer,
             serveNumber: this.match.currentServeNumber
         });
         tieBreak.points.push(point);
+        
+        // Add to match log
+        // 添加到比赛日志
+        this.addToLog(winner, pointType, shotType);
         
         // Handle serve fault in tie-break
         // 处理抢七中的发球失误
         if (pointType === 'Serve Fault') {
             if (this.match.currentServeNumber === 1) {
                 this.match.currentServeNumber = 2;
+                // Add to log even for first serve fault
+                // 即使是一发失误也添加到日志
+                this.addToLog(this.match.currentServer, pointType, null);
                 storage.saveMatch(this.match);
                 return this.getMatchState();
             } else {
@@ -277,6 +290,11 @@ class MatchEngine {
                 point.winner = winner;
                 isPlayer1Point = winner === 'player1';
                 this.match.currentServeNumber = 1;
+                // Update log entry for double fault
+                // 更新双误的日志条目
+                if (this.match.log.length > 0) {
+                    this.match.log[this.match.log.length - 1].action = 'Double Fault';
+                }
             }
         } else {
             this.match.currentServeNumber = 1;
@@ -472,6 +490,13 @@ class MatchEngine {
             const tieBreak = currentSet.tieBreak;
             if (tieBreak.points.length > 0) {
                 const lastPoint = tieBreak.points.pop();
+                
+                // Remove corresponding log entry
+                // 删除对应的日志条目
+                if (this.match.log && this.match.log.length > 0) {
+                    this.match.log.pop();
+                }
+                
                 if (lastPoint.winner === 'player1') {
                     tieBreak.player1Points--;
                 } else {
@@ -487,8 +512,57 @@ class MatchEngine {
             }
         } else {
             const currentGame = this.getCurrentGame(currentSet);
-            if (currentGame.points.length > 0) {
+            
+            // If current game is empty (just started), go back to previous game
+            // 如果当前局为空（刚开局），回到上一局
+            if (currentGame.points.length === 0 && !currentGame.winner) {
+                // Remove the empty game
+                // 删除空局
+                if (currentSet.games.length > 1) {
+                    currentSet.games.pop();
+                    const previousGame = currentSet.games[currentSet.games.length - 1];
+                    
+                    // If previous game was won, undo it
+                    // 如果上一局已结束，撤销
+                    if (previousGame.winner) {
+                        previousGame.winner = null;
+                        if (previousGame.points.length > 0) {
+                            const lastPoint = previousGame.points[previousGame.points.length - 1];
+                            if (lastPoint.winner === 'player1') {
+                                currentSet.player1Games--;
+                            } else {
+                                currentSet.player2Games--;
+                            }
+                        }
+                        currentSet.winner = null;
+                        
+                        // Restore server
+                        // 恢复发球方
+                        this.match.currentServer = previousGame.server;
+                        
+                        // Remove last point from previous game
+                        // 从上一局删除最后一分
+                        if (previousGame.points.length > 0) {
+                            const lastPoint = previousGame.points.pop();
+                            this.resetGameScore(previousGame);
+                            this.match.currentServeNumber = lastPoint.serveNumber || 1;
+                            
+                            // Remove corresponding log entry
+                            // 删除对应的日志条目
+                            if (this.match.log && this.match.log.length > 0) {
+                                this.match.log.pop();
+                            }
+                        }
+                    }
+                }
+            } else if (currentGame.points.length > 0) {
                 const lastPoint = currentGame.points.pop();
+                
+                // Remove corresponding log entry
+                // 删除对应的日志条目
+                if (this.match.log && this.match.log.length > 0) {
+                    this.match.log.pop();
+                }
                 
                 // Reset game score
                 // 重置局比分
@@ -574,5 +648,36 @@ class MatchEngine {
         
         game.player1Score = player1Score;
         game.player2Score = player2Score;
+    }
+    
+    // Add entry to match log
+    // 添加条目到比赛日志
+    addToLog(player, action, shotType = null) {
+        if (!this.match.log) {
+            this.match.log = [];
+        }
+        
+        const currentSet = this.getCurrentSet();
+        const currentGame = this.getCurrentGame(currentSet);
+        const state = this.getMatchState();
+        
+        // Format score for display
+        // 格式化比分用于显示
+        let scoreDisplay = `${state.player1Score}-${state.player2Score}`;
+        if (currentSet.tieBreak && this.isInTieBreak(currentSet)) {
+            const tb = currentSet.tieBreak;
+            scoreDisplay = `TB: ${tb.player1Points || 0}-${tb.player2Points || 0}`;
+        }
+        
+        const logEntry = createLogEntry({
+            player: player,
+            action: action,
+            shotType: shotType,
+            score: scoreDisplay,
+            setNumber: currentSet.setNumber,
+            gameNumber: currentGame.gameNumber
+        });
+        
+        this.match.log.push(logEntry);
     }
 }

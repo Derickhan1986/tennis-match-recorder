@@ -12,6 +12,8 @@ class MatchRecorder {
         this.matchEngine = null;
         this.player1 = null;
         this.player2 = null;
+        this.pendingAction = null; // Store action waiting for shot type selection
+        this.pendingPlayer = null; // Store player for pending action
         this.setupEventListeners();
     }
 
@@ -63,6 +65,33 @@ class MatchRecorder {
         if (menuBtn) {
             menuBtn.addEventListener('click', () => {
                 this.showMatchMenu();
+            });
+        }
+        
+        // Modal close button
+        // 模态框关闭按钮
+        const modalClose = document.getElementById('modal-close');
+        if (modalClose) {
+            modalClose.addEventListener('click', () => {
+                const modal = document.getElementById('shot-type-modal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                }
+                this.pendingAction = null;
+                this.pendingPlayer = null;
+            });
+        }
+        
+        // Close modal when clicking outside
+        // 点击外部关闭模态框
+        const modal = document.getElementById('shot-type-modal');
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                    this.pendingAction = null;
+                    this.pendingPlayer = null;
+                }
             });
         }
     }
@@ -209,6 +238,7 @@ class MatchRecorder {
         const receiver = server === 'player1' ? 'player2' : 'player1';
         let winner = null;
         let pointType = null;
+        let needsShotType = false;
         
         // Determine winner and point type based on action and which player clicked
         // 根据操作和点击的玩家确定获胜者和分类型
@@ -217,76 +247,142 @@ class MatchRecorder {
                 // Serve fault - only valid if clicked by server
                 // 发球失误 - 只有发球方点击才有效
                 if (player === server) {
-                    this.matchEngine.recordPoint(server, 'Serve Fault');
+                    this.matchEngine.recordPoint(server, 'Serve Fault', null);
                     this.updateDisplay();
                     return;
                 }
                 break;
                 
             case 'ace':
-            case 'winner':
-                // Server wins point - only valid if clicked by server
-                // 发球方得分 - 只有发球方点击才有效
+                // ACE - no shot type needed
+                // ACE - 不需要击球类型
                 if (player === server) {
                     winner = server;
-                    pointType = action === 'ace' ? 'ACE' : 'Winner';
+                    pointType = 'ACE';
+                }
+                break;
+                
+            case 'winner':
+            case 'receiver-winner':
+                // Winner - needs shot type selection
+                // Winner - 需要选择击球类型
+                if ((action === 'winner' && player === server) || (action === 'receiver-winner' && player === receiver)) {
+                    winner = action === 'winner' ? server : receiver;
+                    pointType = 'Winner';
+                    needsShotType = true;
                 }
                 break;
                 
             case 'unforced-error':
             case 'forced-error':
-                // Server made error - receiver wins point
-                // 发球方失误 - 接发球方得分
-                if (player === server) {
+            case 'receiver-unforced-error':
+            case 'receiver-forced-error':
+                // Errors - need shot type selection
+                // 失误 - 需要选择击球类型
+                if ((action === 'unforced-error' || action === 'forced-error') && player === server) {
                     winner = receiver;
                     pointType = action === 'unforced-error' ? 'Unforced Error' : 'Forced Error';
+                    needsShotType = true;
+                } else if ((action === 'receiver-unforced-error' || action === 'receiver-forced-error') && player === receiver) {
+                    winner = server;
+                    pointType = action === 'receiver-unforced-error' ? 'Unforced Error' : 'Forced Error';
+                    needsShotType = true;
                 }
                 break;
                 
             case 'return-error':
-                // Receiver made error - server wins point
-                // 接发球方失误 - 发球方得分
+                // Return error - no shot type needed
+                // Return error - 不需要击球类型
                 if (player === receiver) {
                     winner = server;
                     pointType = 'Return Error';
                 }
                 break;
-                
-            case 'receiver-winner':
-                // Receiver wins point
-                // 接发球方得分
-                if (player === receiver) {
-                    winner = receiver;
-                    pointType = 'Winner';
-                }
-                break;
-                
-            case 'receiver-unforced-error':
-            case 'receiver-forced-error':
-                // Receiver made error - server wins point
-                // 接发球方失误 - 发球方得分
-                if (player === receiver) {
-                    winner = server;
-                    pointType = action === 'receiver-unforced-error' ? 'Unforced Error' : 'Forced Error';
-                }
-                break;
         }
         
         if (winner) {
-            this.recordPoint(winner, pointType);
+            if (needsShotType) {
+                // Show shot type selection modal
+                // 显示击球类型选择模态框
+                this.pendingAction = { winner, pointType };
+                this.pendingPlayer = player;
+                this.showShotTypeModal(pointType);
+            } else {
+                // Record point directly
+                // 直接记录分
+                this.recordPoint(winner, pointType, null);
+            }
+        }
+    }
+    
+    // Show shot type selection modal
+    // 显示击球类型选择模态框
+    showShotTypeModal(pointType) {
+        const modal = document.getElementById('shot-type-modal');
+        const title = document.getElementById('modal-title');
+        const options = document.getElementById('shot-type-options');
+        
+        if (!modal || !title || !options) return;
+        
+        title.textContent = `Select Shot Type (${pointType})`;
+        
+        // Generate shot type buttons
+        // 生成击球类型按钮
+        const shotTypes = [
+            ShotType.FOREHAND_GROUND_STROKE,
+            ShotType.BACKHAND_GROUND_STROKE,
+            ShotType.FOREHAND_SLICE,
+            ShotType.BACKHAND_SLICE,
+            ShotType.VOLLEY,
+            ShotType.SWING_VOLLEY,
+            ShotType.LOB,
+            ShotType.OVERHEAD
+        ];
+        
+        options.innerHTML = shotTypes.map(shotType => `
+            <button class="shot-type-btn" data-shot-type="${shotType}">
+                ${shotType}
+            </button>
+        `).join('');
+        
+        // Add click listeners
+        // 添加点击监听器
+        options.querySelectorAll('.shot-type-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const selectedShotType = btn.dataset.shotType;
+                this.onShotTypeSelected(selectedShotType);
+            });
+        });
+        
+        modal.classList.remove('hidden');
+    }
+    
+    // Handle shot type selection
+    // 处理击球类型选择
+    onShotTypeSelected(shotType) {
+        const modal = document.getElementById('shot-type-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+        
+        if (this.pendingAction) {
+            const { winner, pointType } = this.pendingAction;
+            this.recordPoint(winner, pointType, shotType);
+            this.pendingAction = null;
+            this.pendingPlayer = null;
         }
     }
 
     // Record a point
     // 记录一分
-    async recordPoint(winner, pointType = null) {
+    async recordPoint(winner, pointType = null, shotType = null) {
         if (!this.matchEngine) {
             app.showToast('Match not initialized', 'error');
             return;
         }
         
         try {
-            const state = this.matchEngine.recordPoint(winner, pointType);
+            const state = this.matchEngine.recordPoint(winner, pointType, shotType);
             this.updateDisplay(state);
             
             // Check if match is complete
@@ -366,10 +462,7 @@ class MatchRecorder {
         // Update player names
         // 更新玩家名称
         document.getElementById('player1-name').textContent = this.player1.name;
-        document.getElementById('player1-name-under').textContent = this.player1.name;
-        
         document.getElementById('player2-name').textContent = this.player2.name;
-        document.getElementById('player2-name-under').textContent = this.player2.name;
         
         // Update set scores
         // 更新盘比分
