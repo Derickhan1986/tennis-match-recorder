@@ -91,6 +91,11 @@ class MatchEngine {
             // Double fault - log the server who made the fault, not the winner
             // 双误 - 记录犯错的发球方，而不是得分方
             this.addToLog(server, 'Double Fault', null, currentGame);
+        } else if (pointType === 'Return Error') {
+            // Return error - log the receiver who made the error, not the winner
+            // Return error - 记录犯错的接发球方，而不是得分方
+            const receiver = server === 'player1' ? 'player2' : 'player1';
+            this.addToLog(receiver, pointType, shotType, currentGame);
         } else if (pointType !== 'Serve Fault') {
             // Normal point - log with updated score
             // 正常得分 - 记录更新后的比分，使用刚刚结束的game（如果game结束了）
