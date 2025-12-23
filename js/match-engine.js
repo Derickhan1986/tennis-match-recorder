@@ -46,6 +46,7 @@ class MatchEngine {
         
         // Handle serve fault
         // 处理发球失误
+        let isDoubleFault = false;
         if (pointType === 'Serve Fault') {
             if (this.match.currentServeNumber === 1) {
                 // First serve fault, try second serve (score doesn't change)
@@ -59,6 +60,7 @@ class MatchEngine {
             } else {
                 // Double fault, opponent wins point
                 // 双误，对手得分
+                isDoubleFault = true;
                 winner = server === 'player1' ? 'player2' : 'player1';
                 point.winner = winner;
                 this.match.currentServeNumber = 1;
@@ -75,10 +77,10 @@ class MatchEngine {
         
         // Add to match log AFTER updating score (so log shows the score after the action)
         // 更新比分后添加到日志（这样日志显示的是执行动作后的比分）
-        if (pointType === 'Serve Fault' && this.match.currentServeNumber === 1) {
-            // Double fault - log with updated score
-            // 双误 - 记录更新后的比分
-            this.addToLog(winner, 'Double Fault', null);
+        if (isDoubleFault) {
+            // Double fault - log the server who made the fault, not the winner
+            // 双误 - 记录犯错的发球方，而不是得分方
+            this.addToLog(server, 'Double Fault', null);
         } else if (pointType !== 'Serve Fault') {
             // Normal point - log with updated score
             // 正常得分 - 记录更新后的比分
@@ -284,16 +286,21 @@ class MatchEngine {
         
         // Handle serve fault in tie-break
         // 处理抢七中的发球失误
+        const tieBreakServer = this.match.currentServer;
+        let isDoubleFault = false;
         if (pointType === 'Serve Fault') {
             if (this.match.currentServeNumber === 1) {
                 this.match.currentServeNumber = 2;
                 // Add to log for first serve fault (score doesn't change)
                 // 一发失误添加到日志（比分不变）
-                this.addToLog(this.match.currentServer, pointType, null);
+                this.addToLog(tieBreakServer, pointType, null);
                 storage.saveMatch(this.match);
                 return this.getMatchState();
             } else {
-                winner = this.match.currentServer === 'player1' ? 'player2' : 'player1';
+                // Double fault, opponent wins point
+                // 双误，对手得分
+                isDoubleFault = true;
+                winner = tieBreakServer === 'player1' ? 'player2' : 'player1';
                 point.winner = winner;
                 isPlayer1Point = winner === 'player1';
                 this.match.currentServeNumber = 1;
@@ -312,10 +319,10 @@ class MatchEngine {
         
         // Add to match log AFTER updating score (so log shows the score after the action)
         // 更新比分后添加到日志（这样日志显示的是执行动作后的比分）
-        if (pointType === 'Serve Fault' && this.match.currentServeNumber === 1) {
-            // Double fault - log with updated score
-            // 双误 - 记录更新后的比分
-            this.addToLog(winner, 'Double Fault', null);
+        if (isDoubleFault) {
+            // Double fault - log the server who made the fault, not the winner
+            // 双误 - 记录犯错的发球方，而不是得分方
+            this.addToLog(tieBreakServer, 'Double Fault', null);
         } else if (pointType !== 'Serve Fault') {
             // Normal point - log with updated score
             // 正常得分 - 记录更新后的比分
