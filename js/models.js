@@ -138,9 +138,9 @@ function createLogEntry(data = {}) {
         player: data.player || null, // 'player1' | 'player2'
         action: data.action || null, // 'ACE', 'Winner', 'Serve Fault', etc.
         shotType: data.shotType || null, // Shot type if applicable
-        score: data.score || null, // Current score at this point
-        setNumber: data.setNumber || null,
-        gameNumber: data.gameNumber || null
+        gameScore: data.gameScore || null, // Current game score (e.g., "0-40")
+        gamesScore: data.gamesScore || null, // Current games score in set (e.g., "1-2")
+        setsScore: data.setsScore || null // Current sets score in match (e.g., "0-1")
     };
 }
 

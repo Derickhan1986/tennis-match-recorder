@@ -1017,21 +1017,38 @@ class MatchEngine {
         const currentGame = game || this.getCurrentGame(currentSet);
         const state = this.getMatchState();
         
-        // Format score for display
-        // 格式化比分用于显示
-        let scoreDisplay = `${state.player1Score}-${state.player2Score}`;
+        // Calculate game score (current point score in the game)
+        // 计算game比分（当前game内的分）
+        let gameScore = `${state.player1Score}-${state.player2Score}`;
         if (currentSet.tieBreak && this.isInTieBreak(currentSet)) {
             const tb = currentSet.tieBreak;
-            scoreDisplay = `TB: ${tb.player1Points || 0}-${tb.player2Points || 0}`;
+            gameScore = `TB: ${tb.player1Points || 0}-${tb.player2Points || 0}`;
         }
+        
+        // Calculate games score (games won in current set)
+        // 计算games比分（当前set内赢得的games）
+        const gamesScore = `${currentSet.player1Games}-${currentSet.player2Games}`;
+        
+        // Calculate sets score (sets won in match)
+        // 计算sets比分（match内赢得的sets）
+        let player1Sets = 0;
+        let player2Sets = 0;
+        for (const set of this.match.sets) {
+            if (set.winner === 'player1') {
+                player1Sets++;
+            } else if (set.winner === 'player2') {
+                player2Sets++;
+            }
+        }
+        const setsScore = `${player1Sets}-${player2Sets}`;
         
         const logEntry = createLogEntry({
             player: player,
             action: action,
             shotType: shotType,
-            score: scoreDisplay,
-            setNumber: currentSet.setNumber,
-            gameNumber: currentGame.gameNumber
+            gameScore: gameScore,
+            gamesScore: gamesScore,
+            setsScore: setsScore
         });
         
         this.match.log.push(logEntry);

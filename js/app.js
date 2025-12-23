@@ -368,15 +368,24 @@ const app = {
                         actionText += ` (${entry.shotType})`;
                     }
                     
+                    // Format scores for display
+                    // 格式化比分用于显示
+                    const gameScore = entry.gameScore || '-';
+                    const gamesScore = entry.gamesScore || '-';
+                    const setsScore = entry.setsScore || '-';
+                    
                     return `
                         <div class="log-entry">
                             <div class="log-time">${timeStr}</div>
                             <div class="log-content">
                                 <span class="log-player">${this.escapeHtml(playerName)}</span>
                                 <span class="log-action">${this.escapeHtml(actionText)}</span>
-                                <span class="log-score">${this.escapeHtml(entry.score || '')}</span>
                             </div>
-                            <div class="log-set-game">Set ${entry.setNumber || '-'}, Game ${entry.gameNumber || '-'}</div>
+                            <div class="log-scores">
+                                <span class="log-game-score">Score: ${this.escapeHtml(gameScore)}</span>
+                                <span class="log-games-score">Game: ${this.escapeHtml(gamesScore)}</span>
+                                <span class="log-sets-score">Set: ${this.escapeHtml(setsScore)}</span>
+                            </div>
                         </div>
                     `;
                 }).join('');
