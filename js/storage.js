@@ -251,18 +251,52 @@ class StorageService {
         if (!this.db) await this.init();
         
         return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction(['matches'], 'readwrite');
-            const store = transaction.objectStore('matches');
-            const request = store.delete(id);
+            // First get the match to log deletion info
+            // 首先获取比赛以记录删除信息
+            const readTransaction = this.db.transaction(['matches'], 'readonly');
+            const readStore = readTransaction.objectStore('matches');
+            const readRequest = readStore.get(id);
+            
+            readRequest.onsuccess = () => {
+                const match = readRequest.result;
+                if (match) {
+                    const logCount = match.log ? match.log.length : 0;
+                    console.log(`Deleting match ${id} with ${logCount} log entries`);
+                }
+                
+                // Delete the match (log will be deleted automatically as it's part of the match object)
+                // 删除比赛（日志会自动删除，因为它是比赛对象的一部分）
+                const transaction = this.db.transaction(['matches'], 'readwrite');
+                const store = transaction.objectStore('matches');
+                const request = store.delete(id);
 
-            request.onsuccess = () => {
-                console.log('Match deleted:', id);
-                resolve();
+                request.onsuccess = () => {
+                    console.log('Match and log deleted:', id);
+                    resolve();
+                };
+
+                request.onerror = () => {
+                    console.error('Error deleting match:', request.error);
+                    reject(request.error);
+                };
             };
+            
+            readRequest.onerror = () => {
+                // If we can't read, still try to delete
+                // 如果无法读取，仍然尝试删除
+                const transaction = this.db.transaction(['matches'], 'readwrite');
+                const store = transaction.objectStore('matches');
+                const request = store.delete(id);
 
-            request.onerror = () => {
-                console.error('Error deleting match:', request.error);
-                reject(request.error);
+                request.onsuccess = () => {
+                    console.log('Match deleted:', id);
+                    resolve();
+                };
+
+                request.onerror = () => {
+                    console.error('Error deleting match:', request.error);
+                    reject(request.error);
+                };
             };
         });
     }
