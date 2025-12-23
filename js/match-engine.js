@@ -12,6 +12,7 @@ class MatchEngine {
     constructor(match) {
         this.match = match;
         this.settings = match.settings;
+        this.isRebuilding = false; // Initialize rebuild flag
         // Initialize current server if not set
         // 如果未设置，初始化当前发球方
         if (!match.currentServer) {

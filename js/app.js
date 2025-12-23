@@ -324,7 +324,7 @@ const app = {
             const container = document.getElementById('match-detail-content');
             if (!container) return;
             
-            let setsHtml = match.sets.map(set => {
+            let setsHtml = (match.sets || []).map(set => {
                 let setScore = `${set.player1Games}-${set.player2Games}`;
                 if (set.tieBreak && set.tieBreak.winner) {
                     setScore += ` (${set.tieBreak.player1Points || 0}-${set.tieBreak.player2Points || 0})`;
