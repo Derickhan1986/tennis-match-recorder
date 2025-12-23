@@ -86,20 +86,32 @@ class MatchEngine {
         }
         
         // Add to match log AFTER updating score and handling game won (so log shows correct games score)
-        // 更新比分和处理局结束后添加到日志（这样日志显示正确的games比分），使用刚刚结束的game
+        // 更新比分和处理局结束后添加到日志（这样日志显示正确的games比分）
+        // If game was won, use the new game (0-0) for logging, otherwise use current game
+        // 如果game结束了，使用新game（0-0）记录日志，否则使用当前game
+        let gameForLog = currentGame;
+        if (gameWasWon) {
+            // Game ended, use the newly created game (which has 0-0 score)
+            // Game结束了，使用新创建的game（比分是0-0）
+            const newGame = this.getCurrentGame(currentSet);
+            if (newGame && newGame !== currentGame) {
+                gameForLog = newGame;
+            }
+        }
+        
         if (isDoubleFault) {
             // Double fault - log the server who made the fault, not the winner
             // 双误 - 记录犯错的发球方，而不是得分方
-            this.addToLog(server, 'Double Fault', null, currentGame);
+            this.addToLog(server, 'Double Fault', null, gameForLog);
         } else if (pointType === 'Return Error') {
             // Return error - log the receiver who made the error, not the winner
             // Return error - 记录犯错的接发球方，而不是得分方
             const receiver = server === 'player1' ? 'player2' : 'player1';
-            this.addToLog(receiver, pointType, shotType, currentGame);
+            this.addToLog(receiver, pointType, shotType, gameForLog);
         } else if (pointType !== 'Serve Fault') {
             // Normal point - log with updated score
-            // 正常得分 - 记录更新后的比分，使用刚刚结束的game（如果game结束了）
-            this.addToLog(winner, pointType, shotType, currentGame);
+            // 正常得分 - 记录更新后的比分
+            this.addToLog(winner, pointType, shotType, gameForLog);
         }
         
         // Auto-save match
