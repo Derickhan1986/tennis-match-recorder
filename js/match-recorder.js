@@ -86,9 +86,17 @@ class MatchRecorder {
         // 点击外部关闭模态框
         const modal = document.getElementById('shot-type-modal');
         if (modal) {
+            // Ensure modal is hidden on page load
+            // 确保页面加载时模态框是隐藏的
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+            modal.style.visibility = 'hidden';
+            
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     modal.classList.add('hidden');
+                    modal.style.display = 'none';
+                    modal.style.visibility = 'hidden';
                     this.pendingAction = null;
                     this.pendingPlayer = null;
                 }
@@ -214,11 +222,13 @@ class MatchRecorder {
             this.currentMatch = match;
             this.matchEngine = new MatchEngine(match);
             
-            // Update display
-            // 更新显示
-            this.updateDisplay();
-            
             app.showPage('match-recording');
+            
+            // Update display after page is shown
+            // 页面显示后更新显示
+            setTimeout(() => {
+                this.updateDisplay();
+            }, 200);
         } catch (error) {
             console.error('Error starting match:', error);
             app.showToast(error.message || 'Error starting match', 'error');
@@ -355,6 +365,8 @@ class MatchRecorder {
         });
         
         modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
     }
     
     // Handle shot type selection
@@ -363,6 +375,8 @@ class MatchRecorder {
         const modal = document.getElementById('shot-type-modal');
         if (modal) {
             modal.classList.add('hidden');
+            modal.style.display = 'none';
+            modal.style.visibility = 'hidden';
         }
         
         if (this.pendingAction) {

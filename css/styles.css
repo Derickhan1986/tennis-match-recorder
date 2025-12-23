@@ -446,12 +446,15 @@ body {
 /* Action Buttons */
 .action-buttons-container {
     padding: 20px 16px;
-    display: flex;
+    padding-bottom: 120px; /* Extra space for undo button */
+    display: flex !important;
     gap: 16px;
     justify-content: space-between;
     position: relative;
     z-index: 10;
-    min-height: 200px; /* Ensure buttons have space */
+    min-height: 300px; /* Ensure buttons have space */
+    background-color: #1a1a1a; /* Match container background */
+    visibility: visible !important;
 }
 
 .player-buttons-left, .player-buttons-right {
@@ -462,12 +465,13 @@ body {
 }
 
 .server-buttons, .receiver-buttons {
-    display: flex;
+    display: flex !important;
     flex-direction: column;
     gap: 12px;
     width: 100%;
-    visibility: visible;
-    opacity: 1;
+    visibility: visible !important;
+    opacity: 1 !important;
+    min-height: 200px; /* Ensure buttons are visible */
 }
 
 .action-btn {
@@ -882,7 +886,10 @@ body {
 }
 
 .modal.hidden {
-    display: none;
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
 }
 
 .modal-content {
