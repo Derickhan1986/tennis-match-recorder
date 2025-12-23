@@ -404,12 +404,20 @@ class MatchRecorder {
         }
         
         try {
-            const state = this.matchEngine.recordPoint(winner, pointType, shotType);
-            this.updateDisplay(state);
+            this.matchEngine.recordPoint(winner, pointType, shotType);
             
-            // Check if match is complete
-            // 检查比赛是否结束
-            if (state.matchStatus === 'completed') {
+            // Reload match to get updated log
+            // 重新加载比赛以获取更新的日志
+            this.currentMatch = await storage.getMatch(this.currentMatch.id);
+            this.matchEngine = new MatchEngine(this.currentMatch);
+            
+            // Update display from log only
+            // 仅从日志更新显示
+            this.updateDisplay();
+            
+            // Check if match is complete from log
+            // 从日志检查比赛是否结束
+            if (this.currentMatch.status === 'completed') {
                 app.showToast('Match completed!', 'success');
                 setTimeout(() => {
                     app.showPage('matches');
@@ -427,15 +435,23 @@ class MatchRecorder {
 
     // Undo last point
     // 撤销最后一分
-    undoPoint() {
+    async undoPoint() {
         if (!this.matchEngine) {
             app.showToast('Match not initialized', 'error');
             return;
         }
         
         try {
-            const state = this.matchEngine.undoLastPoint();
-            this.updateDisplay(state);
+            this.matchEngine.undoLastPoint();
+            
+            // Reload match to get updated log
+            // 重新加载比赛以获取更新的日志
+            this.currentMatch = await storage.getMatch(this.currentMatch.id);
+            this.matchEngine = new MatchEngine(this.currentMatch);
+            
+            // Update display from log only
+            // 仅从日志更新显示
+            this.updateDisplay();
         } catch (error) {
             console.error('Error undoing point:', error);
             app.showToast('Error undoing point', 'error');
@@ -554,11 +570,17 @@ class MatchRecorder {
             }
         }
         
-        // Get current serve number from match engine if available
-        // 如果可用，从比赛引擎获取当前发球次数
-        if (this.matchEngine) {
-            const matchState = this.matchEngine.getMatchState();
-            currentServeNumber = matchState.currentServeNumber || 1;
+        // Get current serve number from log (last entry) or match engine
+        // 从日志（最后一条）或比赛引擎获取当前发球次数
+        if (this.currentMatch.log && this.currentMatch.log.length > 0) {
+            const lastLogEntry = this.currentMatch.log[this.currentMatch.log.length - 1];
+            // Serve number is not in log, so we need to check if it's a serve fault
+            // 发球次数不在日志中，所以我们需要检查是否是发球失误
+            // For now, default to 1, will be updated when next point is recorded
+            // 现在默认为1，当下一个point被记录时会更新
+            currentServeNumber = 1;
+        } else if (this.matchEngine) {
+            currentServeNumber = this.matchEngine.match.currentServeNumber || 1;
         }
         
         // Update serve indicators
