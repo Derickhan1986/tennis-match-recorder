@@ -760,11 +760,23 @@ class MatchEngine {
         const originalIsRebuilding = this.isRebuilding;
         this.isRebuilding = true;
         
-        // Save current state
-        // 保存当前状态
+        // Save current state (this is the state AFTER rebuildMatchState, so it has all sets with correct winners)
+        // 保存当前状态（这是rebuildMatchState之后的状态，所以它包含所有具有正确获胜者的sets）
         const savedSets = JSON.parse(JSON.stringify(this.match.sets));
         const savedCurrentServer = this.match.currentServer;
         const savedCurrentServeNumber = this.match.currentServeNumber;
+        
+        // Calculate sets score from savedSets (which has all completed sets)
+        // 从savedSets计算sets比分（它包含所有已完成的sets）
+        let savedPlayer1Sets = 0;
+        let savedPlayer2Sets = 0;
+        for (const set of savedSets) {
+            if (set.winner === 'player1') {
+                savedPlayer1Sets++;
+            } else if (set.winner === 'player2') {
+                savedPlayer2Sets++;
+            }
+        }
         
         // Reset match state for replay
         // 重置比赛状态以重放
@@ -873,7 +885,9 @@ class MatchEngine {
                             }
                         }
                         
-                        this.addToLog(logPlayer, logAction, point.shotType, gameForLog);
+                        // Call addToLog with savedSets for setsScore calculation
+                        // 使用savedSets调用addToLog以计算setsScore
+                        this.addToLogWithSets(logPlayer, logAction, point.shotType, gameForLog, currentSet, savedSets);
                         
                         this.isRebuilding = true; // Disable again
                         // 再次禁用
@@ -927,7 +941,9 @@ class MatchEngine {
                         logAction = 'Return Error';
                     }
                     
-                    this.addToLog(logPlayer, logAction, point.shotType, lastGame);
+                    // Call addToLog with savedSets for setsScore calculation
+                    // 使用savedSets调用addToLog以计算setsScore
+                    this.addToLogWithSets(logPlayer, logAction, point.shotType, lastGame, currentSet, savedSets);
                     
                     this.isRebuilding = true; // Disable again
                     // 再次禁用
@@ -1297,23 +1313,26 @@ class MatchEngine {
         game.player2Score = player2Score;
     }
     
-    // Add entry to match log
-    // 添加条目到比赛日志
-    addToLog(player, action, shotType = null, game = null) {
-        // Don't add to log during rebuild (log will be rebuilt from points)
-        // 重建期间不添加到日志（日志将从points重建）
-        if (this.isRebuilding) {
-            return;
-        }
-        
+    // Add entry to match log with optional sets for setsScore calculation
+    // 添加条目到比赛日志，可选sets用于计算setsScore
+    addToLogWithSets(player, action, shotType = null, game = null, currentSet = null, setsForScore = null) {
         if (!this.match.log) {
             this.match.log = [];
         }
         
-        const currentSet = this.getCurrentSet();
+        // Use provided currentSet, or get current set if not provided
+        // 使用提供的currentSet，如果未提供则获取当前set
+        if (!currentSet) {
+            currentSet = this.getCurrentSet();
+        }
+        
         // Use provided game, or get current game if not provided
         // 使用提供的game，如果未提供则获取当前game
         const currentGame = game || this.getCurrentGame(currentSet);
+        
+        // Use provided sets for setsScore calculation, or use match.sets
+        // 使用提供的sets计算setsScore，或使用match.sets
+        const setsToUse = setsForScore || this.match.sets;
         
         // Check if we're in tie-break
         // 检查是否在抢七
@@ -1351,7 +1370,7 @@ class MatchEngine {
         // 计算sets比分（match内赢得的sets）
         let player1Sets = 0;
         let player2Sets = 0;
-        for (const set of this.match.sets) {
+        for (const set of setsToUse) {
             if (set.winner === 'player1') {
                 player1Sets++;
             } else if (set.winner === 'player2') {
@@ -1372,5 +1391,19 @@ class MatchEngine {
         });
         
         this.match.log.push(logEntry);
+    }
+    
+    // Add entry to match log
+    // 添加条目到比赛日志
+    addToLog(player, action, shotType = null, game = null) {
+        // Don't add to log during rebuild (log will be rebuilt from points)
+        // 重建期间不添加到日志（日志将从points重建）
+        if (this.isRebuilding) {
+            return;
+        }
+        
+        // Call addToLogWithSets with default parameters
+        // 使用默认参数调用addToLogWithSets
+        this.addToLogWithSets(player, action, shotType, game, null, null);
     }
 }
