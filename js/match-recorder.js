@@ -547,6 +547,9 @@ class MatchRecorder {
             if (lastLogEntry.currentServer) {
                 currentServer = lastLogEntry.currentServer;
             }
+            if (lastLogEntry.currentServeNumber !== undefined && lastLogEntry.currentServeNumber !== null) {
+                currentServeNumber = lastLogEntry.currentServeNumber;
+            }
         }
         
         // Parse scores from log
@@ -604,13 +607,13 @@ class MatchRecorder {
         
         // Get current serve number from log (last entry) or match engine
         // 从日志（最后一条）或比赛引擎获取当前发球次数
+        // currentServeNumber is already read from log above, but ensure it's set correctly
+        // currentServeNumber已从上面的日志读取，但确保它设置正确
         if (this.currentMatch.log && this.currentMatch.log.length > 0) {
             const lastLogEntry = this.currentMatch.log[this.currentMatch.log.length - 1];
-            // Serve number is not in log, so we need to check if it's a serve fault
-            // 发球次数不在日志中，所以我们需要检查是否是发球失误
-            // For now, default to 1, will be updated when next point is recorded
-            // 现在默认为1，当下一个point被记录时会更新
-            currentServeNumber = 1;
+            if (lastLogEntry.currentServeNumber !== undefined && lastLogEntry.currentServeNumber !== null) {
+                currentServeNumber = lastLogEntry.currentServeNumber;
+            }
         } else if (this.matchEngine) {
             currentServeNumber = this.matchEngine.match.currentServeNumber || 1;
         }

@@ -6,13 +6,10 @@
 //  处理所有网球计分逻辑（player1/player2）
 //
 
-// MatchEngine class definition
-// MatchEngine 类定义
 class MatchEngine {
     constructor(match) {
         this.match = match;
         this.settings = match.settings;
-        this.isRebuilding = false; // Initialize rebuild flag
         // Initialize current server if not set
         // 如果未设置，初始化当前发球方
         if (!match.currentServer) {
@@ -742,24 +739,17 @@ class MatchEngine {
         // 清除标志
         this.isRebuilding = false;
         
-        // Don't rebuild log - log is a stack, we just removed the last entry
-        // 不重建日志 - 日志是堆栈，我们只是删除了最后一条
-        // Display will read from the last log entry (or previous one if exists)
-        // 显示将从最后一条日志条目读取（如果存在则读取上一条）
+        // Rebuild log from remaining points to ensure consistency
+        // 从剩余points重建日志以确保一致性
+        this.rebuildLogFromPoints();
         
         // Save match after rebuild
         // 重建后保存比赛
         storage.saveMatch(this.match);
     }
-    */
     
-    // Rebuild log function removed - log is a stack, no need to rebuild
-    // 日志重建函数已删除 - 日志是堆栈，无需重建
-    // When undo, we just remove the last log entry
-    // undo时，我们只需删除最后一条日志条目
-    // Display reads from the last log entry (or previous one if exists)
-    // 显示从最后一条日志条目读取（如果存在则读取上一条）
-    /*
+    // Rebuild log from points
+    // 从points重建日志
     rebuildLogFromPoints() {
         // Clear existing log
         // 清空现有日志
@@ -953,12 +943,45 @@ class MatchEngine {
     // Undo last point
     // 撤销最后一分
     undoLastPoint() {
-        // Remove last log entry only - log is a stack
-        // 只删除最后一条日志 - 日志是堆栈
-        // Display will read from the last log entry (or previous one if exists)
-        // 显示将从最后一条日志条目读取（如果存在则读取上一条）
+        // Remove last log entry
+        // 删除最后一条日志
         if (this.match.log && this.match.log.length > 0) {
             this.match.log.pop();
+        }
+        
+        // Find and remove last point
+        // 找到并删除最后一分
+        let pointRemoved = false;
+        
+        // Check tie-break first
+        // 先检查抢七
+        for (let i = this.match.sets.length - 1; i >= 0 && !pointRemoved; i--) {
+            const set = this.match.sets[i];
+            if (set.tieBreak && set.tieBreak.points && set.tieBreak.points.length > 0) {
+                set.tieBreak.points.pop();
+                pointRemoved = true;
+            }
+        }
+        
+        // If no tie-break point, check games
+        // 如果没有抢七分，检查局
+        if (!pointRemoved) {
+            for (let i = this.match.sets.length - 1; i >= 0 && !pointRemoved; i--) {
+                const set = this.match.sets[i];
+                for (let j = set.games.length - 1; j >= 0 && !pointRemoved; j--) {
+                    const game = set.games[j];
+                    if (game.points && game.points.length > 0) {
+                        game.points.pop();
+                        pointRemoved = true;
+                    }
+                }
+            }
+        }
+        
+        if (pointRemoved) {
+            // Rebuild entire match state from remaining points
+            // 从剩余points重新构建整个比赛状态
+            this.rebuildMatchState();
         }
         
         // Restore currentServer and currentServeNumber from last log entry (if exists)
@@ -968,12 +991,8 @@ class MatchEngine {
             if (lastLogEntry.currentServer) {
                 this.match.currentServer = lastLogEntry.currentServer;
             }
-            if (lastLogEntry.currentServeNumber !== null && lastLogEntry.currentServeNumber !== undefined) {
+            if (lastLogEntry.currentServeNumber !== undefined && lastLogEntry.currentServeNumber !== null) {
                 this.match.currentServeNumber = lastLogEntry.currentServeNumber;
-            } else {
-                // Fallback: reset to 1 if not in log (for backward compatibility)
-                // 备用方案：如果不在日志中则重置为1（向后兼容）
-                this.match.currentServeNumber = 1;
             }
         } else {
             // No log entries, restore to initial state
@@ -981,11 +1000,6 @@ class MatchEngine {
             this.match.currentServer = this.settings.firstServer;
             this.match.currentServeNumber = 1;
         }
-        
-        // Don't delete point or rebuild state - display is based on log only
-        // 不删除point或重建状态 - 显示完全基于日志
-        // Points are kept for historical record and potential future use
-        // Points保留用于历史记录和未来可能的用途
         
         storage.saveMatch(this.match);
         return this.getMatchState();
@@ -1359,10 +1373,4 @@ class MatchEngine {
         
         this.match.log.push(logEntry);
     }
-}
-
-// Export MatchEngine to global scope
-// 将 MatchEngine 导出到全局作用域
-if (typeof window !== 'undefined') {
-    window.MatchEngine = MatchEngine;
 }

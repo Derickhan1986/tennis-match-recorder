@@ -316,15 +316,6 @@ const app = {
                 return;
             }
             
-            // Ensure match has required properties
-            // 确保match有必需的属性
-            if (!match.sets) {
-                match.sets = [];
-            }
-            if (!match.settings) {
-                match.settings = createMatchSettings();
-            }
-            
             const player1 = await storage.getPlayer(match.player1Id);
             const player2 = await storage.getPlayer(match.player2Id);
             const player1Name = player1 ? player1.name : 'Unknown Player 1';
@@ -333,7 +324,7 @@ const app = {
             const container = document.getElementById('match-detail-content');
             if (!container) return;
             
-            let setsHtml = (match.sets || []).map(set => {
+            let setsHtml = match.sets.map(set => {
                 let setScore = `${set.player1Games}-${set.player2Games}`;
                 if (set.tieBreak && set.tieBreak.winner) {
                     setScore += ` (${set.tieBreak.player1Points || 0}-${set.tieBreak.player2Points || 0})`;
