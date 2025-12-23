@@ -316,6 +316,15 @@ const app = {
                 return;
             }
             
+            // Ensure match has required properties
+            // 确保match有必需的属性
+            if (!match.sets) {
+                match.sets = [];
+            }
+            if (!match.settings) {
+                match.settings = createMatchSettings();
+            }
+            
             const player1 = await storage.getPlayer(match.player1Id);
             const player2 = await storage.getPlayer(match.player2Id);
             const player1Name = player1 ? player1.name : 'Unknown Player 1';
