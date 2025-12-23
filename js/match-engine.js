@@ -521,9 +521,108 @@ class MatchEngine {
         };
     }
 
+    // Rebuild match state from all points
+    // 从所有points重新构建比赛状态
+    rebuildMatchState() {
+        // Save all existing points first
+        // 首先保存所有现有的points
+        const allGamePoints = [];
+        const allTieBreakPoints = [];
+        
+        for (const set of this.match.sets) {
+            for (const game of set.games) {
+                if (game.points && game.points.length > 0) {
+                    allGamePoints.push(...game.points);
+                }
+            }
+            if (set.tieBreak && set.tieBreak.points && set.tieBreak.points.length > 0) {
+                allTieBreakPoints.push(...set.tieBreak.points);
+            }
+        }
+        
+        // Reset all match state
+        // 重置所有比赛状态
+        this.match.sets.forEach(set => {
+            set.player1Games = 0;
+            set.player2Games = 0;
+            set.winner = null;
+            set.games = [createGame({ gameNumber: 1 })];
+            set.tieBreak = null;
+        });
+        
+        this.match.currentServer = this.settings.firstServer;
+        this.match.currentServeNumber = 1;
+        this.match.winner = null;
+        this.match.status = 'in-progress';
+        this.match.endTime = null;
+        
+        // Replay all points
+        // 重放所有points
+        for (const point of [...allGamePoints, ...allTieBreakPoints]) {
+            // Skip serve faults that didn't result in points
+            // 跳过没有得分的发球失误
+            if (point.pointType === 'Serve Fault' && point.serveNumber === 1) {
+                continue;
+            }
+            
+            if (point.winner) {
+                this.recordPoint(point.winner, point.pointType, point.shotType);
+            }
+        }
+    }
+
     // Undo last point
     // 撤销最后一分
     undoLastPoint() {
+        // Remove last log entry
+        // 删除最后一条日志
+        if (this.match.log && this.match.log.length > 0) {
+            this.match.log.pop();
+        }
+        
+        // Find and remove last point
+        // 找到并删除最后一分
+        let pointRemoved = false;
+        
+        // Check tie-break first
+        // 先检查抢七
+        for (let i = this.match.sets.length - 1; i >= 0 && !pointRemoved; i--) {
+            const set = this.match.sets[i];
+            if (set.tieBreak && set.tieBreak.points && set.tieBreak.points.length > 0) {
+                set.tieBreak.points.pop();
+                pointRemoved = true;
+            }
+        }
+        
+        // If no tie-break point, check games
+        // 如果没有抢七分，检查局
+        if (!pointRemoved) {
+            for (let i = this.match.sets.length - 1; i >= 0 && !pointRemoved; i--) {
+                const set = this.match.sets[i];
+                for (let j = set.games.length - 1; j >= 0 && !pointRemoved; j--) {
+                    const game = set.games[j];
+                    if (game.points && game.points.length > 0) {
+                        game.points.pop();
+                        pointRemoved = true;
+                    }
+                }
+            }
+        }
+        
+        if (pointRemoved) {
+            // Rebuild entire match state from remaining points
+            // 从剩余points重新构建整个比赛状态
+            this.rebuildMatchState();
+        }
+        
+        storage.saveMatch(this.match);
+        return this.getMatchState();
+    }
+    
+    // Old undo logic below (keep for reference)
+    // 以下为旧的撤销逻辑（保留供参考）
+    /*
+    undoLastPointOld() {
         const currentSet = this.getCurrentSet();
         
         if (this.isInTieBreak(currentSet)) {
@@ -762,6 +861,7 @@ class MatchEngine {
         storage.saveMatch(this.match);
         return this.getMatchState();
     }
+    */
 
     // Reset game score after undo
     // 撤销后重置局比分
