@@ -263,11 +263,12 @@ class MatchEngine {
     // 开始抢七
     startTieBreak(set) {
         set.tieBreak = createTieBreak();
-        // In tie-break, first server serves once, then alternate every 2 points
-        // 抢七中，第一个发球方发一次，然后每2分换发
-        this.match.currentServer = set.games.length % 2 === 0 ? 
-            (this.settings.firstServer === 'player1' ? 'player2' : 'player1') :
-            this.settings.firstServer;
+        // In tie-break, the player who was receiving in the last game serves first
+        // Then, after 1 point, the serve switches. After that, it switches every 2 points.
+        // 抢七中，上一局的接发球方先发球。然后发1分后换发，之后每2分换发。
+        // Since onGameWon already switched the server, we need to switch back
+        // 因为onGameWon已经交换了发球方，我们需要换回来
+        this.match.currentServer = this.match.currentServer === 'player1' ? 'player2' : 'player1';
         this.match.currentServeNumber = 1;
     }
 
