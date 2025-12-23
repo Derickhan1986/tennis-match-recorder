@@ -461,8 +461,10 @@ class MatchRecorder {
         
         // Update player names
         // 更新玩家名称
-        document.getElementById('player1-name').textContent = this.player1.name;
-        document.getElementById('player2-name').textContent = this.player2.name;
+        const player1NameEl = document.getElementById('player1-name');
+        const player2NameEl = document.getElementById('player2-name');
+        if (player1NameEl) player1NameEl.textContent = this.player1.name;
+        if (player2NameEl) player2NameEl.textContent = this.player2.name;
         
         // Update set scores
         // 更新盘比分
@@ -470,16 +472,20 @@ class MatchRecorder {
         
         // Update current game score
         // 更新当前局比分
-        document.getElementById('player1-game-score').textContent = state.player1Score || '0';
-        document.getElementById('player2-game-score').textContent = state.player2Score || '0';
+        const player1ScoreEl = document.getElementById('player1-game-score');
+        const player2ScoreEl = document.getElementById('player2-game-score');
+        if (player1ScoreEl) player1ScoreEl.textContent = state.player1Score || '0';
+        if (player2ScoreEl) player2ScoreEl.textContent = state.player2Score || '0';
         
         // Update serve indicators
         // 更新发球指示器
         this.updateServeIndicators(state.currentServer, state.currentServeNumber);
         
-        // Update button visibility
-        // 更新按钮可见性
-        this.updateButtonVisibility(state.currentServer);
+        // Update button visibility - use setTimeout to ensure DOM is ready
+        // 更新按钮可见性 - 使用setTimeout确保DOM已准备好
+        setTimeout(() => {
+            this.updateButtonVisibility(state.currentServer);
+        }, 100);
     }
 
         // Update set scores
@@ -548,13 +554,29 @@ class MatchRecorder {
         if (currentServer === 'player1') {
             // Player 1 is serving - show server buttons
             // Player 1发球 - 显示发球方按钮
-            if (p1Server) p1Server.classList.remove('hidden');
-            if (p1Receiver) p1Receiver.classList.add('hidden');
+            if (p1Server) {
+                p1Server.classList.remove('hidden');
+                p1Server.style.display = 'flex';
+                p1Server.style.visibility = 'visible';
+                p1Server.style.opacity = '1';
+            }
+            if (p1Receiver) {
+                p1Receiver.classList.add('hidden');
+                p1Receiver.style.display = 'none';
+            }
         } else {
             // Player 2 is serving - Player 1 is receiving - show receiver buttons
             // Player 2发球 - Player 1接发球 - 显示接发球方按钮
-            if (p1Server) p1Server.classList.add('hidden');
-            if (p1Receiver) p1Receiver.classList.remove('hidden');
+            if (p1Server) {
+                p1Server.classList.add('hidden');
+                p1Server.style.display = 'none';
+            }
+            if (p1Receiver) {
+                p1Receiver.classList.remove('hidden');
+                p1Receiver.style.display = 'flex';
+                p1Receiver.style.visibility = 'visible';
+                p1Receiver.style.opacity = '1';
+            }
         }
         
         // Player 2 buttons
@@ -565,13 +587,35 @@ class MatchRecorder {
         if (currentServer === 'player2') {
             // Player 2 is serving - show server buttons
             // Player 2发球 - 显示发球方按钮
-            if (p2Server) p2Server.classList.remove('hidden');
-            if (p2Receiver) p2Receiver.classList.add('hidden');
+            if (p2Server) {
+                p2Server.classList.remove('hidden');
+                p2Server.style.display = 'flex';
+                p2Server.style.visibility = 'visible';
+                p2Server.style.opacity = '1';
+            }
+            if (p2Receiver) {
+                p2Receiver.classList.add('hidden');
+                p2Receiver.style.display = 'none';
+            }
         } else {
             // Player 1 is serving - Player 2 is receiving - show receiver buttons
             // Player 1发球 - Player 2接发球 - 显示接发球方按钮
-            if (p2Server) p2Server.classList.add('hidden');
-            if (p2Receiver) p2Receiver.classList.remove('hidden');
+            if (p2Server) {
+                p2Server.classList.add('hidden');
+                p2Server.style.display = 'none';
+            }
+            if (p2Receiver) {
+                p2Receiver.classList.remove('hidden');
+                p2Receiver.style.display = 'flex';
+                p2Receiver.style.visibility = 'visible';
+                p2Receiver.style.opacity = '1';
+            }
+        }
+        
+        // Force reflow to ensure visibility changes take effect
+        // 强制重排以确保可见性更改生效
+        if (p1Server || p1Receiver || p2Server || p2Receiver) {
+            void document.body.offsetHeight;
         }
     }
 
