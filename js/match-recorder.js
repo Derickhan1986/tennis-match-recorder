@@ -238,13 +238,21 @@ class MatchRecorder {
     // Handle action button click
     // 处理操作按钮点击
     handleActionButton(action, player) {
-        if (!this.matchEngine) {
+        if (!this.matchEngine || !this.currentMatch) {
             app.showToast('Match not initialized', 'error');
             return;
         }
         
-        const state = this.matchEngine.getMatchState();
-        const server = state.currentServer;
+        // Get current server from log (last entry) for consistency
+        // 从日志（最后一条）获取当前发球方以保持一致性
+        let server = this.matchEngine.match.currentServer || this.currentMatch.settings.firstServer;
+        if (this.currentMatch.log && this.currentMatch.log.length > 0) {
+            const lastLogEntry = this.currentMatch.log[this.currentMatch.log.length - 1];
+            if (lastLogEntry.currentServer) {
+                server = lastLogEntry.currentServer;
+            }
+        }
+        
         const receiver = server === 'player1' ? 'player2' : 'player1';
         let winner = null;
         let pointType = null;
