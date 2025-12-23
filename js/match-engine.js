@@ -1058,7 +1058,8 @@ class MatchEngine {
             shotType: shotType,
             gameScore: gameScore,
             gamesScore: gamesScore,
-            setsScore: setsScore
+            setsScore: setsScore,
+            currentServer: this.match.currentServer // Record current server for undo tracking
         });
         
         this.match.log.push(logEntry);

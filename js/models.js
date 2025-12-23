@@ -140,7 +140,8 @@ function createLogEntry(data = {}) {
         shotType: data.shotType || null, // Shot type if applicable
         gameScore: data.gameScore || null, // Current game score (e.g., "0-40")
         gamesScore: data.gamesScore || null, // Current games score in set (e.g., "1-2")
-        setsScore: data.setsScore || null // Current sets score in match (e.g., "0-1")
+        setsScore: data.setsScore || null, // Current sets score in match (e.g., "0-1")
+        currentServer: data.currentServer || null // Current server at this point ('player1' | 'player2')
     };
 }
 
