@@ -6,7 +6,10 @@
 //  处理所有网球计分逻辑（player1/player2）
 //
 
-class MatchEngine {
+// Ensure MatchEngine is defined globally
+// 确保 MatchEngine 在全局定义
+if (typeof MatchEngine === 'undefined') {
+    class MatchEngine {
     constructor(match) {
         this.match = match;
         this.settings = match.settings;
@@ -1356,4 +1359,10 @@ class MatchEngine {
         
         this.match.log.push(logEntry);
     }
+}
+
+// Export MatchEngine to global scope
+// 将 MatchEngine 导出到全局作用域
+if (typeof window !== 'undefined') {
+    window.MatchEngine = MatchEngine;
 }
