@@ -591,13 +591,52 @@ class MatchEngine {
         
         // Reset all match state
         // 重置所有比赛状态
-        this.match.sets.forEach(set => {
+        // Only keep sets that have points
+        // 只保留有点的sets
+        const setsWithPoints = [];
+        for (const set of this.match.sets) {
+            let hasPoints = false;
+            for (const game of set.games) {
+                if (game.points && game.points.length > 0) {
+                    hasPoints = true;
+                    break;
+                }
+            }
+            if (set.tieBreak && set.tieBreak.points && set.tieBreak.points.length > 0) {
+                hasPoints = true;
+            }
+            if (hasPoints) {
+                setsWithPoints.push(set);
+            }
+        }
+        
+        // If no sets with points, keep at least the first set
+        // 如果没有有点的sets，至少保留第一个set
+        if (setsWithPoints.length === 0 && this.match.sets.length > 0) {
+            setsWithPoints.push(this.match.sets[0]);
+        }
+        
+        // Reset sets
+        // 重置sets
+        setsWithPoints.forEach(set => {
             set.player1Games = 0;
             set.player2Games = 0;
             set.winner = null;
             set.games = [createGame({ gameNumber: 1 })];
             set.tieBreak = null;
         });
+        
+        // Remove empty sets (new sets that were just created)
+        // 删除空sets（刚创建的新sets）
+        this.match.sets = setsWithPoints;
+        
+        // If no sets left, create first set
+        // 如果没有sets了，创建第一个set
+        if (this.match.sets.length === 0) {
+            const firstSet = createSet({ setNumber: 1 });
+            firstSet.games.push(createGame({ gameNumber: 1 }));
+            this.match.sets.push(firstSet);
+        }
         
         this.match.currentServer = this.settings.firstServer;
         this.match.currentServeNumber = 1;
