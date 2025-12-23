@@ -379,15 +379,21 @@ class MatchEngine {
         const player2Points = tieBreak.player2Points;
         
         if (winBy2) {
+            // Win by 2: must reach target points AND lead by at least 2 points
+            // 领先2分获胜：必须达到目标分数且至少领先2分
             if (player1Points >= targetPoints && player1Points - player2Points >= 2) {
                 tieBreak.winner = 'player1';
             } else if (player2Points >= targetPoints && player2Points - player1Points >= 2) {
                 tieBreak.winner = 'player2';
             }
+            // If both players reached target but neither leads by 2, continue playing
+            // 如果双方都达到目标分数但都没有领先2分，继续比赛
         } else {
-            if (player1Points >= targetPoints) {
+            // No win by 2: first to reach target points wins
+            // 不需要领先2分：先达到目标分数者获胜
+            if (player1Points >= targetPoints && player1Points > player2Points) {
                 tieBreak.winner = 'player1';
-            } else if (player2Points >= targetPoints) {
+            } else if (player2Points >= targetPoints && player2Points > player1Points) {
                 tieBreak.winner = 'player2';
             }
         }
