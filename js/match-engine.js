@@ -748,6 +748,7 @@ class MatchEngine {
         // 重建后保存比赛
         storage.saveMatch(this.match);
     }
+    */
     
     // Rebuild log function removed - log is a stack, no need to rebuild
     // 日志重建函数已删除 - 日志是堆栈，无需重建
@@ -949,46 +950,35 @@ class MatchEngine {
     // Undo last point
     // 撤销最后一分
     undoLastPoint() {
-        // Remove last log entry
-        // 删除最后一条日志
+        // Remove last log entry only - log is a stack
+        // 只删除最后一条日志 - 日志是堆栈
+        // Display will read from the last log entry (or previous one if exists)
+        // 显示将从最后一条日志条目读取（如果存在则读取上一条）
         if (this.match.log && this.match.log.length > 0) {
             this.match.log.pop();
         }
         
-        // Find and remove last point
-        // 找到并删除最后一分
-        let pointRemoved = false;
-        
-        // Check tie-break first
-        // 先检查抢七
-        for (let i = this.match.sets.length - 1; i >= 0 && !pointRemoved; i--) {
-            const set = this.match.sets[i];
-            if (set.tieBreak && set.tieBreak.points && set.tieBreak.points.length > 0) {
-                set.tieBreak.points.pop();
-                pointRemoved = true;
+        // Restore currentServer and currentServeNumber from last log entry (if exists)
+        // 从最后一条日志条目恢复currentServer和currentServeNumber（如果存在）
+        if (this.match.log && this.match.log.length > 0) {
+            const lastLogEntry = this.match.log[this.match.log.length - 1];
+            if (lastLogEntry.currentServer) {
+                this.match.currentServer = lastLogEntry.currentServer;
             }
+            // Note: currentServeNumber is not in log, so we reset to 1
+            // 注意：currentServeNumber不在日志中，所以重置为1
+            this.match.currentServeNumber = 1;
+        } else {
+            // No log entries, restore to initial state
+            // 没有日志条目，恢复到初始状态
+            this.match.currentServer = this.settings.firstServer;
+            this.match.currentServeNumber = 1;
         }
         
-        // If no tie-break point, check games
-        // 如果没有抢七分，检查局
-        if (!pointRemoved) {
-            for (let i = this.match.sets.length - 1; i >= 0 && !pointRemoved; i--) {
-                const set = this.match.sets[i];
-                for (let j = set.games.length - 1; j >= 0 && !pointRemoved; j--) {
-                    const game = set.games[j];
-                    if (game.points && game.points.length > 0) {
-                        game.points.pop();
-                        pointRemoved = true;
-                    }
-                }
-            }
-        }
-        
-        if (pointRemoved) {
-            // Rebuild entire match state from remaining points
-            // 从剩余points重新构建整个比赛状态
-            this.rebuildMatchState();
-        }
+        // Don't delete point or rebuild state - display is based on log only
+        // 不删除point或重建状态 - 显示完全基于日志
+        // Points are kept for historical record and potential future use
+        // Points保留用于历史记录和未来可能的用途
         
         storage.saveMatch(this.match);
         return this.getMatchState();
