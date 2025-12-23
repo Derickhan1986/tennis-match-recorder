@@ -467,11 +467,52 @@ class MatchRecorder {
     // Update display
     // 更新显示
     async updateDisplay(state = null) {
-        if (!state && this.matchEngine) {
-            state = this.matchEngine.getMatchState();
+        if (!this.currentMatch || !this.player1 || !this.player2) return;
+        
+        // Get scores from log (last entry) for robustness
+        // 从日志（最后一条）获取比分以确保健壮性
+        let gameScore = '0-0';
+        let gamesScore = '0-0';
+        let setsScore = '0-0';
+        let currentServer = this.matchEngine ? this.matchEngine.match.currentServer : this.currentMatch.settings.firstServer;
+        let currentServeNumber = 1;
+        
+        if (this.currentMatch.log && this.currentMatch.log.length > 0) {
+            const lastLogEntry = this.currentMatch.log[this.currentMatch.log.length - 1];
+            if (lastLogEntry.gameScore) {
+                gameScore = lastLogEntry.gameScore;
+            }
+            if (lastLogEntry.gamesScore) {
+                gamesScore = lastLogEntry.gamesScore;
+            }
+            if (lastLogEntry.setsScore) {
+                setsScore = lastLogEntry.setsScore;
+            }
+            if (lastLogEntry.currentServer) {
+                currentServer = lastLogEntry.currentServer;
+            }
         }
         
-        if (!state || !this.player1 || !this.player2) return;
+        // Parse scores from log
+        // 从日志解析比分
+        const parseScore = (scoreStr) => {
+            if (!scoreStr) return { player1: '0', player2: '0' };
+            // Handle tie-break format: "TB: 1-0"
+            // 处理抢七格式："TB: 1-0"
+            const tbMatch = scoreStr.match(/TB:\s*(\d+)-(\d+)/i);
+            if (tbMatch) {
+                return { player1: tbMatch[1], player2: tbMatch[2], isTieBreak: true };
+            }
+            const parts = scoreStr.split('-');
+            if (parts.length === 2) {
+                return { player1: parts[0].trim(), player2: parts[1].trim() };
+            }
+            return { player1: '0', player2: '0' };
+        };
+        
+        const gameScoreParsed = parseScore(gameScore);
+        const gamesScoreParsed = parseScore(gamesScore);
+        const setsScoreParsed = parseScore(setsScore);
         
         // Update player names
         // 更新玩家名称
@@ -480,30 +521,68 @@ class MatchRecorder {
         if (player1NameEl) player1NameEl.textContent = this.player1.name;
         if (player2NameEl) player2NameEl.textContent = this.player2.name;
         
-        // Update set scores
-        // 更新盘比分
-        this.updateSetScores(state.sets);
+        // Update set scores from log
+        // 从日志更新盘比分
+        this.updateSetScoresFromLog(setsScoreParsed, gamesScoreParsed);
         
-        // Update current game score
-        // 更新当前局比分
+        // Update current game score from log
+        // 从日志更新当前局比分
         const player1ScoreEl = document.getElementById('player1-game-score');
         const player2ScoreEl = document.getElementById('player2-game-score');
-        if (player1ScoreEl) player1ScoreEl.textContent = state.player1Score || '0';
-        if (player2ScoreEl) player2ScoreEl.textContent = state.player2Score || '0';
+        if (player1ScoreEl) {
+            // Handle tie-break display
+            // 处理抢七显示
+            if (gameScoreParsed.isTieBreak) {
+                player1ScoreEl.textContent = gameScoreParsed.player1;
+            } else {
+                player1ScoreEl.textContent = gameScoreParsed.player1;
+            }
+        }
+        if (player2ScoreEl) {
+            if (gameScoreParsed.isTieBreak) {
+                player2ScoreEl.textContent = gameScoreParsed.player2;
+            } else {
+                player2ScoreEl.textContent = gameScoreParsed.player2;
+            }
+        }
+        
+        // Get current serve number from match engine if available
+        // 如果可用，从比赛引擎获取当前发球次数
+        if (this.matchEngine) {
+            const matchState = this.matchEngine.getMatchState();
+            currentServeNumber = matchState.currentServeNumber || 1;
+        }
         
         // Update serve indicators
         // 更新发球指示器
-        this.updateServeIndicators(state.currentServer, state.currentServeNumber);
+        this.updateServeIndicators(currentServer, currentServeNumber);
         
         // Update button visibility - use setTimeout to ensure DOM is ready
         // 更新按钮可见性 - 使用setTimeout确保DOM已准备好
         setTimeout(() => {
-            this.updateButtonVisibility(state.currentServer);
+            this.updateButtonVisibility(currentServer);
         }, 100);
     }
 
-        // Update set scores
-        // 更新盘比分
+        // Update set scores from log
+        // 从日志更新盘比分
+        updateSetScoresFromLog(setsScoreParsed, gamesScoreParsed) {
+            // Calculate current set number from sets score
+            // 从sets比分计算当前盘数
+            const currentSetNumber = parseInt(setsScoreParsed.player1) + parseInt(setsScoreParsed.player2) + 1;
+            
+            // Update set score badge (shows current set number and games in current set)
+            // 更新盘比分徽章（显示当前盘数和当前盘的局数）
+            const badge = document.getElementById('set-score-badge');
+            if (badge) {
+                badge.querySelector('div:first-child').textContent = currentSetNumber;
+                badge.querySelector('div:last-child').textContent = 
+                    `${gamesScoreParsed.player1}-${gamesScoreParsed.player2}`;
+            }
+        }
+
+        // Update set scores (old method, kept for compatibility)
+        // 更新盘比分（旧方法，保留以兼容）
         updateSetScores(sets) {
             // Update set score badge (shows current set number and games in current set)
             // 更新盘比分徽章（显示当前盘数和当前盘的局数）
