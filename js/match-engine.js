@@ -739,17 +739,23 @@ class MatchEngine {
         // 清除标志
         this.isRebuilding = false;
         
-        // Rebuild log from remaining points to ensure consistency
-        // 从剩余points重建日志以确保一致性
-        this.rebuildLogFromPoints();
+        // Don't rebuild log - log is a stack, we just removed the last entry
+        // 不重建日志 - 日志是堆栈，我们只是删除了最后一条
+        // Display will read from the last log entry (or previous one if exists)
+        // 显示将从最后一条日志条目读取（如果存在则读取上一条）
         
         // Save match after rebuild
         // 重建后保存比赛
         storage.saveMatch(this.match);
     }
     
-    // Rebuild log from points
-    // 从points重建日志
+    // Rebuild log function removed - log is a stack, no need to rebuild
+    // 日志重建函数已删除 - 日志是堆栈，无需重建
+    // When undo, we just remove the last log entry
+    // undo时，我们只需删除最后一条日志条目
+    // Display reads from the last log entry (or previous one if exists)
+    // 显示从最后一条日志条目读取（如果存在则读取上一条）
+    /*
     rebuildLogFromPoints() {
         // Clear existing log
         // 清空现有日志
