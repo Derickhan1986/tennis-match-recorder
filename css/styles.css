@@ -698,6 +698,8 @@ body {
 .match-detail-container {
     max-width: 600px;
     margin: 0 auto;
+    padding: 16px;
+    padding-bottom: 80px;
 }
 
 .detail-section {
@@ -722,6 +724,66 @@ body {
 
 .detail-row:last-child {
     border-bottom: none;
+}
+
+/* Match Log */
+.match-log-container {
+    max-height: 500px;
+    overflow-y: auto;
+    background-color: var(--background-color);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 12px;
+}
+
+.log-entry {
+    padding: 12px;
+    margin-bottom: 8px;
+    background-color: var(--card-background);
+    border-radius: 6px;
+    border-left: 3px solid var(--primary-color);
+    font-size: 14px;
+}
+
+.log-entry:last-child {
+    margin-bottom: 0;
+}
+
+.log-time {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.log-content {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.log-player {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.log-action {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.log-score {
+    color: var(--secondary-color);
+    font-weight: 600;
+    margin-left: auto;
+}
+
+.log-set-game {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 4px;
 }
 
 /* Settings */

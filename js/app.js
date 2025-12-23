@@ -349,6 +349,55 @@ const app = {
                 setsHtml = '<div class="detail-section"><p>No sets played yet</p></div>';
             }
             
+            // Generate match log HTML
+            // 生成比赛日志HTML
+            let logHtml = '';
+            if (match.log && match.log.length > 0) {
+                const logEntries = match.log.map(entry => {
+                    const playerName = entry.player === 'player1' ? player1Name : player2Name;
+                    const time = new Date(entry.timestamp);
+                    const timeStr = time.toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+                        second: '2-digit',
+                        hour12: false 
+                    });
+                    
+                    let actionText = entry.action || '';
+                    if (entry.shotType) {
+                        actionText += ` (${entry.shotType})`;
+                    }
+                    
+                    return `
+                        <div class="log-entry">
+                            <div class="log-time">${timeStr}</div>
+                            <div class="log-content">
+                                <span class="log-player">${this.escapeHtml(playerName)}</span>
+                                <span class="log-action">${this.escapeHtml(actionText)}</span>
+                                <span class="log-score">${this.escapeHtml(entry.score || '')}</span>
+                            </div>
+                            <div class="log-set-game">Set ${entry.setNumber || '-'}, Game ${entry.gameNumber || '-'}</div>
+                        </div>
+                    `;
+                }).join('');
+                
+                logHtml = `
+                    <div class="detail-section">
+                        <h3>Match Log</h3>
+                        <div class="match-log-container">
+                            ${logEntries}
+                        </div>
+                    </div>
+                `;
+            } else {
+                logHtml = `
+                    <div class="detail-section">
+                        <h3>Match Log</h3>
+                        <p>No log entries available</p>
+                    </div>
+                `;
+            }
+            
             container.innerHTML = `
                 <div class="detail-section">
                     <h3>Match Info</h3>
@@ -378,6 +427,7 @@ const app = {
                     </div>
                 </div>
                 ${setsHtml}
+                ${logHtml}
                 <div class="form-actions">
                     <button class="btn-danger" onclick="app.deleteMatch('${match.id}')">Delete Match</button>
                 </div>
