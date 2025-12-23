@@ -959,14 +959,14 @@ class MatchEngine {
     // Undo last point
     // 撤销最后一分
     undoLastPoint() {
-        // Remove last log entry
-        // 删除最后一条日志
+        // Remove last log entry - log contains all information needed for display
+        // 删除最后一条日志 - 日志包含显示所需的所有信息
         if (this.match.log && this.match.log.length > 0) {
             this.match.log.pop();
         }
         
-        // Find and remove last point
-        // 找到并删除最后一分
+        // Find and remove last point (keep points array in sync for data consistency)
+        // 找到并删除最后一分（保持points数组同步以确保数据一致性）
         let pointRemoved = false;
         
         // Check tie-break first
@@ -994,14 +994,10 @@ class MatchEngine {
             }
         }
         
-        if (pointRemoved) {
-            // Rebuild entire match state from remaining points
-            // 从剩余points重新构建整个比赛状态
-            this.rebuildMatchState();
-        }
-        
         // Restore currentServer and currentServeNumber from last log entry (if exists)
         // 从最后一条日志条目恢复currentServer和currentServeNumber（如果存在）
+        // Display will read from log, so no need to rebuild state
+        // 显示将从日志读取，所以不需要重建状态
         if (this.match.log && this.match.log.length > 0) {
             const lastLogEntry = this.match.log[this.match.log.length - 1];
             if (lastLogEntry.currentServer) {
