@@ -214,6 +214,9 @@ class PlayerManager {
             await storage.deletePlayer(playerId);
             app.showToast('Player deleted', 'success');
             await this.loadPlayers();
+            // Also refresh player list in new match page
+            // 同时刷新新比赛页面的玩家列表
+            await matchRecorder.loadPlayersForMatch();
         } catch (error) {
             console.error('Error deleting player:', error);
             app.showToast('Error deleting player', 'error');

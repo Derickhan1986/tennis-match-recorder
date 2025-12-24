@@ -150,6 +150,10 @@ const app = {
             this.loadMatches();
         } else if (pageName === 'players') {
             playerManager.loadPlayers();
+        } else if (pageName === 'new-match') {
+            // Refresh player list when opening new match page
+            // 打开新比赛页面时刷新玩家列表
+            matchRecorder.loadPlayersForMatch();
         }
         
         this.currentPage = pageName;
