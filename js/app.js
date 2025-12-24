@@ -744,7 +744,7 @@ const app = {
     
     // Show toast notification
     // 显示提示通知
-    showToast(message, type = 'info') {
+    showToast(message, type = 'info', duration = 3000) {
         const toast = document.getElementById('toast');
         if (!toast) return;
         
@@ -756,7 +756,7 @@ const app = {
             setTimeout(() => {
                 toast.classList.add('hidden');
             }, 300);
-        }, 3000);
+        }, duration);
     },
     
     // Load jsPDF library dynamically
