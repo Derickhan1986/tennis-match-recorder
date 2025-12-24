@@ -660,7 +660,9 @@ const app = {
             // 保存PDF
             doc.save(filename);
             
-            this.showToast('PDF exported successfully', 'success');
+            // Show success message with longer duration for mobile
+            // 显示成功消息，移动端显示时间更长
+            this.showToast('PDF exported successfully! File saved to downloads.', 'success', 5000);
         } catch (error) {
             console.error('Error exporting to PDF:', error);
             this.showToast('Error exporting to PDF', 'error');
