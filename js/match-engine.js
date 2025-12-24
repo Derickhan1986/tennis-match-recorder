@@ -381,13 +381,15 @@ class MatchEngine {
         // 规则：第一个发球方发1个球，然后换发，之后每人依次发2个球
         // Switch after: 1st point, then after every 2 points (3rd, 5th, 7th, etc.)
         // 换发时机：第1分后，然后每2分后（第3分、第5分、第7分等）
-        // Calculate points count from log for tie-break
-        // 从日志计算抢七points数量
-        const tieBreakPointsCount = (this.match.log ? this.match.log.filter(entry => 
-            entry.gameScore && entry.gameScore.startsWith('TB:')
-        ).length : 0) + 1;
+        // Calculate total points in tie-break (after this point is added)
+        // 计算抢七中的总分数（添加此point后）
+        const tieBreakPointsCount = (tieBreak.player1Points || 0) + (tieBreak.player2Points || 0);
         
-        if (tieBreakPointsCount === 1 || (tieBreakPointsCount > 1 && tieBreakPointsCount % 2 === 1)) {
+        // Switch after: 1st point (tieBreakPointsCount === 1), then every 2 points (3rd, 5th, 7th, etc.)
+        // 换发时机：第1分后（tieBreakPointsCount === 1），然后每2分后（第3分、第5分、第7分等）
+        // Pattern: 1, 3, 5, 7, 9... (all odd numbers)
+        // 模式：1, 3, 5, 7, 9...（所有奇数）
+        if (tieBreakPointsCount % 2 === 1) {
             this.match.currentServer = this.match.currentServer === 'player1' ? 'player2' : 'player1';
         }
         
