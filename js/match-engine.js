@@ -302,9 +302,15 @@ class MatchEngine {
             const lastGameReceiver = lastGame.server === 'player1' ? 'player2' : 'player1';
             this.match.currentServer = lastGameReceiver;
         } else {
-            // Fallback: switch server (since onGameWon already switched it)
-            // 备用方案：交换发球方（因为onGameWon已经交换了）
-            this.match.currentServer = this.match.currentServer === 'player1' ? 'player2' : 'player1';
+            // No previous game (e.g., final set starting directly in tie-break)
+            // 没有上一局（例如，决胜盘直接进入抢七）
+            // Use current server (already set in getCurrentSet)
+            // 使用当前发球方（已在getCurrentSet中设置）
+            // If currentServer is not set, use firstServer
+            // 如果currentServer未设置，使用firstServer
+            if (!this.match.currentServer) {
+                this.match.currentServer = this.settings.firstServer;
+            }
         }
         this.match.currentServeNumber = 1;
     }
@@ -341,7 +347,15 @@ class MatchEngine {
                 this.match.currentServeNumber = 2;
                 // Get the last game before tie-break for logging
                 // 获取抢七前的最后一个game用于日志记录
-                const lastGame = currentSet.games[currentSet.games.length - 1];
+                // For final set with Super Tie Break, there might be no games (tie-break starts directly)
+                // 对于决胜盘使用 Super Tie Break，可能没有games（直接开始抢七）
+                let lastGame = currentSet.games[currentSet.games.length - 1];
+                if (!lastGame) {
+                    // Create a placeholder game for logging (final set starting directly in tie-break)
+                    // 创建一个占位game用于日志记录（决胜盘直接进入抢七）
+                    lastGame = createGame({ gameNumber: 0 }); // Use 0 to indicate placeholder
+                    // 使用0表示占位符
+                }
                 // Add to log for first serve fault (score doesn't change)
                 // 一发失误添加到日志（比分不变）
                 this.addToLog(tieBreakServer, pointType, null, lastGame, {
@@ -409,9 +423,17 @@ class MatchEngine {
             this.checkMatchWinner();
         }
         
-        // Get the last game before tie-break for logging (tie-break happens after game 6-6)
-        // 获取抢七前的最后一个game用于日志记录（抢七发生在game 6-6之后）
-        const lastGame = currentSet.games[currentSet.games.length - 1];
+        // Get the last game before tie-break for logging
+        // 获取抢七前的最后一个game用于日志记录
+        // For final set with Super Tie Break, there might be no games (tie-break starts directly)
+        // 对于决胜盘使用 Super Tie Break，可能没有games（直接开始抢七）
+        let lastGame = currentSet.games[currentSet.games.length - 1];
+        if (!lastGame) {
+            // Create a placeholder game for logging (final set starting directly in tie-break)
+            // 创建一个占位game用于日志记录（决胜盘直接进入抢七）
+            lastGame = createGame({ gameNumber: 0 }); // Use 0 to indicate placeholder
+            // 使用0表示占位符
+        }
         
         // Determine player and action for log
         // 确定日志的玩家和操作
@@ -560,13 +582,27 @@ class MatchEngine {
             currentSet = createSet({
                 setNumber: setNumber
             });
-            currentSet.games.push(createGame({
-                gameNumber: 1
-            }));
+            
+            // Check if this is the final set and should use Super Tie Break
+            // 检查是否是决胜盘且应使用 Super Tie Break
+            const isFinal = this.isFinalSet(currentSet);
+            
+            if (isFinal && this.settings.finalSetType === 'Super Tie Break') {
+                // Final set with Super Tie Break: start directly in tie-break mode
+                // 决胜盘使用 Super Tie Break：直接进入抢七模式
+                this.startTieBreak(currentSet);
+            } else {
+                // Normal set: start with regular game
+                // 常规盘：从常规局开始
+                currentSet.games.push(createGame({
+                    gameNumber: 1
+                }));
+            }
+            
             this.match.sets.push(currentSet);
             
-            // Set server for first game of new set
-            // 设置新盘第一局的发球方
+            // Set server for first game/tie-break of new set
+            // 设置新盘第一局/抢七的发球方
             if (setNumber === 1) {
                 this.match.currentServer = this.settings.firstServer;
             } else {
