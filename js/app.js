@@ -325,9 +325,48 @@ const app = {
             if (!container) return;
             
             let setsHtml = match.sets.map(set => {
+                // Check if in tie-break (has tieBreak but no winner yet)
+                // 检查是否在抢七中（有tieBreak但还没有winner）
+                const isInTieBreak = set.tieBreak && !set.tieBreak.winner;
+                const hasTieBreak = set.tieBreak && (set.tieBreak.winner || isInTieBreak);
+                
+                // For final set with Super Tie Break that starts directly in tie-break
+                // 对于决胜盘直接进入 Super Tie Break 的情况
+                // If games are both 0 and there's a tie-break, show tie-break score directly
+                // 如果games都是0且有tie-break，直接显示tie-break比分
+                if (set.player1Games === 0 && set.player2Games === 0 && hasTieBreak) {
+                    const tbPoints = `${set.tieBreak.player1Points || 0}-${set.tieBreak.player2Points || 0}`;
+                    const setScore = isInTieBreak ? `TB: ${tbPoints}` : `TB: ${tbPoints} (Finished)`;
+                    
+                    return `
+                        <div class="detail-section">
+                            <h3>Set ${set.setNumber}</h3>
+                            <div class="detail-row">
+                                <span>Score</span>
+                                <span>${setScore}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span>Winner</span>
+                                <span>${set.winner === 'player1' ? player1Name : set.winner === 'player2' ? player2Name : 'Not finished'}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // Normal set display: games score + tie-break if exists
+                // 常规盘显示：games比分 + 如果有tie-break则显示
                 let setScore = `${set.player1Games}-${set.player2Games}`;
-                if (set.tieBreak && set.tieBreak.winner) {
-                    setScore += ` (${set.tieBreak.player1Points || 0}-${set.tieBreak.player2Points || 0})`;
+                if (hasTieBreak) {
+                    const tbPoints = `${set.tieBreak.player1Points || 0}-${set.tieBreak.player2Points || 0}`;
+                    if (isInTieBreak) {
+                        // Tie-break in progress
+                        // 抢七进行中
+                        setScore += ` (TB: ${tbPoints})`;
+                    } else {
+                        // Tie-break finished
+                        // 抢七已结束
+                        setScore += ` (${tbPoints})`;
+                    }
                 }
                 
                 return `
