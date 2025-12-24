@@ -261,41 +261,28 @@ class MatchEngine {
 
     // Check if set is won
     // 检查盘是否获胜
+    // Note: "Win by 2" only applies to games (40-40 deuce) and tie-breaks, not to sets
+    // 注意："领先2分"只适用于game（40-40平分）和抢七，不适用于set
     checkSetWinner(set) {
         const gamesToWin = this.settings.gamesPerSet;
         const player1Games = set.player1Games;
         const player2Games = set.player2Games;
         
-        // Check if someone won by games
-        // 检查是否有人通过局数获胜
-        // If gamesPerSet is 1, no need to win by 2 (impossible)
-        // 如果gamesPerSet是1，不需要领先2个game（不可能）
-        if (gamesToWin === 1) {
-            // Single game set: first to win 1 game wins the set
-            // 单局盘：先赢1局者获胜
-            if (player1Games >= gamesToWin) {
-                set.winner = 'player1';
-                return;
-            }
-            if (player2Games >= gamesToWin) {
-                set.winner = 'player2';
-                return;
-            }
-        } else {
-            // Multiple games set: must win by 2 games
-            // 多局盘：必须领先2个game
-            if (player1Games >= gamesToWin && player1Games - player2Games >= 2) {
-                set.winner = 'player1';
-                return;
-            }
-            if (player2Games >= gamesToWin && player2Games - player1Games >= 2) {
-                set.winner = 'player2';
-                return;
-            }
+        // Check if someone reached gamesToWin and is leading
+        // 检查是否有人达到gamesToWin且领先
+        // Set can be won by reaching gamesToWin with at least 1 game lead (e.g., 7-6, 6-5)
+        // Set可以通过达到gamesToWin且至少领先1个game获胜（例如，7-6, 6-5）
+        if (player1Games >= gamesToWin && player1Games > player2Games) {
+            set.winner = 'player1';
+            return;
+        }
+        if (player2Games >= gamesToWin && player2Games > player1Games) {
+            set.winner = 'player2';
+            return;
         }
         
-        // Check if tie-break is needed (only for multiple games sets)
-        // 检查是否需要抢七（仅适用于多局盘）
+        // Check if tie-break is needed (when both players reach gamesToWin, e.g., 6-6)
+        // 检查是否需要抢七（当双方都达到gamesToWin时，例如6-6）
         if (gamesToWin > 1 && player1Games === gamesToWin && player2Games === gamesToWin) {
             // Start tie-break
             // 开始抢七
