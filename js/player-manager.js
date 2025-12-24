@@ -136,6 +136,14 @@ class PlayerManager {
                 return;
             }
             
+            // Validate name: only letters (a-z, A-Z), spaces, and hyphens (-)
+            // 验证姓名：只允许字母（a-z, A-Z）、空格和连字符（-）
+            const namePattern = /^[a-zA-Z\s\-]+$/;
+            if (!namePattern.test(name)) {
+                app.showToast('Name can only contain letters (a-z, A-Z), spaces, and hyphens (-)', 'error');
+                return;
+            }
+            
             // Validate UTR rating if provided
             // 如果提供了UTR rating，验证它
             let utrRating = null;

@@ -36,6 +36,12 @@ function validatePlayer(player) {
     if (!player.name || player.name.trim() === '') {
         throw new Error('Player name is required');
     }
+    // Validate name: only letters (a-z, A-Z), spaces, and hyphens (-)
+    // 验证姓名：只允许字母（a-z, A-Z）、空格和连字符（-）
+    const namePattern = /^[a-zA-Z\s\-]+$/;
+    if (!namePattern.test(player.name)) {
+        throw new Error('Player name can only contain letters (a-z, A-Z), spaces, and hyphens (-)');
+    }
     if (!['righty', 'lefty'].includes(player.handedness)) {
         throw new Error('Invalid handedness');
     }
