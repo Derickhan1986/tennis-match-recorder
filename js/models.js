@@ -129,15 +129,26 @@ const ShotType = {
     OVERHEAD: 'Overhead'
 };
 
-// Match Log Entry
-// 比赛日志条目
+// Match Log Entry (merged with Point - contains all point information plus score information)
+// 比赛日志条目（与Point合并 - 包含所有point信息加上比分信息）
 function createLogEntry(data = {}) {
     return {
         id: data.id || generateUUID(),
         timestamp: data.timestamp || new Date().toISOString(),
-        player: data.player || null, // 'player1' | 'player2'
-        action: data.action || null, // 'ACE', 'Winner', 'Serve Fault', etc.
+        // Point information (from createPoint)
+        // Point信息（来自createPoint）
+        pointNumber: data.pointNumber || null, // Point number in the game/tie-break
+        winner: data.winner || null, // 'player1' | 'player2' - who won the point
+        pointType: data.pointType || null, // 'ACE', 'Winner', 'Serve Fault', 'Return Error', 'Unforced Error', 'Forced Error'
         shotType: data.shotType || null, // Shot type if applicable
+        server: data.server || null, // 'player1' | 'player2' - who was serving
+        serveNumber: data.serveNumber || null, // 1 or 2 - first or second serve
+        // Log information (for display and undo)
+        // 日志信息（用于显示和撤销）
+        player: data.player || data.winner || null, // 'player1' | 'player2' - who performed the action (may differ from winner for errors)
+        action: data.action || data.pointType || null, // 'ACE', 'Winner', 'Serve Fault', etc.
+        // Score information (current state after this point)
+        // 比分信息（此point后的当前状态）
         gameScore: data.gameScore || null, // Current game score (e.g., "0-40")
         gamesScore: data.gamesScore || null, // Current games score in set (e.g., "1-2")
         setsScore: data.setsScore || null, // Current sets score in match (e.g., "0-1")

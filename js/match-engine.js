@@ -21,6 +21,10 @@ class MatchEngine {
     // Record a point with point type and shot type
     // 记录一分（带类型和击球类型）
     recordPoint(winner, pointType = null, shotType = null) {
+        // Restore match state from last log entry before recording new point
+        // 在记录新point之前从最后一条日志条目恢复比赛状态
+        this.restoreStateFromLastLog();
+        
         const currentSet = this.getCurrentSet();
         
         // Check if we're in a tie-break
@@ -32,21 +36,14 @@ class MatchEngine {
         const currentGame = this.getCurrentGame(currentSet);
         const server = this.match.currentServer;
         
-        // Record point
-        // 记录分
-        const point = createPoint({
-            pointNumber: currentGame.points.length + 1,
-            winner: winner,
-            pointType: pointType,
-            shotType: shotType,
-            server: server,
-            serveNumber: this.match.currentServeNumber
-        });
-        currentGame.points.push(point);
+        // Calculate point number from log (log contains all points now)
+        // 从日志计算point number（日志现在包含所有points）
+        const pointNumber = (this.match.log ? this.match.log.length : 0) + 1;
         
         // Handle serve fault
         // 处理发球失误
         let isDoubleFault = false;
+        let actualWinner = winner;
         if (pointType === 'Serve Fault') {
             if (this.match.currentServeNumber === 1) {
                 // First serve fault, try second serve (score doesn't change)
@@ -54,7 +51,13 @@ class MatchEngine {
                 this.match.currentServeNumber = 2;
                 // Add to log for first serve fault (score doesn't change)
                 // 一发失误添加到日志（比分不变），使用当前game
-                this.addToLog(server, pointType, null, currentGame);
+                this.addToLog(server, pointType, null, currentGame, {
+                    pointNumber: pointNumber,
+                    winner: null, // No winner yet for first serve fault
+                    pointType: pointType,
+                    server: server,
+                    serveNumber: 1
+                });
                 storage.saveMatch(this.match);
                 return; // Display will read from log, no need to return state
                 // 显示将从日志读取，不需要返回状态
@@ -62,8 +65,7 @@ class MatchEngine {
                 // Double fault, opponent wins point
                 // 双误，对手得分
                 isDoubleFault = true;
-                winner = server === 'player1' ? 'player2' : 'player1';
-                point.winner = winner;
+                actualWinner = server === 'player1' ? 'player2' : 'player1';
                 this.match.currentServeNumber = 1;
             }
         } else {
@@ -74,7 +76,7 @@ class MatchEngine {
         
         // Update game score
         // 更新局比分
-        this.updateGameScore(currentGame, winner);
+        this.updateGameScore(currentGame, actualWinner);
         
         // Check if game is won
         // 检查局是否结束
@@ -100,20 +102,31 @@ class MatchEngine {
             }
         }
         
+        // Determine player and action for log
+        // 确定日志的玩家和操作
+        let logPlayer = actualWinner;
+        let logAction = pointType;
         if (isDoubleFault) {
             // Double fault - log the server who made the fault, not the winner
             // 双误 - 记录犯错的发球方，而不是得分方
-            this.addToLog(server, 'Double Fault', null, gameForLog);
+            logPlayer = server;
+            logAction = 'Double Fault';
         } else if (pointType === 'Return Error') {
             // Return error - log the receiver who made the error, not the winner
             // Return error - 记录犯错的接发球方，而不是得分方
-            const receiver = server === 'player1' ? 'player2' : 'player1';
-            this.addToLog(receiver, pointType, shotType, gameForLog);
-        } else if (pointType !== 'Serve Fault') {
-            // Normal point - log with updated score
-            // 正常得分 - 记录更新后的比分
-            this.addToLog(winner, pointType, shotType, gameForLog);
+            logPlayer = server === 'player1' ? 'player2' : 'player1';
+            logAction = 'Return Error';
         }
+        
+        // Add to log with point information
+        // 添加point信息到日志
+        this.addToLog(logPlayer, logAction, shotType, gameForLog, {
+            pointNumber: pointNumber,
+            winner: actualWinner,
+            pointType: pointType,
+            server: server,
+            serveNumber: isDoubleFault ? 2 : (pointType === 'Serve Fault' ? 1 : this.match.currentServeNumber)
+        });
         
         // Auto-save match
         // 自动保存比赛
@@ -305,32 +318,39 @@ class MatchEngine {
     // Record tie-break point
     // 记录抢七分
     recordTieBreakPoint(set, winner, pointType, shotType = null) {
-        const tieBreak = set.tieBreak;
-        const isPlayer1Point = winner === 'player1';
+        // Restore match state from last log entry before recording new point
+        // 在记录新point之前从最后一条日志条目恢复比赛状态
+        this.restoreStateFromLastLog();
         
-        const point = createPoint({
-            pointNumber: tieBreak.points.length + 1,
-            winner: winner,
-            pointType: pointType,
-            shotType: shotType,
-            server: this.match.currentServer,
-            serveNumber: this.match.currentServeNumber
-        });
-        tieBreak.points.push(point);
+        // Re-get set after state restoration
+        // 状态恢复后重新获取set
+        const currentSet = this.getCurrentSet();
+        const tieBreak = currentSet.tieBreak;
+        const tieBreakServer = this.match.currentServer;
+        
+        // Calculate point number from log (log contains all points now)
+        // 从日志计算point number（日志现在包含所有points）
+        const pointNumber = (this.match.log ? this.match.log.length : 0) + 1;
         
         // Handle serve fault in tie-break
         // 处理抢七中的发球失误
-        const tieBreakServer = this.match.currentServer;
         let isDoubleFault = false;
+        let actualWinner = winner;
         if (pointType === 'Serve Fault') {
             if (this.match.currentServeNumber === 1) {
                 this.match.currentServeNumber = 2;
                 // Get the last game before tie-break for logging
                 // 获取抢七前的最后一个game用于日志记录
-                const lastGame = set.games[set.games.length - 1];
+                const lastGame = currentSet.games[currentSet.games.length - 1];
                 // Add to log for first serve fault (score doesn't change)
                 // 一发失误添加到日志（比分不变）
-                this.addToLog(tieBreakServer, pointType, null, lastGame);
+                this.addToLog(tieBreakServer, pointType, null, lastGame, {
+                    pointNumber: pointNumber,
+                    winner: null, // No winner yet for first serve fault
+                    pointType: pointType,
+                    server: tieBreakServer,
+                    serveNumber: 1
+                });
                 storage.saveMatch(this.match);
                 return; // Display will read from log, no need to return state
                 // 显示将从日志读取，不需要返回状态
@@ -338,14 +358,14 @@ class MatchEngine {
                 // Double fault, opponent wins point
                 // 双误，对手得分
                 isDoubleFault = true;
-                winner = tieBreakServer === 'player1' ? 'player2' : 'player1';
-                point.winner = winner;
-                isPlayer1Point = winner === 'player1';
+                actualWinner = tieBreakServer === 'player1' ? 'player2' : 'player1';
                 this.match.currentServeNumber = 1;
             }
         } else {
             this.match.currentServeNumber = 1;
         }
+        
+        const isPlayer1Point = actualWinner === 'player1';
         
         // Update tie-break score
         // 更新抢七比分
@@ -361,46 +381,61 @@ class MatchEngine {
         // 规则：第一个发球方发1个球，然后换发，之后每人依次发2个球
         // Switch after: 1st point, then after every 2 points (3rd, 5th, 7th, etc.)
         // 换发时机：第1分后，然后每2分后（第3分、第5分、第7分等）
-        if (tieBreak.points.length === 1 || (tieBreak.points.length > 1 && tieBreak.points.length % 2 === 1)) {
+        // Calculate points count from log for tie-break
+        // 从日志计算抢七points数量
+        const tieBreakPointsCount = (this.match.log ? this.match.log.filter(entry => 
+            entry.gameScore && entry.gameScore.startsWith('TB:')
+        ).length : 0) + 1;
+        
+        if (tieBreakPointsCount === 1 || (tieBreakPointsCount > 1 && tieBreakPointsCount % 2 === 1)) {
             this.match.currentServer = this.match.currentServer === 'player1' ? 'player2' : 'player1';
         }
         
         // Check if tie-break is won
         // 检查抢七是否结束
-        this.checkTieBreakWinner(set);
+        this.checkTieBreakWinner(currentSet);
         
         // If tie-break is won, update set
         // 如果抢七结束，更新盘
         if (tieBreak.winner) {
             if (tieBreak.winner === 'player1') {
-                set.player1Games++;
+                currentSet.player1Games++;
             } else {
-                set.player2Games++;
+                currentSet.player2Games++;
             }
-            set.winner = tieBreak.winner;
+            currentSet.winner = tieBreak.winner;
             this.checkMatchWinner();
         }
         
         // Get the last game before tie-break for logging (tie-break happens after game 6-6)
         // 获取抢七前的最后一个game用于日志记录（抢七发生在game 6-6之后）
-        const lastGame = set.games[set.games.length - 1];
+        const lastGame = currentSet.games[currentSet.games.length - 1];
         
-        // Add to match log AFTER updating score and handling tie-break won (so log shows correct sets score)
-        // 更新比分和处理抢七结束后添加到日志（这样日志显示正确的sets比分）
+        // Determine player and action for log
+        // 确定日志的玩家和操作
+        let logPlayer = actualWinner;
+        let logAction = pointType;
         if (isDoubleFault) {
             // Double fault - log the server who made the fault, not the winner
             // 双误 - 记录犯错的发球方，而不是得分方
-            this.addToLog(tieBreakServer, 'Double Fault', null, lastGame);
+            logPlayer = tieBreakServer;
+            logAction = 'Double Fault';
         } else if (pointType === 'Return Error') {
             // Return error - log the receiver who made the error, not the winner
             // Return error - 记录犯错的接发球方，而不是得分方
-            const tieBreakReceiver = tieBreakServer === 'player1' ? 'player2' : 'player1';
-            this.addToLog(tieBreakReceiver, pointType, shotType, lastGame);
-        } else if (pointType !== 'Serve Fault') {
-            // Normal point - log with updated score
-            // 正常得分 - 记录更新后的比分
-            this.addToLog(winner, pointType, shotType, lastGame);
+            logPlayer = tieBreakServer === 'player1' ? 'player2' : 'player1';
+            logAction = 'Return Error';
         }
+        
+        // Add to log with point information
+        // 添加point信息到日志
+        this.addToLog(logPlayer, logAction, shotType, lastGame, {
+            pointNumber: pointNumber,
+            winner: actualWinner,
+            pointType: pointType,
+            server: tieBreakServer,
+            serveNumber: isDoubleFault ? 2 : (pointType === 'Serve Fault' ? 1 : this.match.currentServeNumber)
+        });
         
         storage.saveMatch(this.match);
         
@@ -964,64 +999,168 @@ class MatchEngine {
     // Undo last point
     // 撤销最后一分
     undoLastPoint() {
-        // Remove last log entry - log contains all information needed for display
-        // 删除最后一条日志 - 日志包含显示所需的所有信息
+        // Remove last log entry - log contains all information (point + score)
+        // 删除最后一条日志 - 日志包含所有信息（point + 比分）
         if (this.match.log && this.match.log.length > 0) {
             this.match.log.pop();
         }
         
-        // Find and remove last point (keep points array in sync for data consistency)
-        // 找到并删除最后一分（保持points数组同步以确保数据一致性）
-        let pointRemoved = false;
-        
-        // Check tie-break first
-        // 先检查抢七
-        for (let i = this.match.sets.length - 1; i >= 0 && !pointRemoved; i--) {
-            const set = this.match.sets[i];
-            if (set.tieBreak && set.tieBreak.points && set.tieBreak.points.length > 0) {
-                set.tieBreak.points.pop();
-                pointRemoved = true;
-            }
-        }
-        
-        // If no tie-break point, check games
-        // 如果没有抢七分，检查局
-        if (!pointRemoved) {
-            for (let i = this.match.sets.length - 1; i >= 0 && !pointRemoved; i--) {
-                const set = this.match.sets[i];
-                for (let j = set.games.length - 1; j >= 0 && !pointRemoved; j--) {
-                    const game = set.games[j];
-                    if (game.points && game.points.length > 0) {
-                        game.points.pop();
-                        pointRemoved = true;
-                    }
-                }
-            }
-        }
-        
-        // Restore currentServer and currentServeNumber from last log entry (if exists)
-        // 从最后一条日志条目恢复currentServer和currentServeNumber（如果存在）
-        // Display will read from log, so no need to rebuild state
-        // 显示将从日志读取，所以不需要重建状态
-        if (this.match.log && this.match.log.length > 0) {
-            const lastLogEntry = this.match.log[this.match.log.length - 1];
-            if (lastLogEntry.currentServer) {
-                this.match.currentServer = lastLogEntry.currentServer;
-            }
-            if (lastLogEntry.currentServeNumber !== undefined && lastLogEntry.currentServeNumber !== null) {
-                this.match.currentServeNumber = lastLogEntry.currentServeNumber;
-            }
-        } else {
-            // No log entries, restore to initial state
-            // 没有日志条目，恢复到初始状态
-            this.match.currentServer = this.settings.firstServer;
-            this.match.currentServeNumber = 1;
-        }
+        // Rebuild match state from remaining log entries
+        // 从剩余的日志条目重建比赛状态
+        this.rebuildMatchStateFromLog();
         
         storage.saveMatch(this.match);
         
         // Display will read from log, no need to return state
         // 显示将从日志读取，不需要返回状态
+    }
+    
+    // Restore match state from last log entry (for use before recording new point)
+    // 从最后一条日志条目恢复比赛状态（用于记录新point之前）
+    restoreStateFromLastLog() {
+        this.rebuildMatchStateFromLog();
+    }
+    
+    // Rebuild match state from log entries
+    // 从日志条目重建比赛状态
+    rebuildMatchStateFromLog() {
+        if (!this.match.log || this.match.log.length === 0) {
+            // No log entries, restore to initial state
+            // 没有日志条目，恢复到初始状态
+            this.match.sets = [createSet({ setNumber: 1 })];
+            this.match.sets[0].games = [createGame({ gameNumber: 1 })];
+            this.match.currentServer = this.settings.firstServer;
+            this.match.currentServeNumber = 1;
+            this.match.winner = null;
+            this.match.status = 'in-progress';
+            this.match.endTime = null;
+            return;
+        }
+        
+        // Get last log entry to restore state
+        // 获取最后一条日志条目以恢复状态
+        const lastLogEntry = this.match.log[this.match.log.length - 1];
+        
+        // Restore currentServer and currentServeNumber
+        // 恢复currentServer和currentServeNumber
+        if (lastLogEntry.currentServer) {
+            this.match.currentServer = lastLogEntry.currentServer;
+        }
+        if (lastLogEntry.currentServeNumber !== undefined && lastLogEntry.currentServeNumber !== null) {
+            this.match.currentServeNumber = lastLogEntry.currentServeNumber;
+        }
+        
+        // Parse scores from last log entry
+        // 从最后一条日志条目解析比分
+        const parseScore = (scoreStr) => {
+            if (!scoreStr) return { player1: 0, player2: 0 };
+            const tbMatch = scoreStr.match(/TB:\s*(\d+)-(\d+)/i);
+            if (tbMatch) {
+                return { player1: parseInt(tbMatch[1]) || 0, player2: parseInt(tbMatch[2]) || 0, isTieBreak: true };
+            }
+            const parts = scoreStr.split('-');
+            if (parts.length === 2) {
+                // Handle score like "0", "15", "30", "40", "AD"
+                // 处理比分如"0", "15", "30", "40", "AD"
+                const p1 = parts[0].trim();
+                const p2 = parts[1].trim();
+                return { 
+                    player1: p1 === 'AD' ? 'AD' : (parseInt(p1) || 0), 
+                    player2: p2 === 'AD' ? 'AD' : (parseInt(p2) || 0) 
+                };
+            }
+            return { player1: 0, player2: 0 };
+        };
+        
+        const gameScoreParsed = parseScore(lastLogEntry.gameScore);
+        const gamesScoreParsed = parseScore(lastLogEntry.gamesScore);
+        const setsScoreParsed = parseScore(lastLogEntry.setsScore);
+        
+        // Rebuild sets based on setsScore
+        // 根据setsScore重建sets
+        const totalSets = parseInt(setsScoreParsed.player1) + parseInt(setsScoreParsed.player2);
+        const currentSetNumber = totalSets + 1;
+        
+        // Reset all sets first
+        // 首先重置所有sets
+        this.match.sets = [];
+        
+        // Create completed sets
+        // 创建已完成的sets
+        for (let i = 0; i < totalSets; i++) {
+            const set = createSet({ setNumber: i + 1 });
+            if (i < parseInt(setsScoreParsed.player1)) {
+                set.winner = 'player1';
+            } else {
+                set.winner = 'player2';
+            }
+            // For completed sets, we need to determine games won
+            // 对于已完成的sets，我们需要确定赢得的games
+            // This is complex, so we'll set a default (can be improved later)
+            // 这很复杂，所以我们设置一个默认值（可以稍后改进）
+            set.player1Games = set.winner === 'player1' ? this.settings.gamesPerSet : 0;
+            set.player2Games = set.winner === 'player2' ? this.settings.gamesPerSet : 0;
+            this.match.sets.push(set);
+        }
+        
+        // Create current set
+        // 创建当前set
+        const currentSet = createSet({ setNumber: currentSetNumber });
+        currentSet.player1Games = parseInt(gamesScoreParsed.player1) || 0;
+        currentSet.player2Games = parseInt(gamesScoreParsed.player2) || 0;
+        
+        // Update current game
+        // 更新当前game
+        if (gameScoreParsed.isTieBreak) {
+            // In tie-break
+            // 在抢七
+            currentSet.tieBreak = createTieBreak();
+            currentSet.tieBreak.player1Points = gameScoreParsed.player1;
+            currentSet.tieBreak.player2Points = gameScoreParsed.player2;
+            currentSet.tieBreak.winner = null; // Tie-break not finished yet
+            // 抢七尚未结束
+            // Create a placeholder game for tie-break context
+            // 为抢七上下文创建一个占位game
+            if (currentSet.games.length === 0) {
+                currentSet.games.push(createGame({ gameNumber: this.settings.gamesPerSet }));
+            }
+        } else {
+            // In regular game
+            // 在常规game
+            // Calculate game number from gamesScore
+            // 从gamesScore计算game number
+            const totalGames = parseInt(gamesScoreParsed.player1) + parseInt(gamesScoreParsed.player2);
+            const currentGameNumber = totalGames + 1;
+            
+            // Create all previous games (won games)
+            // 创建所有之前的games（已赢得的games）
+            for (let i = 0; i < totalGames; i++) {
+                const game = createGame({ gameNumber: i + 1 });
+                if (i < parseInt(gamesScoreParsed.player1)) {
+                    game.winner = 'player1';
+                } else {
+                    game.winner = 'player2';
+                }
+                currentSet.games.push(game);
+            }
+            
+            // Create current game
+            // 创建当前game
+            const currentGame = createGame({ gameNumber: currentGameNumber });
+            currentGame.player1Score = gameScoreParsed.player1;
+            currentGame.player2Score = gameScoreParsed.player2;
+            currentGame.winner = null; // Game not finished yet
+            // Game尚未结束
+            currentSet.games.push(currentGame);
+        }
+        
+        this.match.sets.push(currentSet);
+        
+        // Update match status
+        // 更新比赛状态
+        this.match.winner = null;
+        this.match.status = 'in-progress';
+        this.match.endTime = null;
     }
     
     // Old undo logic below (keep for reference)
@@ -1316,9 +1455,9 @@ class MatchEngine {
         game.player2Score = player2Score;
     }
     
-    // Add entry to match log with optional sets for setsScore calculation
-    // 添加条目到比赛日志，可选sets用于计算setsScore
-    addToLogWithSets(player, action, shotType = null, game = null, currentSet = null, setsForScore = null) {
+    // Add entry to match log with optional sets for setsScore calculation and point information
+    // 添加条目到比赛日志，可选sets用于计算setsScore和point信息
+    addToLogWithSets(player, action, shotType = null, game = null, currentSet = null, setsForScore = null, pointInfo = null) {
         if (!this.match.log) {
             this.match.log = [];
         }
@@ -1383,9 +1522,20 @@ class MatchEngine {
         const setsScore = `${player1Sets}-${player2Sets}`;
         
         const logEntry = createLogEntry({
+            // Point information (if provided)
+            // Point信息（如果提供）
+            pointNumber: pointInfo ? pointInfo.pointNumber : null,
+            winner: pointInfo ? pointInfo.winner : null,
+            pointType: pointInfo ? pointInfo.pointType : null,
+            server: pointInfo ? pointInfo.server : null,
+            serveNumber: pointInfo ? pointInfo.serveNumber : null,
+            // Log information
+            // 日志信息
             player: player,
             action: action,
             shotType: shotType,
+            // Score information
+            // 比分信息
             gameScore: gameScore,
             gamesScore: gamesScore,
             setsScore: setsScore,
@@ -1398,7 +1548,7 @@ class MatchEngine {
     
     // Add entry to match log
     // 添加条目到比赛日志
-    addToLog(player, action, shotType = null, game = null) {
+    addToLog(player, action, shotType = null, game = null, pointInfo = null) {
         // Don't add to log during rebuild (log will be rebuilt from points)
         // 重建期间不添加到日志（日志将从points重建）
         if (this.isRebuilding) {
@@ -1407,6 +1557,6 @@ class MatchEngine {
         
         // Call addToLogWithSets with default parameters
         // 使用默认参数调用addToLogWithSets
-        this.addToLogWithSets(player, action, shotType, game, null, null);
+        this.addToLogWithSets(player, action, shotType, game, null, null, pointInfo);
     }
 }
