@@ -508,10 +508,19 @@ const app = {
             const player1Name = player1 ? player1.name : 'Unknown Player 1';
             const player2Name = player2 ? player2.name : 'Unknown Player 2';
             
-            // Check if jsPDF is available
-            // 检查jsPDF是否可用
+            // Check if jsPDF is available, if not try to load it
+            // 检查jsPDF是否可用，如果不可用则尝试加载
             if (typeof window.jspdf === 'undefined') {
-                this.showToast('PDF library not loaded', 'error');
+                // Try to load jsPDF dynamically
+                // 尝试动态加载jsPDF
+                this.showToast('Loading PDF library...', 'info');
+                await this.loadJsPDF();
+            }
+            
+            // Check again after loading
+            // 加载后再次检查
+            if (typeof window.jspdf === 'undefined') {
+                this.showToast('PDF library failed to load. Please check your internet connection.', 'error');
                 return;
             }
             
