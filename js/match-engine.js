@@ -268,18 +268,35 @@ class MatchEngine {
         
         // Check if someone won by games
         // 检查是否有人通过局数获胜
-        if (player1Games >= gamesToWin && player1Games - player2Games >= 2) {
-            set.winner = 'player1';
-            return;
-        }
-        if (player2Games >= gamesToWin && player2Games - player1Games >= 2) {
-            set.winner = 'player2';
-            return;
+        // If gamesPerSet is 1, no need to win by 2 (impossible)
+        // 如果gamesPerSet是1，不需要领先2个game（不可能）
+        if (gamesToWin === 1) {
+            // Single game set: first to win 1 game wins the set
+            // 单局盘：先赢1局者获胜
+            if (player1Games >= gamesToWin) {
+                set.winner = 'player1';
+                return;
+            }
+            if (player2Games >= gamesToWin) {
+                set.winner = 'player2';
+                return;
+            }
+        } else {
+            // Multiple games set: must win by 2 games
+            // 多局盘：必须领先2个game
+            if (player1Games >= gamesToWin && player1Games - player2Games >= 2) {
+                set.winner = 'player1';
+                return;
+            }
+            if (player2Games >= gamesToWin && player2Games - player1Games >= 2) {
+                set.winner = 'player2';
+                return;
+            }
         }
         
-        // Check if tie-break is needed
-        // 检查是否需要抢七
-        if (player1Games === gamesToWin && player2Games === gamesToWin) {
+        // Check if tie-break is needed (only for multiple games sets)
+        // 检查是否需要抢七（仅适用于多局盘）
+        if (gamesToWin > 1 && player1Games === gamesToWin && player2Games === gamesToWin) {
             // Start tie-break
             // 开始抢七
             this.startTieBreak(set);
