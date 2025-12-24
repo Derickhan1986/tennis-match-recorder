@@ -575,18 +575,53 @@ class MatchEngine {
     endMatch() {
         this.match.status = 'completed';
         this.match.endTime = new Date().toISOString();
+        
+        // Remove any empty sets (sets with no games and no tie-break)
+        // 删除任何空set（没有games且没有tie-break的set）
+        this.match.sets = this.match.sets.filter(set => {
+            // Keep set if it has winner (completed set)
+            // 如果set有winner（已完成的set），保留
+            if (set.winner) {
+                return true;
+            }
+            // Keep set if it has games or tie-break (in-progress set)
+            // 如果set有games或tie-break（进行中的set），保留
+            if ((set.games && set.games.length > 0) || set.tieBreak) {
+                return true;
+            }
+            // Remove empty set
+            // 删除空set
+            return false;
+        });
+        
         storage.saveMatch(this.match);
     }
 
     // Get current set
     // 获取当前盘
     getCurrentSet() {
+        // Don't create new set if match is completed
+        // 如果比赛已结束，不创建新set
+        if (this.match.status === 'completed' || this.match.winner) {
+            // Return the last set (even if it has a winner)
+            // 返回最后一个set（即使它有winner）
+            return this.match.sets[this.match.sets.length - 1] || null;
+        }
+        
         let currentSet = this.match.sets[this.match.sets.length - 1];
         
         if (!currentSet || currentSet.winner) {
+            // Don't create new set if we've reached the maximum number of sets
+            // 如果已达到最大盘数，不创建新set
+            const setNumber = this.match.sets.length + 1;
+            if (setNumber > this.settings.numberOfSets) {
+                // Return the last set
+                // 返回最后一个set
+                return this.match.sets[this.match.sets.length - 1] || null;
+            }
+            
             // Create new set
             // 创建新盘
-            const setNumber = this.match.sets.length + 1;
             currentSet = createSet({
                 setNumber: setNumber
             });
