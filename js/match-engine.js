@@ -261,29 +261,34 @@ class MatchEngine {
 
     // Check if set is won
     // 检查盘是否获胜
-    // Note: "Win by 2" only applies to games (40-40 deuce) and tie-breaks, not to sets
-    // 注意："领先2分"只适用于game（40-40平分）和抢七，不适用于set
+    // Rule: Must win by 2 games (e.g., 6-4, 7-5)
+    // 规则：必须领先2个game才能获胜（例如，6-4, 7-5）
+    // If both players reach gamesPerSet-1 and are tied, enter tie-break (e.g., 6-6 when gamesPerSet=7)
+    // 如果双方都达到gamesPerSet-1且平局，进入抢七（例如，当gamesPerSet=7时，6-6进入抢七）
     checkSetWinner(set) {
         const gamesToWin = this.settings.gamesPerSet;
         const player1Games = set.player1Games;
         const player2Games = set.player2Games;
         
-        // Check if someone reached gamesToWin and is leading
-        // 检查是否有人达到gamesToWin且领先
-        // Set can be won by reaching gamesToWin with at least 1 game lead (e.g., 7-6, 6-5)
-        // Set可以通过达到gamesToWin且至少领先1个game获胜（例如，7-6, 6-5）
-        if (player1Games >= gamesToWin && player1Games > player2Games) {
+        // Check if someone won by 2 games
+        // 检查是否有人领先2个game获胜
+        if (player1Games >= gamesToWin && player1Games - player2Games >= 2) {
             set.winner = 'player1';
             return;
         }
-        if (player2Games >= gamesToWin && player2Games > player1Games) {
+        if (player2Games >= gamesToWin && player2Games - player1Games >= 2) {
             set.winner = 'player2';
             return;
         }
         
-        // Check if tie-break is needed (when both players reach gamesToWin, e.g., 6-6)
-        // 检查是否需要抢七（当双方都达到gamesToWin时，例如6-6）
-        if (gamesToWin > 1 && player1Games === gamesToWin && player2Games === gamesToWin) {
+        // Check if tie-break is needed
+        // 检查是否需要抢七
+        // Enter tie-break when both players reach gamesPerSet-1 and are tied
+        // 当双方都达到gamesPerSet-1且平局时进入抢七
+        // Example: gamesPerSet=7, when 6-6, enter tie-break
+        // 例如：gamesPerSet=7，当6-6时，进入抢七
+        const tieBreakThreshold = gamesToWin - 1;
+        if (player1Games === tieBreakThreshold && player2Games === tieBreakThreshold) {
             // Start tie-break
             // 开始抢七
             this.startTieBreak(set);
