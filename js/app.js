@@ -481,6 +481,7 @@ const app = {
                 ${setsHtml}
                 ${logHtml}
                 <div class="form-actions">
+                    <button class="btn-primary" onclick="app.exportMatchToPDF('${match.id}')">Export to PDF</button>
                     <button class="btn-danger" onclick="app.deleteMatch('${match.id}')">Delete Match</button>
                 </div>
             `;
