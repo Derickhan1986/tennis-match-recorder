@@ -263,8 +263,8 @@ class MatchEngine {
     // 检查盘是否获胜
     // Rule: Must win by 2 games (e.g., 6-4, 7-5)
     // 规则：必须领先2个game才能获胜（例如，6-4, 7-5）
-    // If both players reach gamesPerSet-1 and are tied, enter tie-break (e.g., 6-6 when gamesPerSet=7)
-    // 如果双方都达到gamesPerSet-1且平局，进入抢七（例如，当gamesPerSet=7时，6-6进入抢七）
+    // Enter tie-break when both players reach gamesPerSet and are tied (e.g., 6-6 when gamesPerSet=6)
+    // 当双方都达到gamesPerSet且平局时进入抢七（例如，当gamesPerSet=6时，6-6进入抢七）
     checkSetWinner(set) {
         const gamesToWin = this.settings.gamesPerSet;
         const player1Games = set.player1Games;
@@ -283,12 +283,11 @@ class MatchEngine {
         
         // Check if tie-break is needed
         // 检查是否需要抢七
-        // Enter tie-break when both players reach gamesPerSet-1 and are tied
-        // 当双方都达到gamesPerSet-1且平局时进入抢七
-        // Example: gamesPerSet=7, when 6-6, enter tie-break
-        // 例如：gamesPerSet=7，当6-6时，进入抢七
-        const tieBreakThreshold = gamesToWin - 1;
-        if (player1Games === tieBreakThreshold && player2Games === tieBreakThreshold) {
+        // Enter tie-break when both players reach gamesPerSet and are tied
+        // 当双方都达到gamesPerSet且平局时进入抢七
+        // Example: gamesPerSet=6, when 6-6, enter tie-break
+        // 例如：gamesPerSet=6，当6-6时，进入抢七
+        if (player1Games === gamesToWin && player2Games === gamesToWin) {
             // Start tie-break
             // 开始抢七
             this.startTieBreak(set);
