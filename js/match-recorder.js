@@ -177,10 +177,23 @@ class MatchRecorder {
             let superTieBreakPoints = null;
             let superTieBreakWinBy2 = null;
             
+            // Always read tie-break settings (for normal tie-breaks in any set)
+            // 始终读取普通抢七设置（用于任何盘中的普通抢七）
+            const tieBreakGamesEl = document.getElementById('match-tie-break-games');
+            const tieBreakWinBy2El = document.getElementById('match-tie-break-winby2');
+            if (tieBreakGamesEl) {
+                tieBreakGames = parseInt(tieBreakGamesEl.value);
+            }
+            if (tieBreakWinBy2El) {
+                tieBreakWinBy2 = tieBreakWinBy2El.checked;
+            }
+            
             if (finalSetType === 'Normal Final Set') {
-                tieBreakGames = parseInt(document.getElementById('match-tie-break-games').value);
-                tieBreakWinBy2 = document.getElementById('match-tie-break-winby2').checked;
+                // Normal Final Set: tie-break settings already read above
+                // 普通决胜盘：抢七设置已在上面读取
             } else {
+                // Super Tie Break: read super tie-break settings
+                // Super Tie Break：读取超级抢七设置
                 superTieBreakPoints = parseInt(document.getElementById('match-super-tie-break-points').value);
                 superTieBreakWinBy2 = document.getElementById('match-super-tie-break-winby2').checked;
             }
