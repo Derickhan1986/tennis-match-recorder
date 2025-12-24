@@ -304,11 +304,15 @@ class MatchEngine {
         } else {
             // No previous game (e.g., final set starting directly in tie-break)
             // 没有上一局（例如，决胜盘直接进入抢七）
-            // Use current server (already set in getCurrentSet)
-            // 使用当前发球方（已在getCurrentSet中设置）
-            // If currentServer is not set, use firstServer
-            // 如果currentServer未设置，使用firstServer
-            if (!this.match.currentServer) {
+            // Switch server when entering tie-break (exchange serve)
+            // 进入抢七时交换发球权
+            if (this.match.currentServer) {
+                // Switch server (exchange serve when entering tie-break)
+                // 交换发球权（进入抢七时交换发球权）
+                this.match.currentServer = this.match.currentServer === 'player1' ? 'player2' : 'player1';
+            } else {
+                // If currentServer is not set, use firstServer
+                // 如果currentServer未设置，使用firstServer
                 this.match.currentServer = this.settings.firstServer;
             }
         }
