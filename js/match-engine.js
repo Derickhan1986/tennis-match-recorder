@@ -587,6 +587,17 @@ class MatchEngine {
                 setNumber: setNumber
             });
             
+            // Set server for first game/tie-break of new set BEFORE starting tie-break
+            // 在开始抢七之前设置新盘第一局/抢七的发球方
+            if (setNumber === 1) {
+                this.match.currentServer = this.settings.firstServer;
+            } else {
+                // Alternate first server each set
+                // 每盘交替首发
+                this.match.currentServer = this.settings.firstServer === 'player1' ? 'player2' : 'player1';
+            }
+            this.match.currentServeNumber = 1;
+            
             // Check if this is the final set and should use Super Tie Break
             // 检查是否是决胜盘且应使用 Super Tie Break
             const isFinal = this.isFinalSet(currentSet);
@@ -594,6 +605,8 @@ class MatchEngine {
             if (isFinal && this.settings.finalSetType === 'Super Tie Break') {
                 // Final set with Super Tie Break: start directly in tie-break mode
                 // 决胜盘使用 Super Tie Break：直接进入抢七模式
+                // Server is already set above, startTieBreak will exchange it
+                // 发球方已在上面设置，startTieBreak会交换它
                 this.startTieBreak(currentSet);
             } else {
                 // Normal set: start with regular game
@@ -604,17 +617,6 @@ class MatchEngine {
             }
             
             this.match.sets.push(currentSet);
-            
-            // Set server for first game/tie-break of new set
-            // 设置新盘第一局/抢七的发球方
-            if (setNumber === 1) {
-                this.match.currentServer = this.settings.firstServer;
-            } else {
-                // Alternate first server each set
-                // 每盘交替首发
-                this.match.currentServer = this.settings.firstServer === 'player1' ? 'player2' : 'player1';
-            }
-            this.match.currentServeNumber = 1;
         }
         
         return currentSet;
