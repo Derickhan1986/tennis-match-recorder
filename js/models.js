@@ -42,8 +42,16 @@ function validatePlayer(player) {
     if (!['Single Hand', 'Double Hand'].includes(player.backhandPreference)) {
         throw new Error('Invalid backhand preference');
     }
-    if (player.utrRating !== null && (player.utrRating < 1 || player.utrRating > 16.5)) {
-        throw new Error('UTR rating must be between 1 and 16.5');
+    if (player.utrRating !== null) {
+        if (player.utrRating < 0 || player.utrRating > 16) {
+            throw new Error('UTR rating must be between 0 and 16');
+        }
+        // Check if more than 2 decimal places
+        // 检查是否超过两位小数
+        const decimalPlaces = (player.utrRating.toString().split('.')[1] || '').length;
+        if (decimalPlaces > 2) {
+            throw new Error('UTR rating must have at most 2 decimal places');
+        }
     }
     return true;
 }

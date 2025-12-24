@@ -136,6 +136,31 @@ class PlayerManager {
                 return;
             }
             
+            // Validate UTR rating if provided
+            // 如果提供了UTR rating，验证它
+            let utrRating = null;
+            if (utr && utr.trim() !== '') {
+                const utrValue = parseFloat(utr);
+                if (isNaN(utrValue)) {
+                    app.showToast('UTR rating must be a valid number', 'error');
+                    return;
+                }
+                if (utrValue < 0 || utrValue > 16) {
+                    app.showToast('UTR rating must be between 0 and 16', 'error');
+                    return;
+                }
+                // Check decimal places
+                // 检查小数位数
+                const decimalPlaces = (utr.split('.')[1] || '').length;
+                if (decimalPlaces > 2) {
+                    app.showToast('UTR rating must have at most 2 decimal places', 'error');
+                    return;
+                }
+                // Round to 2 decimal places
+                // 四舍五入到两位小数
+                utrRating = Math.round(utrValue * 100) / 100;
+            }
+            
             let player;
             if (this.currentPlayer) {
                 // Update existing player
@@ -145,7 +170,7 @@ class PlayerManager {
                     name: name,
                     handedness: handedness,
                     backhandPreference: backhand,
-                    utrRating: utr ? parseFloat(utr) : null
+                    utrRating: utrRating
                 });
             } else {
                 // Create new player
@@ -154,7 +179,7 @@ class PlayerManager {
                     name: name,
                     handedness: handedness,
                     backhandPreference: backhand,
-                    utrRating: utr ? parseFloat(utr) : null
+                    utrRating: utrRating
                 });
             }
             
