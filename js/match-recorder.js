@@ -142,6 +142,12 @@ class MatchRecorder {
                     option.textContent = player.name;
                     select1.appendChild(option);
                 });
+                
+                // Update player2 options when player1 changes
+                // 当player1改变时更新player2选项
+                select1.addEventListener('change', () => {
+                    this.updatePlayer2Options();
+                });
             }
             
             if (select2) {
@@ -152,9 +158,89 @@ class MatchRecorder {
                     option.textContent = player.name;
                     select2.appendChild(option);
                 });
+                
+                // Update player1 options when player2 changes
+                // 当player2改变时更新player1选项
+                select2.addEventListener('change', () => {
+                    this.updatePlayer1Options();
+                });
             }
         } catch (error) {
             console.error('Error loading players:', error);
+        }
+    }
+    
+    // Update player2 options to exclude selected player1
+    // 更新player2选项，排除已选择的player1
+    async updatePlayer2Options() {
+        try {
+            const players = await storage.getAllPlayers();
+            const select1 = document.getElementById('match-player1');
+            const select2 = document.getElementById('match-player2');
+            const selectedPlayer1Id = select1 ? select1.value : '';
+            
+            if (select2) {
+                const currentPlayer2Id = select2.value;
+                select2.innerHTML = '<option value="">Select Player 2</option>';
+                players.forEach(player => {
+                    // Exclude player1 from player2 options
+                    // 从player2选项中排除player1
+                    if (player.id !== selectedPlayer1Id) {
+                        const option = document.createElement('option');
+                        option.value = player.id;
+                        option.textContent = player.name;
+                        if (player.id === currentPlayer2Id && player.id !== selectedPlayer1Id) {
+                            option.selected = true;
+                        }
+                        select2.appendChild(option);
+                    }
+                });
+                
+                // If current player2 is the same as player1, clear player2 selection
+                // 如果当前player2与player1相同，清除player2选择
+                if (currentPlayer2Id === selectedPlayer1Id) {
+                    select2.value = '';
+                }
+            }
+        } catch (error) {
+            console.error('Error updating player2 options:', error);
+        }
+    }
+    
+    // Update player1 options to exclude selected player2
+    // 更新player1选项，排除已选择的player2
+    async updatePlayer1Options() {
+        try {
+            const players = await storage.getAllPlayers();
+            const select1 = document.getElementById('match-player1');
+            const select2 = document.getElementById('match-player2');
+            const selectedPlayer2Id = select2 ? select2.value : '';
+            
+            if (select1) {
+                const currentPlayer1Id = select1.value;
+                select1.innerHTML = '<option value="">Select Player 1</option>';
+                players.forEach(player => {
+                    // Exclude player2 from player1 options
+                    // 从player1选项中排除player2
+                    if (player.id !== selectedPlayer2Id) {
+                        const option = document.createElement('option');
+                        option.value = player.id;
+                        option.textContent = player.name;
+                        if (player.id === currentPlayer1Id && player.id !== selectedPlayer2Id) {
+                            option.selected = true;
+                        }
+                        select1.appendChild(option);
+                    }
+                });
+                
+                // If current player1 is the same as player2, clear player1 selection
+                // 如果当前player1与player2相同，清除player1选择
+                if (currentPlayer1Id === selectedPlayer2Id) {
+                    select1.value = '';
+                }
+            }
+        } catch (error) {
+            console.error('Error updating player1 options:', error);
         }
     }
 
@@ -164,6 +250,18 @@ class MatchRecorder {
         try {
             const player1Id = document.getElementById('match-player1').value;
             const player2Id = document.getElementById('match-player2').value;
+            
+            // Validate that player1 and player2 are different
+            // 验证player1和player2不能是同一个人
+            if (!player1Id || !player2Id) {
+                app.showToast('Please select both players', 'error');
+                return;
+            }
+            if (player1Id === player2Id) {
+                app.showToast('Player 1 and Player 2 cannot be the same person', 'error');
+                return;
+            }
+            
             const firstServer = document.getElementById('match-first-server').value;
             const numberOfSets = parseInt(document.getElementById('match-sets').value);
             const gamesPerSet = parseInt(document.getElementById('match-games').value);
