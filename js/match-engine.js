@@ -445,15 +445,46 @@ class MatchEngine {
         // 显示将从日志读取，不需要返回状态
     }
 
+    // Check if current set is the final set (deciding set)
+    // 检查当前盘是否是决胜盘
+    // Final set = last set (setNumber === numberOfSets) AND sets are tied
+    // 决胜盘 = 最后一盘（setNumber === numberOfSets）且盘数相等
+    isFinalSet(set) {
+        // Must be the last set
+        // 必须是最后一盘
+        if (set.setNumber !== this.settings.numberOfSets) {
+            return false;
+        }
+        
+        // Count sets won by each player (excluding current set)
+        // 计算每个玩家赢得的盘数（不包括当前盘）
+        let player1Sets = 0;
+        let player2Sets = 0;
+        
+        for (const s of this.match.sets) {
+            if (s.setNumber < set.setNumber) {
+                if (s.winner === 'player1') {
+                    player1Sets++;
+                } else if (s.winner === 'player2') {
+                    player2Sets++;
+                }
+            }
+        }
+        
+        // Final set: sets are tied (e.g., 1-1 in 3-set match, 2-2 in 5-set match)
+        // 决胜盘：盘数相等（例如，3盘制中1-1，5盘制中2-2）
+        return player1Sets === player2Sets;
+    }
+
     // Check tie-break winner
     // 检查抢七获胜者
     checkTieBreakWinner(set) {
         const tieBreak = set.tieBreak;
-        const isFinalSet = set.setNumber === this.settings.numberOfSets;
+        const isFinal = this.isFinalSet(set);
         
         let targetPoints, winBy2;
         
-        if (isFinalSet && this.settings.finalSetType === 'Super Tie Break') {
+        if (isFinal && this.settings.finalSetType === 'Super Tie Break') {
             targetPoints = this.settings.superTieBreakPoints;
             winBy2 = this.settings.superTieBreakWinBy2;
         } else {
