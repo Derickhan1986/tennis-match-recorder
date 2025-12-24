@@ -757,6 +757,62 @@ const app = {
         }, 3000);
     },
     
+    // Load jsPDF library dynamically
+    // 动态加载jsPDF库
+    async loadJsPDF() {
+        return new Promise((resolve, reject) => {
+            // Check if already loaded
+            // 检查是否已加载
+            if (typeof window.jspdf !== 'undefined') {
+                resolve();
+                return;
+            }
+            
+            // Check if script already exists
+            // 检查脚本是否已存在
+            const existingScript = document.querySelector('script[src*="jspdf"]');
+            if (existingScript) {
+                // Wait for it to load
+                // 等待它加载
+                if (typeof window.jspdf !== 'undefined') {
+                    resolve();
+                } else {
+                    existingScript.addEventListener('load', () => {
+                        setTimeout(() => {
+                            if (typeof window.jspdf !== 'undefined') {
+                                resolve();
+                            } else {
+                                reject(new Error('jsPDF not available after loading'));
+                            }
+                        }, 100);
+                    });
+                    existingScript.addEventListener('error', () => {
+                        reject(new Error('Failed to load jsPDF'));
+                    });
+                }
+                return;
+            }
+            
+            // Load jsPDF script
+            // 加载jsPDF脚本
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+            script.onload = () => {
+                // Wait a bit for the library to initialize
+                // 等待库初始化
+                setTimeout(() => {
+                    if (typeof window.jspdf !== 'undefined') {
+                        resolve();
+                    } else {
+                        reject(new Error('jsPDF not available after loading'));
+                    }
+                }, 100);
+            };
+            script.onerror = () => reject(new Error('Failed to load jsPDF script'));
+            document.head.appendChild(script);
+        });
+    },
+    
     // Escape HTML
     // 转义HTML
     escapeHtml(text) {
