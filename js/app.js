@@ -493,6 +493,171 @@ const app = {
         }
     },
     
+    // Export match to PDF
+    // 导出比赛为PDF
+    async exportMatchToPDF(matchId) {
+        try {
+            const match = await storage.getMatch(matchId);
+            if (!match) {
+                this.showToast('Match not found', 'error');
+                return;
+            }
+            
+            const player1 = await storage.getPlayer(match.player1Id);
+            const player2 = await storage.getPlayer(match.player2Id);
+            const player1Name = player1 ? player1.name : 'Unknown Player 1';
+            const player2Name = player2 ? player2.name : 'Unknown Player 2';
+            
+            // Check if jsPDF is available
+            // 检查jsPDF是否可用
+            if (typeof window.jspdf === 'undefined') {
+                this.showToast('PDF library not loaded', 'error');
+                return;
+            }
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Set font
+            // 设置字体
+            doc.setFont('helvetica');
+            
+            // Title
+            // 标题
+            doc.setFontSize(18);
+            doc.text('Tennis Match Report', 105, 20, { align: 'center' });
+            
+            let yPos = 35;
+            
+            // Match Info
+            // 比赛信息
+            doc.setFontSize(14);
+            doc.text('Match Information', 14, yPos);
+            yPos += 8;
+            
+            doc.setFontSize(10);
+            doc.text(`Player 1: ${player1Name}`, 14, yPos);
+            yPos += 6;
+            doc.text(`Player 2: ${player2Name}`, 14, yPos);
+            yPos += 6;
+            doc.text(`Date: ${formatDate(match.startTime)}`, 14, yPos);
+            yPos += 6;
+            doc.text(`Duration: ${formatDuration(match.startTime, match.endTime)}`, 14, yPos);
+            yPos += 6;
+            doc.text(`Court: ${match.settings.courtType} ${match.settings.indoor ? '(Indoor)' : '(Outdoor)'}`, 14, yPos);
+            yPos += 6;
+            doc.text(`Winner: ${match.winner === 'player1' ? player1Name : match.winner === 'player2' ? player2Name : 'Not finished'}`, 14, yPos);
+            yPos += 10;
+            
+            // Sets
+            // 盘
+            if (match.sets && match.sets.length > 0) {
+                doc.setFontSize(14);
+                doc.text('Sets', 14, yPos);
+                yPos += 8;
+                
+                doc.setFontSize(10);
+                match.sets.forEach((set, index) => {
+                    // Check if we need a new page
+                    // 检查是否需要新页面
+                    if (yPos > 270) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    
+                    const isInTieBreak = set.tieBreak && !set.tieBreak.winner;
+                    const hasTieBreak = set.tieBreak && (set.tieBreak.winner || isInTieBreak);
+                    
+                    let setScore = `${set.player1Games}-${set.player2Games}`;
+                    if (hasTieBreak) {
+                        const tbPoints = `${set.tieBreak.player1Points || 0}-${set.tieBreak.player2Points || 0}`;
+                        if (isInTieBreak) {
+                            setScore += ` (TB: ${tbPoints})`;
+                        } else {
+                            setScore += ` (${tbPoints})`;
+                        }
+                    }
+                    
+                    if (set.player1Games === 0 && set.player2Games === 0 && hasTieBreak) {
+                        const tbPoints = `${set.tieBreak.player1Points || 0}-${set.tieBreak.player2Points || 0}`;
+                        setScore = isInTieBreak ? `TB: ${tbPoints}` : `TB: ${tbPoints} (Finished)`;
+                    }
+                    
+                    const winner = set.winner === 'player1' ? player1Name : set.winner === 'player2' ? player2Name : 'Not finished';
+                    
+                    doc.text(`Set ${set.setNumber}: ${setScore}`, 20, yPos);
+                    yPos += 6;
+                    doc.text(`Winner: ${winner}`, 30, yPos);
+                    yPos += 8;
+                });
+            }
+            
+            // Match Log
+            // 比赛日志
+            if (match.log && match.log.length > 0) {
+                // Check if we need a new page
+                // 检查是否需要新页面
+                if (yPos > 250) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                
+                doc.setFontSize(14);
+                doc.text('Match Log', 14, yPos);
+                yPos += 8;
+                
+                doc.setFontSize(8);
+                match.log.forEach((entry, index) => {
+                    // Check if we need a new page
+                    // 检查是否需要新页面
+                    if (yPos > 280) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    
+                    const playerName = entry.player === 'player1' ? player1Name : player2Name;
+                    const time = new Date(entry.timestamp);
+                    const timeStr = time.toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+                        second: '2-digit',
+                        hour12: false 
+                    });
+                    
+                    let actionText = entry.action || '';
+                    if (entry.shotType) {
+                        actionText += ` (${entry.shotType})`;
+                    }
+                    
+                    const gameScore = entry.gameScore || '-';
+                    const gamesScore = entry.gamesScore || '-';
+                    const setsScore = entry.setsScore || '-';
+                    
+                    // Log entry line
+                    // 日志条目行
+                    doc.text(`${timeStr} - ${playerName}: ${actionText}`, 14, yPos);
+                    yPos += 5;
+                    doc.text(`Score: ${gameScore} | Game: ${gamesScore} | Set: ${setsScore}`, 20, yPos);
+                    yPos += 7;
+                });
+            }
+            
+            // Generate filename
+            // 生成文件名
+            const dateStr = formatDate(match.startTime).replace(/\//g, '-');
+            const filename = `Match_${player1Name}_vs_${player2Name}_${dateStr}.pdf`;
+            
+            // Save PDF
+            // 保存PDF
+            doc.save(filename);
+            
+            this.showToast('PDF exported successfully', 'success');
+        } catch (error) {
+            console.error('Error exporting to PDF:', error);
+            this.showToast('Error exporting to PDF', 'error');
+        }
+    },
+    
     // Delete match
     // 删除比赛
     async deleteMatch(matchId) {
