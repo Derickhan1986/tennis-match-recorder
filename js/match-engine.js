@@ -516,11 +516,10 @@ class MatchEngine {
             targetPoints = this.settings.superTieBreakPoints;
             winBy2 = this.settings.superTieBreakWinBy2;
         } else {
-            // Normal tie-break (e.g., 6-6 tie-break): always win by 2
-            // 普通抢七（例如，6-6时的抢七）：总是需要领先2分获胜
+            // Normal tie-break (e.g., 6-6 tie-break): use tieBreakWinBy2 setting
+            // 普通抢七（例如，6-6时的抢七）：使用tieBreakWinBy2设置
             targetPoints = this.settings.tieBreakGames;
-            winBy2 = true; // Always win by 2 for normal tie-break
-            // 普通抢七总是需要领先2分获胜
+            winBy2 = this.settings.tieBreakWinBy2;
         }
         
         const player1Points = tieBreak.player1Points;
@@ -537,8 +536,8 @@ class MatchEngine {
             // If both players reached target but neither leads by 2, continue playing
             // 如果双方都达到目标分数但都没有领先2分，继续比赛
         } else {
-            // No win by 2: first to reach target points wins (only for Super Tie Break if setting is false)
-            // 不需要领先2分：先达到目标分数者获胜（仅当Super Tie Break设置false时）
+            // No win by 2: first to reach target points wins
+            // 不需要领先2分：先达到目标分数者获胜
             if (player1Points >= targetPoints && player1Points > player2Points) {
                 tieBreak.winner = 'player1';
             } else if (player2Points >= targetPoints && player2Points > player1Points) {
