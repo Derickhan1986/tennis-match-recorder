@@ -112,6 +112,35 @@ const app = {
             });
         }
         
+        // GitHub pull button
+        // GitHub拉取按钮
+        const pullBtn = document.getElementById('pull-button');
+        if (pullBtn) {
+            pullBtn.addEventListener('click', async () => {
+                const statusEl = document.getElementById('sync-status');
+                try {
+                    if (statusEl) {
+                        statusEl.textContent = 'Pulling data...';
+                        statusEl.className = 'success';
+                    }
+                    await githubSync.pull();
+                    if (statusEl) {
+                        statusEl.textContent = 'Data pulled successfully!';
+                        statusEl.className = 'success';
+                    }
+                    // Reload matches and players after pull
+                    // 拉取后重新加载比赛和玩家
+                    await this.loadMatches();
+                    await playerManager.loadPlayers();
+                } catch (error) {
+                    if (statusEl) {
+                        statusEl.textContent = `Error: ${error.message}`;
+                        statusEl.className = 'error';
+                    }
+                }
+            });
+        }
+        
         // Load saved GitHub settings
         // 加载保存的GitHub设置
         this.loadGitHubSettings();

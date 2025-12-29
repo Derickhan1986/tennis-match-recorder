@@ -218,6 +218,8 @@ class GitHubSync {
     // Pull data from GitHub
     // 从GitHub拉取数据
     async pull() {
+        const statusEl = document.getElementById('sync-status');
+        
         try {
             await this.init();
             
@@ -225,40 +227,72 @@ class GitHubSync {
                 throw new Error('GitHub token and repository name are required');
             }
             
+            if (statusEl) {
+                statusEl.textContent = 'Downloading data from GitHub...';
+                statusEl.className = 'success';
+            }
+            
             // Download files
             // 下载文件
-            const playersResponse = await fetch(`https://api.github.com/repos/${this.owner}/${this.repo}/contents/data/players.json`, {
+            const playersResponse = await fetch(`https://api.github.com/repos/${this.owner || 'your-username'}/${this.repo}/contents/data/players.json`, {
                 headers: {
                     'Authorization': `token ${this.token}`,
                     'Accept': 'application/vnd.github.v3+json'
                 }
             });
             
-            const matchesResponse = await fetch(`https://api.github.com/repos/${this.owner}/${this.repo}/contents/data/matches.json`, {
+            const matchesResponse = await fetch(`https://api.github.com/repos/${this.owner || 'your-username'}/${this.repo}/contents/data/matches.json`, {
                 headers: {
                     'Authorization': `token ${this.token}`,
                     'Accept': 'application/vnd.github.v3+json'
                 }
             });
             
-            if (!playersResponse.ok || !matchesResponse.ok) {
-                throw new Error('Failed to download data from GitHub');
+            if (!playersResponse.ok) {
+                if (playersResponse.status === 404) {
+                    throw new Error('Players data not found on GitHub. Please sync data first.');
+                }
+                throw new Error(`Failed to download players data: ${playersResponse.statusText}`);
+            }
+            
+            if (!matchesResponse.ok) {
+                if (matchesResponse.status === 404) {
+                    throw new Error('Matches data not found on GitHub. Please sync data first.');
+                }
+                throw new Error(`Failed to download matches data: ${matchesResponse.statusText}`);
             }
             
             const playersData = await playersResponse.json();
             const matchesData = await matchesResponse.json();
             
-            const players = JSON.parse(atob(playersData.content));
-            const matches = JSON.parse(atob(matchesData.content));
+            // Decode base64 content
+            // 解码base64内容
+            const players = JSON.parse(atob(playersData.content.replace(/\s/g, '')));
+            const matches = JSON.parse(atob(matchesData.content.replace(/\s/g, '')));
             
-            // Import data
-            // 导入数据
+            if (statusEl) {
+                statusEl.textContent = 'Importing data...';
+                statusEl.className = 'success';
+            }
+            
+            // Import data (this will merge with existing data)
+            // 导入数据（这将与现有数据合并）
             await storage.importData({ players, matches });
             
-            app.showToast('Data pulled from GitHub', 'success');
+            if (statusEl) {
+                statusEl.textContent = 'Data pulled successfully!';
+                statusEl.className = 'success';
+            }
+            
+            app.showToast('Data pulled from GitHub successfully', 'success');
         } catch (error) {
             console.error('Error pulling from GitHub:', error);
+            if (statusEl) {
+                statusEl.textContent = `Error: ${error.message}`;
+                statusEl.className = 'error';
+            }
             app.showToast('Pull failed: ' + error.message, 'error');
+            throw error;
         }
     }
 }
