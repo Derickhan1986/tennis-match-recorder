@@ -1,20 +1,11 @@
 [
   {
-    "id": "c39dff65-57eb-4907-9e6d-7051e52cb4d6",
-    "name": "C",
-    "handedness": "lefty",
-    "backhandPreference": "Single Hand",
-    "utrRating": 5,
-    "createdAt": "2025-12-24T02:44:02.837Z",
-    "updatedAt": "2025-12-24T02:44:02.837Z"
-  },
-  {
-    "id": "1f9194b2-c691-4864-ad2f-a287c9308b96",
-    "name": "A",
+    "id": "4d885d40-9fe4-4f1e-beb1-d94ff48df29c",
+    "name": "Jaden Han",
     "handedness": "righty",
     "backhandPreference": "Double Hand",
-    "utrRating": 9.1,
-    "createdAt": "2025-12-22T17:17:42.852Z",
-    "updatedAt": "2025-12-24T02:43:43.798Z"
+    "utrRating": 5.63,
+    "createdAt": "2025-12-29T03:19:56.141Z",
+    "updatedAt": "2025-12-29T03:19:56.142Z"
   }
 ]
