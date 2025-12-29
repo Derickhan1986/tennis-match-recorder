@@ -1,0 +1,20 @@
+[
+  {
+    "id": "c39dff65-57eb-4907-9e6d-7051e52cb4d6",
+    "name": "C",
+    "handedness": "lefty",
+    "backhandPreference": "Single Hand",
+    "utrRating": 5,
+    "createdAt": "2025-12-24T02:44:02.837Z",
+    "updatedAt": "2025-12-24T02:44:02.837Z"
+  },
+  {
+    "id": "1f9194b2-c691-4864-ad2f-a287c9308b96",
+    "name": "A",
+    "handedness": "righty",
+    "backhandPreference": "Double Hand",
+    "utrRating": 9.1,
+    "createdAt": "2025-12-22T17:17:42.852Z",
+    "updatedAt": "2025-12-24T02:43:43.798Z"
+  }
+]
