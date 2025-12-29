@@ -199,7 +199,8 @@ const app = {
             'new-match': 'New Match',
             'match-recording': 'Recording',
             'match-detail': 'Match Details',
-            'player-form': 'Player'
+            'player-form': 'Player',
+            'player-stats': 'Player Statistics'
         };
         
         titleEl.textContent = titles[pageName] || 'Tennis Recorder';
@@ -229,7 +230,8 @@ const app = {
             'new-match': 'matches',
             'match-recording': 'matches',
             'match-detail': 'matches',
-            'player-form': 'players'
+            'player-form': 'players',
+            'player-stats': 'players'
         };
         
         const targetPage = backPages[this.currentPage];
@@ -450,6 +452,46 @@ const app = {
                 `;
             }
             
+            // Generate statistics tabs
+            // 生成统计标签
+            const numSets = match.sets ? match.sets.length : 0;
+            let tabsHtml = '<div class="stats-tabs-container">';
+            tabsHtml += '<button class="stats-tab active" data-set-number="0">Match</button>';
+            for (let i = 1; i <= numSets; i++) {
+                tabsHtml += `<button class="stats-tab" data-set-number="${i}">Set ${i}</button>`;
+            }
+            tabsHtml += '</div>';
+            
+            // Calculate match statistics (default: Match tab)
+            // 计算比赛统计（默认：Match标签）
+            let statsHtml = '';
+            try {
+                // Debug: Check what's available
+                // 调试：检查可用的内容
+                console.log('Checking for calculateMatchStats:', {
+                    'window.calculateMatchStats': typeof window.calculateMatchStats,
+                    'calculateMatchStats': typeof calculateMatchStats,
+                    'window': typeof window
+                });
+                
+                // Check if calculateMatchStats is available (try window first, then global)
+                // 检查 calculateMatchStats 是否可用（先尝试 window，然后全局）
+                const calcMatchStats = window.calculateMatchStats || (typeof calculateMatchStats !== 'undefined' ? calculateMatchStats : null);
+                if (!calcMatchStats) {
+                    console.error('calculateMatchStats not found. Window object:', window);
+                    console.error('All window properties:', Object.keys(window).filter(k => k.includes('calculate') || k.includes('statistics')));
+                    throw new Error('calculateMatchStats function is not defined. Please check if statistics.js is loaded correctly.');
+                }
+                const matchStats = calcMatchStats(match);
+                statsHtml = this.generateMatchStatsHTML(matchStats, player1Name, player2Name, match);
+            } catch (error) {
+                console.error('Error calculating match statistics:', error);
+                console.error('Error stack:', error.stack);
+                console.error('Match data:', match);
+                console.error('Available functions:', typeof window.calculateMatchStats, typeof calculateMatchStats, typeof window.calculatePlayerStats);
+                statsHtml = `<div class="detail-section"><p>Statistics unavailable</p><p style="font-size: 12px; color: #888;">Error: ${error.message}</p></div>`;
+            }
+            
             container.innerHTML = `
                 <div class="detail-section">
                     <h3>Match Info</h3>
@@ -480,16 +522,914 @@ const app = {
                 </div>
                 ${setsHtml}
                 ${logHtml}
+                
+                <!-- Technical Statistics -->
+                ${tabsHtml}
+                <div id="match-statistics-container">
+                    ${statsHtml}
+                </div>
+                
                 <div class="form-actions">
                     <button class="btn-primary" onclick="app.exportMatchToPDF('${match.id}')">Export to PDF</button>
                     <button class="btn-danger" onclick="app.deleteMatch('${match.id}')">Delete Match</button>
                 </div>
             `;
             
+            // Add event listeners for tab switching
+            // 为标签切换添加事件监听器
+            const tabButtons = container.querySelectorAll('.stats-tab');
+            tabButtons.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const setNumber = parseInt(tab.getAttribute('data-set-number'));
+                    this.switchStatisticsTab(match, setNumber, player1Name, player2Name, tabButtons);
+                });
+            });
+            
             this.showPage('match-detail');
         } catch (error) {
             console.error('Error loading match detail:', error);
             this.showToast('Error loading match details', 'error');
+        }
+    },
+    
+    // Show player statistics
+    // 显示玩家统计
+    async showPlayerStats(playerId) {
+        try {
+            // Show loading message
+            // 显示加载消息
+            this.showToast('Calculating statistics...', 'info');
+            
+            // Get player info
+            // 获取玩家信息
+            const player = await storage.getPlayer(playerId);
+            if (!player) {
+                this.showToast('Player not found', 'error');
+                return;
+            }
+            
+            // Calculate statistics (real-time calculation)
+            // 计算统计（实时计算）
+            const stats = await calculatePlayerStats(playerId);
+            
+            // Display statistics page
+            // 显示统计页面
+            this.renderPlayerStats(player, stats);
+            this.showPage('player-stats');
+        } catch (error) {
+            console.error('Error calculating statistics:', error);
+            this.showToast('Error calculating statistics', 'error');
+        }
+    },
+    
+    // Render player statistics
+    // 渲染玩家统计
+    async renderPlayerStats(player, stats) {
+        const container = document.getElementById('player-stats-content');
+        if (!container) return;
+        
+        // Get opponent names for display
+        // 获取对手名称用于显示
+        const opponentStats = [];
+        for (const [opponentId, oppStats] of Object.entries(stats.byOpponent)) {
+            const opponent = await storage.getPlayer(opponentId);
+            const opponentName = opponent ? opponent.name : 'Unknown';
+            opponentStats.push({
+                name: opponentName,
+                matches: oppStats.matches,
+                wins: oppStats.wins,
+                losses: oppStats.losses,
+                winRate: oppStats.matches > 0 ? ((oppStats.wins / oppStats.matches) * 100).toFixed(1) : '0.0'
+            });
+        }
+        opponentStats.sort((a, b) => b.matches - a.matches);
+        
+        // Generate shot type chart data
+        // 生成击球类型图表数据
+        const shotTypeEntries = Object.entries(stats.shotTypes).filter(([_, count]) => count > 0);
+        shotTypeEntries.sort((a, b) => b[1] - a[1]);
+        
+        // Generate court type statistics
+        // 生成场地类型统计
+        const courtTypeStats = Object.entries(stats.byCourtType)
+            .filter(([_, data]) => data.matches > 0)
+            .map(([courtType, data]) => ({
+                courtType,
+                matches: data.matches,
+                wins: data.wins,
+                winRate: data.matches > 0 ? ((data.wins / data.matches) * 100).toFixed(1) : '0.0'
+            }));
+        
+        container.innerHTML = `
+            <div class="detail-section">
+                <h3>${this.escapeHtml(player.name)}</h3>
+                <div class="player-info">
+                    ${player.handedness === 'righty' ? 'Righty' : 'Lefty'} | 
+                    ${player.backhandPreference} | 
+                    ${player.utrRating ? `UTR: ${player.utrRating}` : 'No UTR'}
+                </div>
+            </div>
+            
+            <!-- Match Record -->
+            <div class="detail-section">
+                <h3>Match Record</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.totalMatches}</div>
+                        <div class="stat-label">Total Matches</div>
+                    </div>
+                    <div class="stat-card success">
+                        <div class="stat-value">${stats.wins}</div>
+                        <div class="stat-label">Wins</div>
+                    </div>
+                    <div class="stat-card danger">
+                        <div class="stat-value">${stats.losses}</div>
+                        <div class="stat-label">Losses</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.winRate}%</div>
+                        <div class="stat-label">Win Rate</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Serve Statistics -->
+            <div class="detail-section">
+                <h3>Serve Statistics</h3>
+                <div class="stats-table">
+                    <div class="stats-row">
+                        <span>Total Serves</span>
+                        <span>${stats.totalServes}</span>
+                    </div>
+                    <div class="stats-row">
+                        <span>1st Serve In %</span>
+                        <span>${stats.firstServePercentage}%/${stats.firstServes}</span>
+                    </div>
+                    <div class="stats-row">
+                        <span>1st Serve Won %</span>
+                        <span>${stats.firstServePointsWonPercentage || '0.0'}%</span>
+                    </div>
+                    <div class="stats-row">
+                        <span>2nd Serve In %</span>
+                        <span>${stats.secondServeInPercentage || '0.0'}%/${stats.secondServes}</span>
+                    </div>
+                    <div class="stats-row">
+                        <span>2nd Serve Won %</span>
+                        <span>${stats.secondServePercentage}%</span>
+                    </div>
+                    <div class="stats-row">
+                        <span>Total Serve Point Win %</span>
+                        <span>${stats.totalServePointWinPercentage || '0.0'}%</span>
+                    </div>
+                    <div class="stats-row">
+                        <span>Return 1st Serve Won %</span>
+                        <span>${stats.returnFirstServePointsWonPercentage || '0.0'}%</span>
+                    </div>
+                    <div class="stats-row">
+                        <span>Return 2nd Serve Won %</span>
+                        <span>${stats.returnSecondServePointsWonPercentage || '0.0'}%</span>
+                    </div>
+                    <div class="stats-row">
+                        <span>ACEs</span>
+                        <span>${stats.aces}</span>
+                    </div>
+                    <div class="stats-row">
+                        <span>Double Faults</span>
+                        <span>${stats.doubleFaults}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Break Point Statistics -->
+            <div class="detail-section">
+                <h3>Break Point Statistics</h3>
+                <div class="stats-table">
+                    <div class="stats-row">
+                        <span>Break Point Converted/Opportunities</span>
+                        <span>${stats.breakPointsConverted || 0}/${stats.breakPointsOpportunities || 0}</span>
+                    </div>
+                    <div class="stats-row">
+                        <span>Break Points Converted %</span>
+                        <span>${stats.breakPointsConvertedPercentage || '0.0'}%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Point Type Statistics -->
+            <div class="detail-section">
+                <h3>Point Type Statistics</h3>
+                <div class="stats-table">
+                    <div class="stats-row">
+                        <span>Winners</span>
+                        <span>${stats.winners}</span>
+                    </div>
+                    <div class="stats-row">
+                        <span>Unforced Errors</span>
+                        <span>${stats.unforcedErrors}</span>
+                    </div>
+                    <div class="stats-row">
+                        <span>Forced Errors</span>
+                        <span>${stats.forcedErrors}</span>
+                    </div>
+                    <div class="stats-row">
+                        <span>Return Errors</span>
+                        <span>${stats.returnErrors}</span>
+                    </div>
+                    <div class="stats-row">
+                        <span>Total Points Won</span>
+                        <span>${stats.totalPointsWon}</span>
+                    </div>
+                    <div class="stats-row">
+                        <span>Total Points Lost</span>
+                        <span>${stats.totalPointsLost}</span>
+                    </div>
+                </div>
+            </div>
+            
+            ${shotTypeEntries.length > 0 ? `
+            <!-- Shot Type Statistics -->
+            <div class="detail-section">
+                <h3>Shot Type Breakdown</h3>
+                <div class="stats-table">
+                    ${shotTypeEntries.map(([shotType, count]) => `
+                        <div class="stats-row">
+                            <span>${shotType}</span>
+                            <span>${count}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            ` : ''}
+            
+            ${courtTypeStats.length > 0 ? `
+            <!-- Court Type Statistics -->
+            <div class="detail-section">
+                <h3>Performance by Court Type</h3>
+                <div class="stats-table">
+                    ${courtTypeStats.map(stat => `
+                        <div class="stats-row">
+                            <span>${stat.courtType}</span>
+                            <span>${stat.wins}-${stat.matches - stat.wins} (${stat.winRate}%)</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            ` : ''}
+            
+            ${opponentStats.length > 0 ? `
+            <!-- Opponent Statistics -->
+            <div class="detail-section">
+                <h3>Head-to-Head</h3>
+                <div class="stats-table">
+                    ${opponentStats.map(opp => `
+                        <div class="stats-row">
+                            <span>${this.escapeHtml(opp.name)}</span>
+                            <span>${opp.wins}-${opp.losses} (${opp.winRate}%)</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            ` : ''}
+        `;
+    },
+    
+    // Generate match technical statistics HTML
+    // 生成比赛技术统计HTML
+    generateMatchStatsHTML(matchStats, player1Name, player2Name, match = null) {
+        const p1 = matchStats.player1;
+        const p2 = matchStats.player2;
+        
+        // Calculate unforced errors by shot type
+        // 按击球类型统计非受迫性失误
+        const calculateUnforcedErrorsByShotType = (playerRole) => {
+            const stats = {
+                total: 0,
+                totalForehand: 0,
+                forehandGround: 0,
+                forehandSlice: 0,
+                forehandVolley: 0,
+                totalBackhand: 0,
+                backhandGround: 0,
+                backhandSlice: 0,
+                backhandVolley: 0,
+                approachShot: 0,
+                overhead: 0,
+                dropShot: 0,
+                lob: 0
+            };
+            
+            if (!match || !match.log) return stats;
+            
+            for (const entry of match.log) {
+                if (entry.player === playerRole && entry.action === 'Unforced Error' && entry.shotType) {
+                    stats.total++;
+                    const shotType = entry.shotType;
+                    
+                    if (shotType === 'Forehand Ground Stroke') {
+                        stats.totalForehand++;
+                        stats.forehandGround++;
+                    } else if (shotType === 'Forehand Slice') {
+                        stats.totalForehand++;
+                        stats.forehandSlice++;
+                    } else if (shotType === 'Forehand Volley') {
+                        stats.totalForehand++;
+                        stats.forehandVolley++;
+                    } else if (shotType === 'Backhand Ground Stroke') {
+                        stats.totalBackhand++;
+                        stats.backhandGround++;
+                    } else if (shotType === 'Backhand Slice') {
+                        stats.totalBackhand++;
+                        stats.backhandSlice++;
+                    } else if (shotType === 'Backhand Volley') {
+                        stats.totalBackhand++;
+                        stats.backhandVolley++;
+                    } else if (shotType === 'Approach Shot') {
+                        stats.approachShot++;
+                    } else if (shotType === 'Overhead') {
+                        stats.overhead++;
+                    } else if (shotType === 'Drop Shot') {
+                        stats.dropShot++;
+                    } else if (shotType === 'Lob') {
+                        stats.lob++;
+                    }
+                }
+            }
+            
+            return stats;
+        };
+        
+        const p1UnforcedErrors = calculateUnforcedErrorsByShotType('player1');
+        const p2UnforcedErrors = calculateUnforcedErrorsByShotType('player2');
+        
+        // Calculate forced errors by shot type
+        // 按击球类型统计受迫性失误
+        const calculateForcedErrorsByShotType = (playerRole) => {
+            const stats = {
+                total: 0,
+                totalForehand: 0,
+                forehandGround: 0,
+                forehandSlice: 0,
+                forehandVolley: 0,
+                totalBackhand: 0,
+                backhandGround: 0,
+                backhandSlice: 0,
+                backhandVolley: 0,
+                approachShot: 0,
+                overhead: 0,
+                dropShot: 0,
+                lob: 0
+            };
+            
+            if (!match || !match.log) return stats;
+            
+            for (const entry of match.log) {
+                if (entry.player === playerRole && entry.action === 'Forced Error' && entry.shotType) {
+                    stats.total++;
+                    const shotType = entry.shotType;
+                    
+                    if (shotType === 'Forehand Ground Stroke') {
+                        stats.totalForehand++;
+                        stats.forehandGround++;
+                    } else if (shotType === 'Forehand Slice') {
+                        stats.totalForehand++;
+                        stats.forehandSlice++;
+                    } else if (shotType === 'Forehand Volley') {
+                        stats.totalForehand++;
+                        stats.forehandVolley++;
+                    } else if (shotType === 'Backhand Ground Stroke') {
+                        stats.totalBackhand++;
+                        stats.backhandGround++;
+                    } else if (shotType === 'Backhand Slice') {
+                        stats.totalBackhand++;
+                        stats.backhandSlice++;
+                    } else if (shotType === 'Backhand Volley') {
+                        stats.totalBackhand++;
+                        stats.backhandVolley++;
+                    } else if (shotType === 'Approach Shot') {
+                        stats.approachShot++;
+                    } else if (shotType === 'Overhead') {
+                        stats.overhead++;
+                    } else if (shotType === 'Drop Shot') {
+                        stats.dropShot++;
+                    } else if (shotType === 'Lob') {
+                        stats.lob++;
+                    }
+                }
+            }
+            
+            return stats;
+        };
+        
+        const p1ForcedErrors = calculateForcedErrorsByShotType('player1');
+        const p2ForcedErrors = calculateForcedErrorsByShotType('player2');
+        
+        // Calculate winners by shot type
+        // 按击球类型统计制胜分
+        const calculateWinnersByShotType = (playerRole) => {
+            const stats = {
+                total: 0,
+                totalForehand: 0,
+                forehandGround: 0,
+                forehandSlice: 0,
+                forehandVolley: 0,
+                totalBackhand: 0,
+                backhandGround: 0,
+                backhandSlice: 0,
+                backhandVolley: 0,
+                approachShot: 0,
+                overhead: 0,
+                dropShot: 0,
+                lob: 0
+            };
+            
+            if (!match || !match.log) return stats;
+            
+            for (const entry of match.log) {
+                if (entry.player === playerRole && entry.action === 'Winner' && entry.shotType) {
+                    stats.total++;
+                    const shotType = entry.shotType;
+                    
+                    if (shotType === 'Forehand Ground Stroke') {
+                        stats.totalForehand++;
+                        stats.forehandGround++;
+                    } else if (shotType === 'Forehand Slice') {
+                        stats.totalForehand++;
+                        stats.forehandSlice++;
+                    } else if (shotType === 'Forehand Volley') {
+                        stats.totalForehand++;
+                        stats.forehandVolley++;
+                    } else if (shotType === 'Backhand Ground Stroke') {
+                        stats.totalBackhand++;
+                        stats.backhandGround++;
+                    } else if (shotType === 'Backhand Slice') {
+                        stats.totalBackhand++;
+                        stats.backhandSlice++;
+                    } else if (shotType === 'Backhand Volley') {
+                        stats.totalBackhand++;
+                        stats.backhandVolley++;
+                    } else if (shotType === 'Approach Shot') {
+                        stats.approachShot++;
+                    } else if (shotType === 'Overhead') {
+                        stats.overhead++;
+                    } else if (shotType === 'Drop Shot') {
+                        stats.dropShot++;
+                    } else if (shotType === 'Lob') {
+                        stats.lob++;
+                    }
+                }
+            }
+            
+            return stats;
+        };
+        
+        const p1Winners = calculateWinnersByShotType('player1');
+        const p2Winners = calculateWinnersByShotType('player2');
+        
+        return `
+            <div class="detail-section">
+                <!-- Comparison Table -->
+                <div class="stats-comparison">
+                    <div class="comparison-header">
+                        <div class="comparison-player">${this.escapeHtml(player1Name)}</div>
+                        <div class="comparison-label">Statistic</div>
+                        <div class="comparison-player">${this.escapeHtml(player2Name)}</div>
+                    </div>
+                    
+                    <div class="comparison-section-header">
+                        <div>Match Summary</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.pointsWon || 0}</div>
+                        <div class="comparison-label">Total Point Won</div>
+                        <div class="comparison-value">${p2.pointsWon || 0}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.aces}</div>
+                        <div class="comparison-label">ACEs</div>
+                        <div class="comparison-value">${p2.aces}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.doubleFaults}</div>
+                        <div class="comparison-label">Double Faults</div>
+                        <div class="comparison-value">${p2.doubleFaults}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.winners}</div>
+                        <div class="comparison-label">Winners</div>
+                        <div class="comparison-value">${p2.winners}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.unforcedErrors}</div>
+                        <div class="comparison-label">Unforced Errors</div>
+                        <div class="comparison-value">${p2.unforcedErrors}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.forcedErrors}</div>
+                        <div class="comparison-label">Forced Errors</div>
+                        <div class="comparison-value">${p2.forcedErrors}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.returnErrors}</div>
+                        <div class="comparison-label">Return Errors</div>
+                        <div class="comparison-value">${p2.returnErrors}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.totalServePointWinPercentage || '0.0'}%</div>
+                        <div class="comparison-label">Total Serve Point Win %</div>
+                        <div class="comparison-value">${p2.totalServePointWinPercentage || '0.0'}%</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.breakPointsConverted || 0}/${p1.breakPointsOpportunities || 0}</div>
+                        <div class="comparison-label">Break Point Converted/Opportunities</div>
+                        <div class="comparison-value">${p2.breakPointsConverted || 0}/${p2.breakPointsOpportunities || 0}</div>
+                    </div>
+                    
+                    <div class="comparison-section-header">
+                        <div>Unforced Errors</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1UnforcedErrors.total}</div>
+                        <div class="comparison-label">Total</div>
+                        <div class="comparison-value">${p2UnforcedErrors.total}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1UnforcedErrors.totalForehand}</div>
+                        <div class="comparison-label">Total Forehand</div>
+                        <div class="comparison-value">${p2UnforcedErrors.totalForehand}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1UnforcedErrors.forehandGround}</div>
+                        <div class="comparison-label">Forehand Ground</div>
+                        <div class="comparison-value">${p2UnforcedErrors.forehandGround}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1UnforcedErrors.forehandSlice}</div>
+                        <div class="comparison-label">Forehand Slice</div>
+                        <div class="comparison-value">${p2UnforcedErrors.forehandSlice}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1UnforcedErrors.forehandVolley}</div>
+                        <div class="comparison-label">Forehand Volley</div>
+                        <div class="comparison-value">${p2UnforcedErrors.forehandVolley}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1UnforcedErrors.totalBackhand}</div>
+                        <div class="comparison-label">Total Backhand</div>
+                        <div class="comparison-value">${p2UnforcedErrors.totalBackhand}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1UnforcedErrors.backhandGround}</div>
+                        <div class="comparison-label">Backhand Ground</div>
+                        <div class="comparison-value">${p2UnforcedErrors.backhandGround}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1UnforcedErrors.backhandSlice}</div>
+                        <div class="comparison-label">Backhand Slice</div>
+                        <div class="comparison-value">${p2UnforcedErrors.backhandSlice}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1UnforcedErrors.backhandVolley}</div>
+                        <div class="comparison-label">Backhand Volley</div>
+                        <div class="comparison-value">${p2UnforcedErrors.backhandVolley}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1UnforcedErrors.approachShot}</div>
+                        <div class="comparison-label">Approach Shot</div>
+                        <div class="comparison-value">${p2UnforcedErrors.approachShot}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1UnforcedErrors.overhead}</div>
+                        <div class="comparison-label">Overhead</div>
+                        <div class="comparison-value">${p2UnforcedErrors.overhead}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1UnforcedErrors.dropShot}</div>
+                        <div class="comparison-label">Drop Shot</div>
+                        <div class="comparison-value">${p2UnforcedErrors.dropShot}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1UnforcedErrors.lob}</div>
+                        <div class="comparison-label">Lob</div>
+                        <div class="comparison-value">${p2UnforcedErrors.lob}</div>
+                    </div>
+                    
+                    <div class="comparison-section-header">
+                        <div>Forced Errors</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1ForcedErrors.total}</div>
+                        <div class="comparison-label">Total</div>
+                        <div class="comparison-value">${p2ForcedErrors.total}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1ForcedErrors.totalForehand}</div>
+                        <div class="comparison-label">Total Forehand</div>
+                        <div class="comparison-value">${p2ForcedErrors.totalForehand}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1ForcedErrors.forehandGround}</div>
+                        <div class="comparison-label">Forehand Ground</div>
+                        <div class="comparison-value">${p2ForcedErrors.forehandGround}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1ForcedErrors.forehandSlice}</div>
+                        <div class="comparison-label">Forehand Slice</div>
+                        <div class="comparison-value">${p2ForcedErrors.forehandSlice}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1ForcedErrors.forehandVolley}</div>
+                        <div class="comparison-label">Forehand Volley</div>
+                        <div class="comparison-value">${p2ForcedErrors.forehandVolley}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1ForcedErrors.totalBackhand}</div>
+                        <div class="comparison-label">Total Backhand</div>
+                        <div class="comparison-value">${p2ForcedErrors.totalBackhand}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1ForcedErrors.backhandGround}</div>
+                        <div class="comparison-label">Backhand Ground</div>
+                        <div class="comparison-value">${p2ForcedErrors.backhandGround}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1ForcedErrors.backhandSlice}</div>
+                        <div class="comparison-label">Backhand Slice</div>
+                        <div class="comparison-value">${p2ForcedErrors.backhandSlice}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1ForcedErrors.backhandVolley}</div>
+                        <div class="comparison-label">Backhand Volley</div>
+                        <div class="comparison-value">${p2ForcedErrors.backhandVolley}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1ForcedErrors.approachShot}</div>
+                        <div class="comparison-label">Approach Shot</div>
+                        <div class="comparison-value">${p2ForcedErrors.approachShot}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1ForcedErrors.overhead}</div>
+                        <div class="comparison-label">Overhead</div>
+                        <div class="comparison-value">${p2ForcedErrors.overhead}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1ForcedErrors.dropShot}</div>
+                        <div class="comparison-label">Drop Shot</div>
+                        <div class="comparison-value">${p2ForcedErrors.dropShot}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1ForcedErrors.lob}</div>
+                        <div class="comparison-label">Lob</div>
+                        <div class="comparison-value">${p2ForcedErrors.lob}</div>
+                    </div>
+                    
+                    <div class="comparison-section-header">
+                        <div>Winners</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1Winners.total}</div>
+                        <div class="comparison-label">Total</div>
+                        <div class="comparison-value">${p2Winners.total}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1Winners.totalForehand}</div>
+                        <div class="comparison-label">Total Forehand</div>
+                        <div class="comparison-value">${p2Winners.totalForehand}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1Winners.forehandGround}</div>
+                        <div class="comparison-label">Forehand Ground</div>
+                        <div class="comparison-value">${p2Winners.forehandGround}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1Winners.forehandSlice}</div>
+                        <div class="comparison-label">Forehand Slice</div>
+                        <div class="comparison-value">${p2Winners.forehandSlice}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1Winners.forehandVolley}</div>
+                        <div class="comparison-label">Forehand Volley</div>
+                        <div class="comparison-value">${p2Winners.forehandVolley}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1Winners.totalBackhand}</div>
+                        <div class="comparison-label">Total Backhand</div>
+                        <div class="comparison-value">${p2Winners.totalBackhand}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1Winners.backhandGround}</div>
+                        <div class="comparison-label">Backhand Ground</div>
+                        <div class="comparison-value">${p2Winners.backhandGround}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1Winners.backhandSlice}</div>
+                        <div class="comparison-label">Backhand Slice</div>
+                        <div class="comparison-value">${p2Winners.backhandSlice}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1Winners.backhandVolley}</div>
+                        <div class="comparison-label">Backhand Volley</div>
+                        <div class="comparison-value">${p2Winners.backhandVolley}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1Winners.approachShot}</div>
+                        <div class="comparison-label">Approach Shot</div>
+                        <div class="comparison-value">${p2Winners.approachShot}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1Winners.overhead}</div>
+                        <div class="comparison-label">Overhead</div>
+                        <div class="comparison-value">${p2Winners.overhead}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1Winners.dropShot}</div>
+                        <div class="comparison-label">Drop Shot</div>
+                        <div class="comparison-value">${p2Winners.dropShot}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1Winners.lob}</div>
+                        <div class="comparison-label">Lob</div>
+                        <div class="comparison-value">${p2Winners.lob}</div>
+                    </div>
+                    
+                    <div class="comparison-section-header">
+                        <div>Serve</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.totalServePointWinPercentage || '0.0'}%</div>
+                        <div class="comparison-label">Total Serve Point Win %</div>
+                        <div class="comparison-value">${p2.totalServePointWinPercentage || '0.0'}%</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.firstServePercentage}%/${p1.firstServes}</div>
+                        <div class="comparison-label">1st Serve In %/Total</div>
+                        <div class="comparison-value">${p2.firstServePercentage}%/${p2.firstServes}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.aces}</div>
+                        <div class="comparison-label">ACEs</div>
+                        <div class="comparison-value">${p2.aces}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.doubleFaults}</div>
+                        <div class="comparison-label">Double Faults</div>
+                        <div class="comparison-value">${p2.doubleFaults}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.firstServePointsWonPercentage || '0.0'}%</div>
+                        <div class="comparison-label">1st Serve Won %</div>
+                        <div class="comparison-value">${p2.firstServePointsWonPercentage || '0.0'}%</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.secondServeInPercentage || '0.0'}%/${p1.secondServes}</div>
+                        <div class="comparison-label">2nd Serve In %/Total</div>
+                        <div class="comparison-value">${p2.secondServeInPercentage || '0.0'}%/${p2.secondServes}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.secondServePercentage}%</div>
+                        <div class="comparison-label">2nd Serve Won %</div>
+                        <div class="comparison-value">${p2.secondServePercentage}%</div>
+                    </div>
+                    
+                    <div class="comparison-section-header">
+                        <div>Return</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.totalReturnPointWinPercentage || '0.0'}%</div>
+                        <div class="comparison-label">Total Return Point Win %</div>
+                        <div class="comparison-value">${p2.totalReturnPointWinPercentage || '0.0'}%</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.returnFirstServePointsWonPercentage || '0.0'}%</div>
+                        <div class="comparison-label">Return 1st Serve Won %</div>
+                        <div class="comparison-value">${p2.returnFirstServePointsWonPercentage || '0.0'}%</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.returnSecondServePointsWonPercentage || '0.0'}%</div>
+                        <div class="comparison-label">Return 2nd Serve Won %</div>
+                        <div class="comparison-value">${p2.returnSecondServePointsWonPercentage || '0.0'}%</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.returnErrors}</div>
+                        <div class="comparison-label">Return Errors</div>
+                        <div class="comparison-value">${p2.returnErrors}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.breakPointsConverted || 0}/${p1.breakPointsOpportunities || 0}</div>
+                        <div class="comparison-label">Break Point Converted/Opportunities</div>
+                        <div class="comparison-value">${p2.breakPointsConverted || 0}/${p2.breakPointsOpportunities || 0}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+    
+    // Switch statistics tab (Match or Set)
+    // 切换统计标签（Match或Set）
+    switchStatisticsTab(match, setNumber, player1Name, player2Name, tabButtons) {
+        // Update active tab styling
+        // 更新活动标签样式
+        tabButtons.forEach(tab => {
+            const tabSetNumber = parseInt(tab.getAttribute('data-set-number'));
+            if (tabSetNumber === setNumber) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
+            }
+        });
+        
+        // Calculate statistics based on selected tab
+        // 根据选中的标签计算统计
+        let statsHtml = '';
+        try {
+            let matchStats;
+            if (setNumber === 0) {
+                // Match statistics (all sets)
+                // 比赛统计（所有盘）
+                const calcMatchStats = window.calculateMatchStats || (typeof calculateMatchStats !== 'undefined' ? calculateMatchStats : null);
+                if (!calcMatchStats) {
+                    throw new Error('calculateMatchStats function is not defined.');
+                }
+                matchStats = calcMatchStats(match);
+            } else {
+                // Set-specific statistics
+                // 特定盘的统计
+                const calcSetStats = window.calculateSetStats || (typeof calculateSetStats !== 'undefined' ? calculateSetStats : null);
+                if (!calcSetStats) {
+                    throw new Error('calculateSetStats function is not defined.');
+                }
+                matchStats = calcSetStats(match, setNumber);
+            }
+            statsHtml = this.generateMatchStatsHTML(matchStats, player1Name, player2Name, match);
+        } catch (error) {
+            console.error('Error calculating statistics:', error);
+            statsHtml = `<div class="detail-section"><p>Statistics unavailable</p><p style="font-size: 12px; color: #888;">Error: ${error.message}</p></div>`;
+        }
+        
+        // Update statistics container
+        // 更新统计容器
+        const statsContainer = document.getElementById('match-statistics-container');
+        if (statsContainer) {
+            statsContainer.innerHTML = statsHtml;
         }
     },
     

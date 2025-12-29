@@ -933,6 +933,190 @@ body {
     background-color: #f8d7da;
 }
 
+/* Statistics Styles */
+/* 统计样式 */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.stat-card {
+    background-color: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    box-shadow: var(--shadow);
+}
+
+.stat-card.success {
+    border-color: var(--success-color);
+    background-color: #f0fdf4;
+}
+
+.stat-card.danger {
+    border-color: var(--danger-color);
+    background-color: #fef2f2;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stats-table {
+    margin-top: 12px;
+}
+
+.stats-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.stats-row:last-child {
+    border-bottom: none;
+}
+
+.stats-row span:first-child {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.stats-row span:last-child {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 16px;
+}
+
+/* Statistics Comparison */
+/* 统计对比 */
+.stats-comparison {
+    margin-top: 12px;
+    background-color: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.comparison-header {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 1fr;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 12px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.comparison-row {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 1fr;
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    align-items: center;
+}
+
+.comparison-row:last-child {
+    border-bottom: none;
+}
+
+.comparison-section-header {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--background-color);
+    font-weight: 600;
+    text-align: center;
+    font-size: 16px;
+    color: var(--text-primary);
+}
+
+/* Statistics Tabs */
+/* 统计标签 */
+.stats-tabs-container {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 0 4px;
+    flex-wrap: wrap;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.stats-tab {
+    background-color: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+    position: relative;
+    top: 2px;
+}
+
+.stats-tab:hover {
+    background-color: var(--secondary-background);
+    color: var(--text-primary);
+}
+
+.stats-tab.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    font-weight: 600;
+}
+
+.stats-tab.active:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+#match-statistics-container {
+    margin-top: 0;
+}
+
+.comparison-value {
+    text-align: center;
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--text-primary);
+}
+
+.comparison-label {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 14px;
+    padding: 0 8px;
+}
+
+.comparison-player {
+    text-align: center;
+    font-size: 14px;
+}
+
+.player-stats-container {
+    padding: 16px;
+    max-width: 100%;
+}
+
 /* Modal */
 .modal {
     position: fixed;

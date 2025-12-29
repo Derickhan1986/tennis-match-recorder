@@ -58,7 +58,7 @@ class PlayerManager {
             const utrText = player.utrRating ? `UTR: ${player.utrRating}` : 'No UTR';
             return `
                 <div class="player-card" data-player-id="${player.id}">
-                    <div class="player-header">
+                    <div class="player-header" onclick="app.showPlayerStats('${player.id}')" style="cursor: pointer;">
                         <div>
                             <div class="player-name">${this.escapeHtml(player.name)}</div>
                             <div class="player-info">
@@ -67,7 +67,7 @@ class PlayerManager {
                                 ${utrText}
                             </div>
                         </div>
-                        <div class="player-actions">
+                        <div class="player-actions" onclick="event.stopPropagation();">
                             <button class="btn-icon" onclick="playerManager.editPlayer('${player.id}')" title="Edit">✏️</button>
                             <button class="btn-icon" onclick="playerManager.deletePlayer('${player.id}')" title="Delete">🗑️</button>
                         </div>

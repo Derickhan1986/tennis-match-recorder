@@ -35,6 +35,11 @@ class MatchEngine {
         
         const currentGame = this.getCurrentGame(currentSet);
         const server = this.match.currentServer;
+        const receiver = server === 'player1' ? 'player2' : 'player1';
+        
+        // Check if this is a break point (before updating score)
+        // 检查是否是破发点（在更新比分之前）
+        const isBreakPoint = this.isBreakPoint(currentGame, server, receiver);
         
         // Calculate point number from log (log contains all points now)
         // 从日志计算point number（日志现在包含所有points）
@@ -44,6 +49,10 @@ class MatchEngine {
         // 处理发球失误
         let isDoubleFault = false;
         let actualWinner = winner;
+        // Save current serve number before it gets reset (needed for logging)
+        // 在重置之前保存当前发球次数（用于日志记录）
+        const currentServeNumberForLog = this.match.currentServeNumber;
+        
         if (pointType === 'Serve Fault') {
             if (this.match.currentServeNumber === 1) {
                 // First serve fault, try second serve (score doesn't change)
@@ -51,12 +60,15 @@ class MatchEngine {
                 this.match.currentServeNumber = 2;
                 // Add to log for first serve fault (score doesn't change)
                 // 一发失误添加到日志（比分不变），使用当前game
+                // Note: currentServeNumber will be recorded as 2 (because next serve will be second serve)
+                // 注意：currentServeNumber将被记录为2（因为下一次发球将是二发）
                 this.addToLog(server, pointType, null, currentGame, {
                     pointNumber: pointNumber,
                     winner: null, // No winner yet for first serve fault
                     pointType: pointType,
                     server: server,
-                    serveNumber: 1
+                    serveNumber: 1,
+                    isBreakPoint: isBreakPoint
                 });
                 storage.saveMatch(this.match);
                 return; // Display will read from log, no need to return state
@@ -116,16 +128,26 @@ class MatchEngine {
             // Return error - 记录犯错的接发球方，而不是得分方
             logPlayer = server === 'player1' ? 'player2' : 'player1';
             logAction = 'Return Error';
+        } else if (pointType === 'Unforced Error' || pointType === 'Forced Error') {
+            // Unforced/Forced error - log the player who made the error, not the winner
+            // Unforced/Forced error - 记录犯错的玩家，而不是得分方
+            // The error is made by the player who is NOT the winner
+            // 犯错的是不是得分方的玩家
+            logPlayer = actualWinner === 'player1' ? 'player2' : 'player1';
+            logAction = pointType;
         }
         
         // Add to log with point information
         // 添加point信息到日志
+        // Use saved serve number for logging (before it was reset)
+        // 使用保存的发球次数进行日志记录（在重置之前）
         this.addToLog(logPlayer, logAction, shotType, gameForLog, {
             pointNumber: pointNumber,
             winner: actualWinner,
             pointType: pointType,
             server: server,
-            serveNumber: isDoubleFault ? 2 : (pointType === 'Serve Fault' ? 1 : this.match.currentServeNumber)
+            serveNumber: isDoubleFault ? 2 : (pointType === 'Serve Fault' ? 1 : currentServeNumberForLog),
+            isBreakPoint: isBreakPoint
         });
         
         // Auto-save match
@@ -325,12 +347,98 @@ class MatchEngine {
             }
         }
         this.match.currentServeNumber = 1;
+        
+        // Save match to ensure server exchange is persisted
+        // 保存比赛以确保发球权交换被持久化
+        storage.saveMatch(this.match);
     }
 
     // Check if currently in tie-break
     // 检查当前是否在抢七
     isInTieBreak(set) {
         return set.tieBreak !== null && set.tieBreak.winner === null;
+    }
+    
+    // Check if current point is a break point
+    // 检查当前point是否是破发点
+    // Break point: receiver can win the game by winning this point
+    // 破发点：接发球方赢得这一分就能赢得这一局
+    isBreakPoint(game, server, receiver) {
+        if (!game || game.winner) {
+            // Game already won or no game, not a break point
+            // 局已结束或没有game，不是破发点
+            return false;
+        }
+        
+        // Get scores for server and receiver
+        // 获取发球方和接发球方的比分
+        const serverScore = server === 'player1' ? game.player1Score : game.player2Score;
+        const receiverScore = receiver === 'player1' ? game.player1Score : game.player2Score;
+        
+        // Convert score to numeric value for comparison
+        // 将比分转换为数值以便比较
+        const getScoreValue = (score) => {
+            if (score === 'AD') return 50; // AD is higher than 40
+            if (typeof score === 'number') return score;
+            return 0;
+        };
+        
+        const serverValue = getScoreValue(serverScore);
+        const receiverValue = getScoreValue(receiverScore);
+        
+        // Break point: receiver can win the game by winning this point
+        // 破发点：接发球方赢得这一分就能赢得这一局
+        // Note: NOT a break point if server leads (e.g., 40-0, 40-15, 40-30)
+        // 注意：如果发球方领先（如40-0、40-15、40-30），则不是破发点
+        
+        if (this.settings.adScoring) {
+            // Ad scoring: break point situations
+            // Ad计分：破发点情况
+            // 1. Receiver has AD (receiver can win by winning this point)
+            //    接发球方拥有AD（接发球方赢得这一分就能赢得这一局）
+            if (receiverValue === 50) {
+                return true;
+            }
+            // 2. Receiver leads 40-X where X < 40 (receiver can win by winning this point)
+            //    接发球方领先40-X，其中X < 40（接发球方赢得这一分就能赢得这一局）
+            if (receiverValue === 40 && serverValue < 40) {
+                return true;
+            }
+            // 3. Score is 30-40: receiver needs to win this point to get to 40-40 (deuce), then win another point
+            //    So 30-40 is NOT a break point in Ad scoring (receiver cannot win the game by winning just this point)
+            //    比分是30-40：接发球方需要赢得这一分才能达到40-40（deuce），然后再赢一分
+            //    所以30-40在Ad计分中不是破发点（接发球方不能仅通过赢得这一分就赢得这一局）
+            // 4. Score is 15-40: receiver needs to win this point to get to 30-40, then win another point to get to 40-40, then win another point
+            //    So 15-40 is NOT a break point in Ad scoring
+            //    比分是15-40：接发球方需要赢得这一分才能达到30-40，然后再赢一分达到40-40，然后再赢一分
+            //    所以15-40在Ad计分中不是破发点
+            // 5. Score is 0-40: receiver needs to win this point to get to 15-40, then win another point to get to 30-40, then win another point to get to 40-40, then win another point
+            //    So 0-40 is NOT a break point in Ad scoring
+            //    比分是0-40：接发球方需要赢得这一分才能达到15-40，然后再赢一分达到30-40，然后再赢一分达到40-40，然后再赢一分
+            //    所以0-40在Ad计分中不是破发点
+        } else {
+            // No-Ad scoring: break point situations
+            // No-Ad计分：破发点情况
+            // In No-Ad scoring, if receiver wins at 30-40, 15-40, or 0-40, they win the game immediately
+            // 在No-Ad计分中，如果接发球方在30-40、15-40或0-40时获胜，他们会立即赢得这一局
+            // 30-40: receiver can win the game by winning this point (break point)
+            // 30-40：接发球方赢得这一分就能赢得这一局（破发点）
+            if (receiverValue === 30 && serverValue === 40) {
+                return true;
+            }
+            // 15-40: receiver can win the game by winning this point (break point)
+            // 15-40：接发球方赢得这一分就能赢得这一局（破发点）
+            if (receiverValue === 15 && serverValue === 40) {
+                return true;
+            }
+            // 0-40: receiver can win the game by winning this point (break point)
+            // 0-40：接发球方赢得这一分就能赢得这一局（破发点）
+            if (receiverValue === 0 && serverValue === 40) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     // Record tie-break point
@@ -354,6 +462,10 @@ class MatchEngine {
         // 处理抢七中的发球失误
         let isDoubleFault = false;
         let actualWinner = winner;
+        // Save current serve number before it gets reset (needed for logging)
+        // 在重置之前保存当前发球次数（用于日志记录）
+        const currentServeNumberForLog = this.match.currentServeNumber;
+        
         if (pointType === 'Serve Fault') {
             if (this.match.currentServeNumber === 1) {
                 this.match.currentServeNumber = 2;
@@ -432,6 +544,12 @@ class MatchEngine {
                 currentSet.player2Games++;
             }
             currentSet.winner = tieBreak.winner;
+            
+            // Exchange server for next set (the opponent of the last server in tie-break serves first in new set)
+            // 为新盘交换发球权（抢七中最后一个发球方的对手在新盘先发球）
+            this.match.currentServer = this.match.currentServer === 'player1' ? 'player2' : 'player1';
+            this.match.currentServeNumber = 1;
+            
             this.checkMatchWinner();
         }
         
@@ -461,16 +579,25 @@ class MatchEngine {
             // Return error - 记录犯错的接发球方，而不是得分方
             logPlayer = tieBreakServer === 'player1' ? 'player2' : 'player1';
             logAction = 'Return Error';
+        } else if (pointType === 'Unforced Error' || pointType === 'Forced Error') {
+            // Unforced/Forced error - log the player who made the error, not the winner
+            // Unforced/Forced error - 记录犯错的玩家，而不是得分方
+            // The error is made by the player who is NOT the winner
+            // 犯错的是不是得分方的玩家
+            logPlayer = actualWinner === 'player1' ? 'player2' : 'player1';
+            logAction = pointType;
         }
         
         // Add to log with point information
         // 添加point信息到日志
+        // Use saved serve number for logging (before it was reset)
+        // 使用保存的发球次数进行日志记录（在重置之前）
         this.addToLog(logPlayer, logAction, shotType, lastGame, {
             pointNumber: pointNumber,
             winner: actualWinner,
             pointType: pointType,
             server: tieBreakServer,
-            serveNumber: isDoubleFault ? 2 : (pointType === 'Serve Fault' ? 1 : this.match.currentServeNumber)
+            serveNumber: isDoubleFault ? 2 : (pointType === 'Serve Fault' ? 1 : currentServeNumberForLog)
         });
         
         storage.saveMatch(this.match);
@@ -639,9 +766,44 @@ class MatchEngine {
             if (setNumber === 1) {
                 this.match.currentServer = this.settings.firstServer;
             } else {
-                // Alternate first server each set
-                // 每盘交替首发
-                this.match.currentServer = this.settings.firstServer === 'player1' ? 'player2' : 'player1';
+                // For subsequent sets, the server should be the opponent of the last server from previous set
+                // 对于后续的sets，发球方应该是上一盘最后一个发球方的对手
+                // If currentServer was already exchanged (e.g., after tie-break), use it
+                // 如果currentServer已经被交换（例如，tie break结束后），使用它
+                // Otherwise, exchange from the last set's last server
+                // 否则，从上一盘的最后一个发球方交换
+                // Note: currentServer should already be set correctly if tie-break just ended
+                // 注意：如果tie break刚结束，currentServer应该已经正确设置
+                // But if set ended normally (not via tie-break), we need to exchange
+                // 但如果set正常结束（不是通过tie break），我们需要交换
+                const previousSet = this.match.sets[this.match.sets.length - 2];
+                if (previousSet) {
+                    // Check if previous set ended with tie-break
+                    // 检查上一盘是否以tie break结束
+                    if (previousSet.tieBreak && previousSet.tieBreak.winner) {
+                        // Tie-break ended: currentServer was already exchanged in recordTieBreakPoint
+                        // Tie break结束：currentServer已经在recordTieBreakPoint中交换了
+                        // Keep currentServer as is
+                        // 保持currentServer不变
+                    } else {
+                        // Normal set end: find last game's server and exchange
+                        // 正常set结束：找到最后一个game的发球方并交换
+                        const lastGame = previousSet.games[previousSet.games.length - 1];
+                        if (lastGame && lastGame.server) {
+                            // Exchange from last game's server
+                            // 从最后一个game的发球方交换
+                            this.match.currentServer = lastGame.server === 'player1' ? 'player2' : 'player1';
+                        } else {
+                            // Fallback: alternate from firstServer
+                            // 备用：从firstServer交替
+                            this.match.currentServer = this.settings.firstServer === 'player1' ? 'player2' : 'player1';
+                        }
+                    }
+                } else {
+                    // Fallback: alternate from firstServer
+                    // 备用：从firstServer交替
+                    this.match.currentServer = this.settings.firstServer === 'player1' ? 'player2' : 'player1';
+                }
             }
             this.match.currentServeNumber = 1;
             
@@ -1147,15 +1309,24 @@ class MatchEngine {
     // 从日志条目重建比赛状态
     rebuildMatchStateFromLog() {
         if (!this.match.log || this.match.log.length === 0) {
-            // No log entries, restore to initial state
-            // 没有日志条目，恢复到初始状态
-            this.match.sets = [createSet({ setNumber: 1 })];
-            this.match.sets[0].games = [createGame({ gameNumber: 1 })];
-            this.match.currentServer = this.settings.firstServer;
-            this.match.currentServeNumber = 1;
-            this.match.winner = null;
-            this.match.status = 'in-progress';
-            this.match.endTime = null;
+            // No log entries, but check if we're already in a tie-break (e.g., Super Tie Break just started)
+            // 没有日志条目，但检查是否已经在抢七中（例如，Super Tie Break 刚刚开始）
+            // If match has sets with tie-break, don't reset currentServer (it was set by startTieBreak)
+            // 如果比赛有带抢七的sets，不重置currentServer（它由startTieBreak设置）
+            const hasTieBreak = this.match.sets.some(set => set.tieBreak && !set.tieBreak.winner);
+            if (!hasTieBreak) {
+                // No tie-break, restore to initial state
+                // 没有抢七，恢复到初始状态
+                this.match.sets = [createSet({ setNumber: 1 })];
+                this.match.sets[0].games = [createGame({ gameNumber: 1 })];
+                this.match.currentServer = this.settings.firstServer;
+                this.match.currentServeNumber = 1;
+                this.match.winner = null;
+                this.match.status = 'in-progress';
+                this.match.endTime = null;
+            }
+            // If has tie-break, keep current state (currentServer was set by startTieBreak)
+            // 如果有抢七，保持当前状态（currentServer由startTieBreak设置）
             return;
         }
         
@@ -1651,6 +1822,7 @@ class MatchEngine {
             pointType: pointInfo ? pointInfo.pointType : null,
             server: pointInfo ? pointInfo.server : null,
             serveNumber: pointInfo ? pointInfo.serveNumber : null,
+            isBreakPoint: pointInfo ? pointInfo.isBreakPoint : false, // Whether this point is a break point
             // Log information
             // 日志信息
             player: player,

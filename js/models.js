@@ -123,7 +123,7 @@ function createPoint(data = {}) {
         pointNumber: data.pointNumber || 0,
         winner: data.winner || null, // 'player1' | 'player2'
         pointType: data.pointType || null, // 'ACE', 'Winner', 'Serve Fault', 'Return Error', 'Unforced Error', 'Forced Error'
-        shotType: data.shotType || null, // 'Forehand Ground Stroke', 'Backhand Ground Stroke', 'Forehand Slice', 'Backhand Slice', 'Volley', 'Swing Volley', 'Lob', 'Overhead'
+        shotType: data.shotType || null, // 'Forehand Ground Stroke', 'Backhand Ground Stroke', 'Forehand Slice', 'Backhand Slice', 'Forehand Volley', 'Backhand Volley', 'Lob', 'Overhead', 'Approach Shot', 'Drop Shot'
         server: data.server || null, // 'player1' | 'player2' - who was serving
         serveNumber: data.serveNumber || null, // 1 or 2 - first or second serve
         timestamp: data.timestamp || new Date().toISOString()
@@ -137,10 +137,12 @@ const ShotType = {
     BACKHAND_GROUND_STROKE: 'Backhand Ground Stroke',
     FOREHAND_SLICE: 'Forehand Slice',
     BACKHAND_SLICE: 'Backhand Slice',
-    VOLLEY: 'Volley',
-    SWING_VOLLEY: 'Swing Volley',
+    FOREHAND_VOLLEY: 'Forehand Volley',
+    BACKHAND_VOLLEY: 'Backhand Volley',
     LOB: 'Lob',
-    OVERHEAD: 'Overhead'
+    OVERHEAD: 'Overhead',
+    APPROACH_SHOT: 'Approach Shot',
+    DROP_SHOT: 'Drop Shot'
 };
 
 // Match Log Entry (merged with Point - contains all point information plus score information)
@@ -167,7 +169,8 @@ function createLogEntry(data = {}) {
         gamesScore: data.gamesScore || null, // Current games score in set (e.g., "1-2")
         setsScore: data.setsScore || null, // Current sets score in match (e.g., "0-1")
         currentServer: data.currentServer || null, // Current server at this point ('player1' | 'player2')
-        currentServeNumber: data.currentServeNumber !== undefined ? data.currentServeNumber : 1 // Current serve number (1 or 2) for undo tracking
+        currentServeNumber: data.currentServeNumber !== undefined ? data.currentServeNumber : 1, // Current serve number (1 or 2) for undo tracking
+        isBreakPoint: data.isBreakPoint || false // Whether this point is a break point (接发球方有机会破发)
     };
 }
 

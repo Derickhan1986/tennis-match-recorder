@@ -463,10 +463,12 @@ class MatchRecorder {
             ShotType.BACKHAND_GROUND_STROKE,
             ShotType.FOREHAND_SLICE,
             ShotType.BACKHAND_SLICE,
-            ShotType.VOLLEY,
-            ShotType.SWING_VOLLEY,
+            ShotType.FOREHAND_VOLLEY,
+            ShotType.BACKHAND_VOLLEY,
             ShotType.LOB,
-            ShotType.OVERHEAD
+            ShotType.OVERHEAD,
+            ShotType.APPROACH_SHOT,
+            ShotType.DROP_SHOT
         ];
         
         options.innerHTML = shotTypes.map(shotType => `

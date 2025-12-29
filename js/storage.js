@@ -220,22 +220,26 @@ class StorageService {
         });
     }
 
-    // Get matches by player ID
-    // 根据玩家ID获取比赛
+    // Get matches by player ID (where player participated as player1 or player2)
+    // 根据玩家ID获取比赛（玩家作为player1或player2参与的比赛）
     async getMatchesByPlayer(playerId) {
         if (!this.db) await this.init();
         
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction(['matches'], 'readonly');
             const store = transaction.objectStore('matches');
-            const index = store.index('playerId');
-            const request = index.getAll(playerId);
+            const request = store.getAll();
 
             request.onsuccess = () => {
-                const matches = request.result.sort((a, b) => 
+                // Filter matches where player is player1 or player2
+                // 过滤出玩家作为player1或player2的比赛
+                const allMatches = request.result;
+                const playerMatches = allMatches.filter(match => 
+                    match.player1Id === playerId || match.player2Id === playerId
+                ).sort((a, b) => 
                     new Date(b.startTime) - new Date(a.startTime)
                 );
-                resolve(matches);
+                resolve(playerMatches);
             };
 
             request.onerror = () => {
