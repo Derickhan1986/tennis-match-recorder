@@ -361,28 +361,88 @@ class StorageService {
         };
     }
 
-    // Import data
-    // 导入数据
+    // Import data with smart merge (won't overwrite newer local data)
+    // 导入数据并智能合并（不会覆盖较新的本地数据）
     async importData(data) {
         try {
-            // Import players
-            // 导入玩家
+            let playersAdded = 0;
+            let playersUpdated = 0;
+            let playersSkipped = 0;
+            let matchesAdded = 0;
+            let matchesUpdated = 0;
+            let matchesSkipped = 0;
+
+            // Import players with smart merge
+            // 导入玩家并智能合并
             if (data.players && Array.isArray(data.players)) {
                 for (const player of data.players) {
-                    await this.savePlayer(player);
+                    const existingPlayer = await this.getPlayer(player.id);
+                    
+                    if (!existingPlayer) {
+                        // New player - add it
+                        // 新玩家 - 添加
+                        await this.savePlayer(player);
+                        playersAdded++;
+                    } else {
+                        // Player exists - compare timestamps and keep the newer one
+                        // 玩家已存在 - 比较时间戳，保留较新的
+                        const existingTime = new Date(existingPlayer.updatedAt || existingPlayer.createdAt || 0);
+                        const importTime = new Date(player.updatedAt || player.createdAt || 0);
+                        
+                        if (importTime > existingTime) {
+                            // Imported player is newer - update
+                            // 导入的玩家较新 - 更新
+                            await this.savePlayer(player);
+                            playersUpdated++;
+                        } else {
+                            // Local player is newer or same - skip
+                            // 本地玩家较新或相同 - 跳过
+                            playersSkipped++;
+                        }
+                    }
                 }
             }
 
-            // Import matches
-            // 导入比赛
+            // Import matches with smart merge
+            // 导入比赛并智能合并
             if (data.matches && Array.isArray(data.matches)) {
                 for (const match of data.matches) {
-                    await this.saveMatch(match);
+                    const existingMatch = await this.getMatch(match.id);
+                    
+                    if (!existingMatch) {
+                        // New match - add it
+                        // 新比赛 - 添加
+                        await this.saveMatch(match);
+                        matchesAdded++;
+                    } else {
+                        // Match exists - compare timestamps and keep the newer one
+                        // 比赛已存在 - 比较时间戳，保留较新的
+                        const existingTime = new Date(existingMatch.updatedAt || existingMatch.startTime || 0);
+                        const importTime = new Date(match.updatedAt || match.startTime || 0);
+                        
+                        if (importTime > existingTime) {
+                            // Imported match is newer - update
+                            // 导入的比赛较新 - 更新
+                            await this.saveMatch(match);
+                            matchesUpdated++;
+                        } else {
+                            // Local match is newer or same - skip
+                            // 本地比赛较新或相同 - 跳过
+                            matchesSkipped++;
+                        }
+                    }
                 }
             }
 
-            console.log('Data imported successfully');
-            return true;
+            console.log('Data imported successfully:', {
+                players: { added: playersAdded, updated: playersUpdated, skipped: playersSkipped },
+                matches: { added: matchesAdded, updated: matchesUpdated, skipped: matchesSkipped }
+            });
+            
+            return {
+                players: { added: playersAdded, updated: playersUpdated, skipped: playersSkipped },
+                matches: { added: matchesAdded, updated: matchesUpdated, skipped: matchesSkipped }
+            };
         } catch (error) {
             console.error('Error importing data:', error);
             throw error;

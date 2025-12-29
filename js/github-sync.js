@@ -275,12 +275,29 @@ class GitHubSync {
                 statusEl.className = 'success';
             }
             
-            // Import data (this will merge with existing data)
-            // 导入数据（这将与现有数据合并）
-            await storage.importData({ players, matches });
+            // Import data with smart merge (won't overwrite newer local data)
+            // 导入数据并智能合并（不会覆盖较新的本地数据）
+            const result = await storage.importData({ players, matches });
+            
+            // Build status message with merge results
+            // 构建包含合并结果的状态消息
+            let statusMessage = 'Data pulled successfully!';
+            const details = [];
+            if (result.players.added > 0 || result.players.updated > 0) {
+                details.push(`Players: ${result.players.added} added, ${result.players.updated} updated`);
+            }
+            if (result.matches.added > 0 || result.matches.updated > 0) {
+                details.push(`Matches: ${result.matches.added} added, ${result.matches.updated} updated`);
+            }
+            if (result.players.skipped > 0 || result.matches.skipped > 0) {
+                details.push(`${result.players.skipped + result.matches.skipped} items kept (local data is newer)`);
+            }
+            if (details.length > 0) {
+                statusMessage += '\n' + details.join(', ');
+            }
             
             if (statusEl) {
-                statusEl.textContent = 'Data pulled successfully!';
+                statusEl.textContent = statusMessage;
                 statusEl.className = 'success';
             }
             
