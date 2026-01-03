@@ -229,6 +229,21 @@ body {
     color: white;
 }
 
+/* Final Set Type Buttons */
+/* 最终盘类型按钮 */
+.btn-final-set-type {
+    transition: all 0.2s ease;
+}
+
+.btn-final-set-type:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.btn-final-set-type:active {
+    transform: translateY(0);
+}
+
 .btn-danger:hover {
     opacity: 0.9;
 }

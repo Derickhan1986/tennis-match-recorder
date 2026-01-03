@@ -512,7 +512,9 @@ const app = {
                     throw new Error('calculateMatchStats function is not defined. Please check if statistics.js is loaded correctly.');
                 }
                 const matchStats = calcMatchStats(match);
-                statsHtml = this.generateMatchStatsHTML(matchStats, player1Name, player2Name, match);
+                // Use full match log for initial match statistics display
+                // 使用完整比赛日志进行初始比赛统计显示
+                statsHtml = this.generateMatchStatsHTML(matchStats, player1Name, player2Name, match, match.log || null);
             } catch (error) {
                 console.error('Error calculating match statistics:', error);
                 console.error('Error stack:', error.stack);
@@ -824,9 +826,13 @@ const app = {
     
     // Generate match technical statistics HTML
     // 生成比赛技术统计HTML
-    generateMatchStatsHTML(matchStats, player1Name, player2Name, match = null) {
+    generateMatchStatsHTML(matchStats, player1Name, player2Name, match = null, filteredLog = null) {
         const p1 = matchStats.player1;
         const p2 = matchStats.player2;
+        
+        // Use filtered log if provided (for set-specific stats), otherwise use match.log
+        // 如果提供了过滤后的log（用于特定set的统计），则使用它，否则使用match.log
+        const logToUse = filteredLog || (match && match.log) || [];
         
         // Calculate unforced errors by shot type
         // 按击球类型统计非受迫性失误
@@ -847,9 +853,9 @@ const app = {
                 lob: 0
             };
             
-            if (!match || !match.log) return stats;
+            if (!logToUse || logToUse.length === 0) return stats;
             
-            for (const entry of match.log) {
+            for (const entry of logToUse) {
                 if (entry.player === playerRole && entry.action === 'Unforced Error' && entry.shotType) {
                     stats.total++;
                     const shotType = entry.shotType;
@@ -909,9 +915,9 @@ const app = {
                 lob: 0
             };
             
-            if (!match || !match.log) return stats;
+            if (!logToUse || logToUse.length === 0) return stats;
             
-            for (const entry of match.log) {
+            for (const entry of logToUse) {
                 if (entry.player === playerRole && entry.action === 'Forced Error' && entry.shotType) {
                     stats.total++;
                     const shotType = entry.shotType;
@@ -971,9 +977,9 @@ const app = {
                 lob: 0
             };
             
-            if (!match || !match.log) return stats;
+            if (!logToUse || logToUse.length === 0) return stats;
             
-            for (const entry of match.log) {
+            for (const entry of logToUse) {
                 if (entry.player === playerRole && entry.action === 'Winner' && entry.shotType) {
                     stats.total++;
                     const shotType = entry.shotType;
@@ -1431,6 +1437,7 @@ const app = {
         let statsHtml = '';
         try {
             let matchStats;
+            let filteredLog = null;
             if (setNumber === 0) {
                 // Match statistics (all sets)
                 // 比赛统计（所有盘）
@@ -1439,6 +1446,9 @@ const app = {
                     throw new Error('calculateMatchStats function is not defined.');
                 }
                 matchStats = calcMatchStats(match);
+                // Use full match log for match statistics
+                // 使用完整比赛日志进行比赛统计
+                filteredLog = match.log || null;
             } else {
                 // Set-specific statistics
                 // 特定盘的统计
@@ -1447,8 +1457,47 @@ const app = {
                     throw new Error('calculateSetStats function is not defined.');
                 }
                 matchStats = calcSetStats(match, setNumber);
+                // Get filtered log for this set
+                // 获取此盘的过滤后日志
+                if (match && match.log) {
+                    // Helper function to determine set number from log entry
+                    // 辅助函数：从日志条目确定盘数
+                    const getSetNumberFromEntry = (entry, index, allLogEntries) => {
+                        if (!entry.setsScore) return null;
+                        const parts = entry.setsScore.split('-');
+                        if (parts.length !== 2) return null;
+                        const player1Sets = parseInt(parts[0].trim()) || 0;
+                        const player2Sets = parseInt(parts[1].trim()) || 0;
+                        const completedSets = player1Sets + player2Sets;
+                        
+                        if (index === 0) return 1;
+                        
+                        const prevEntry = allLogEntries[index - 1];
+                        if (!prevEntry || !prevEntry.setsScore) return completedSets + 1;
+                        
+                        const prevParts = prevEntry.setsScore.split('-');
+                        const prevPlayer1Sets = parseInt(prevParts[0].trim()) || 0;
+                        const prevPlayer2Sets = parseInt(prevParts[1].trim()) || 0;
+                        const prevCompletedSets = prevPlayer1Sets + prevPlayer2Sets;
+                        
+                        if (completedSets > prevCompletedSets) {
+                            return completedSets;
+                        }
+                        
+                        if (entry.gamesScore === '0-0' && prevEntry.gamesScore !== '0-0') {
+                            return completedSets + 1;
+                        }
+                        
+                        return completedSets + 1;
+                    };
+                    
+                    filteredLog = match.log.filter((entry, index) => {
+                        const entrySetNumber = getSetNumberFromEntry(entry, index, match.log);
+                        return entrySetNumber === setNumber;
+                    });
+                }
             }
-            statsHtml = this.generateMatchStatsHTML(matchStats, player1Name, player2Name, match);
+            statsHtml = this.generateMatchStatsHTML(matchStats, player1Name, player2Name, match, filteredLog);
         } catch (error) {
             console.error('Error calculating statistics:', error);
             statsHtml = `<div class="detail-section"><p>Statistics unavailable</p><p style="font-size: 12px; color: #888;">Error: ${error.message}</p></div>`;

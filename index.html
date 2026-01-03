@@ -120,44 +120,53 @@
                 <h2>New Match</h2>
                 <form id="match-settings-form">
                     <div class="form-group">
-                        <label>Player 1 *</label>
+                        <label>Player 1</label>
                         <select id="match-player1" required>
                             <option value="">Select Player 1</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Player 2 *</label>
+                        <label>Player 2</label>
                         <select id="match-player2" required>
                             <option value="">Select Player 2</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>First Server *</label>
-                        <select id="match-first-server" required>
-                            <option value="player1">Player 1</option>
-                            <option value="player2">Player 2</option>
-                        </select>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            First Server
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn-first-server" data-value="player1" style="padding: 8px 16px; background-color: #4caf50; color: white; border: 2px solid #4caf50; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">Player 1</button>
+                                <button type="button" class="btn-first-server" data-value="player2" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">Player 2</button>
+                            </div>
+                        </label>
+                        <input type="hidden" id="match-first-server" value="player1" required>
                     </div>
                     <div class="form-group">
-                        <label>Number of Sets *</label>
-                        <select id="match-sets" required>
-                            <option value="1">1 Set</option>
-                            <option value="2">2 Sets</option>
-                            <option value="3" selected>3 Sets</option>
-                            <option value="4">4 Sets</option>
-                            <option value="5">5 Sets</option>
-                        </select>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            Number of Sets
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn-number-of-sets" data-value="1" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">1</button>
+                                <button type="button" class="btn-number-of-sets" data-value="2" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">2</button>
+                                <button type="button" class="btn-number-of-sets" data-value="3" style="padding: 8px 16px; background-color: #4caf50; color: white; border: 2px solid #4caf50; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">3</button>
+                                <button type="button" class="btn-number-of-sets" data-value="4" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">4</button>
+                                <button type="button" class="btn-number-of-sets" data-value="5" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">5</button>
+                            </div>
+                        </label>
+                        <input type="hidden" id="match-sets" value="3" required>
                     </div>
                     <div class="form-group">
-                        <label>Games per Set *</label>
-                        <select id="match-games" required>
-                            <option value="3">3 Games</option>
-                            <option value="4">4 Games</option>
-                            <option value="5">5 Games</option>
-                            <option value="6" selected>6 Games</option>
-                            <option value="7">7 Games</option>
-                            <option value="8">8 Games</option>
-                        </select>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            Games per Set
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn-games-per-set" data-value="3" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">3</button>
+                                <button type="button" class="btn-games-per-set" data-value="4" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">4</button>
+                                <button type="button" class="btn-games-per-set" data-value="5" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">5</button>
+                                <button type="button" class="btn-games-per-set" data-value="6" style="padding: 8px 16px; background-color: #4caf50; color: white; border: 2px solid #4caf50; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">6</button>
+                                <button type="button" class="btn-games-per-set" data-value="7" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">7</button>
+                                <button type="button" class="btn-games-per-set" data-value="8" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">8</button>
+                            </div>
+                        </label>
+                        <input type="hidden" id="match-games" value="6" required>
                     </div>
                     <div class="form-group">
                         <label>
@@ -166,49 +175,61 @@
                         </label>
                     </div>
                     <div class="form-group">
-                        <label>Final Set Type *</label>
-                        <select id="match-final-set" required>
-                            <option value="Normal Final Set">Normal Final Set</option>
-                            <option value="Super Tie Break">Super Tie Break</option>
-                        </select>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            Final Set Type
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn-final-set-type" id="btn-final-set-normal" data-value="Normal Final Set" style="padding: 8px 16px; background-color: #4caf50; color: white; border: 2px solid #4caf50; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">Normal Final Set</button>
+                                <button type="button" class="btn-final-set-type" id="btn-final-set-super" data-value="Super Tie Break" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">Super Tie Break</button>
+                            </div>
+                        </label>
+                        <input type="hidden" id="match-final-set" value="Normal Final Set" required>
                     </div>
                     <div class="form-group" id="tie-break-group">
-                        <label>Tie Break Games *</label>
-                        <select id="match-tie-break-games" required>
-                            <option value="5">5 Points</option>
-                            <option value="7" selected>7 Points</option>
-                            <option value="10">10 Points</option>
-                        </select>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            Normal Tie Break Games
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn-tie-break-games" data-value="5" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">5</button>
+                                <button type="button" class="btn-tie-break-games" data-value="7" style="padding: 8px 16px; background-color: #4caf50; color: white; border: 2px solid #4caf50; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">7</button>
+                                <button type="button" class="btn-tie-break-games" data-value="10" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">10</button>
+                            </div>
+                        </label>
+                        <input type="hidden" id="match-tie-break-games" value="7" required>
                     </div>
                     <div class="form-group" id="tie-break-winby2-group">
                         <label>
                             <input type="checkbox" id="match-tie-break-winby2" checked>
-                            Win by 2 Points
+                            Normal Tie Break Win by 2 Points
                         </label>
                     </div>
-                    <div class="form-group" id="super-tie-break-group" style="display: none;">
-                        <label>Super Tie Break Points *</label>
-                        <select id="match-super-tie-break-points">
-                            <option value="5">5 Points</option>
-                            <option value="7" selected>7 Points</option>
-                            <option value="10">10 Points</option>
-                            <option value="12">12 Points</option>
-                        </select>
+                    <div class="form-group" id="super-tie-break-group">
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            Super Tie Break Points
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn-super-tie-break-points" data-value="5" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">5</button>
+                                <button type="button" class="btn-super-tie-break-points" data-value="7" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">7</button>
+                                <button type="button" class="btn-super-tie-break-points" data-value="10" style="padding: 8px 16px; background-color: #4caf50; color: white; border: 2px solid #4caf50; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">10</button>
+                                <button type="button" class="btn-super-tie-break-points" data-value="12" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">12</button>
+                            </div>
+                        </label>
+                        <input type="hidden" id="match-super-tie-break-points" value="10" required>
                     </div>
-                    <div class="form-group" id="super-tie-break-winby2-group" style="display: none;">
+                    <div class="form-group" id="super-tie-break-winby2-group">
                         <label>
                             <input type="checkbox" id="match-super-tie-break-winby2" checked>
-                            Win by 2 Points
+                            Super Tie Break Win by 2 Points
                         </label>
                     </div>
                     <div class="form-group">
-                        <label>Court Type *</label>
-                        <select id="match-court-type" required>
-                            <option value="Grass">Grass</option>
-                            <option value="Clay">Clay</option>
-                            <option value="Hard" selected>Hard</option>
-                            <option value="Carpet">Carpet</option>
-                        </select>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            Court Type
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn-court-type" data-value="Grass" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">Grass</button>
+                                <button type="button" class="btn-court-type" data-value="Clay" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">Clay</button>
+                                <button type="button" class="btn-court-type" data-value="Hard" style="padding: 8px 16px; background-color: #4caf50; color: white; border: 2px solid #4caf50; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">Hard</button>
+                                <button type="button" class="btn-court-type" data-value="Carpet" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">Carpet</button>
+                            </div>
+                        </label>
+                        <input type="hidden" id="match-court-type" value="Hard" required>
                     </div>
                     <div class="form-group">
                         <label>

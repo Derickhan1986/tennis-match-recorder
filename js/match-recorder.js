@@ -31,12 +31,203 @@ class MatchRecorder {
             });
         }
 
-        // Final set type change
-        // 最终盘类型更改
-        const finalSetSelect = document.getElementById('match-final-set');
-        if (finalSetSelect) {
-            finalSetSelect.addEventListener('change', (e) => {
-                this.updateFinalSetOptions(e.target.value);
+        // Final set type button clicks
+        // 最终盘类型按钮点击
+        const btnFinalSetNormal = document.getElementById('btn-final-set-normal');
+        const btnFinalSetSuper = document.getElementById('btn-final-set-super');
+        const finalSetInput = document.getElementById('match-final-set');
+        
+        if (btnFinalSetNormal && btnFinalSetSuper && finalSetInput) {
+            btnFinalSetNormal.addEventListener('click', () => {
+                finalSetInput.value = 'Normal Final Set';
+                // Update button styles (use bright green for selected)
+                // 更新按钮样式（选中时使用亮绿色）
+                btnFinalSetNormal.style.backgroundColor = '#4caf50';
+                btnFinalSetNormal.style.color = 'white';
+                btnFinalSetNormal.style.borderColor = '#4caf50';
+                btnFinalSetSuper.style.backgroundColor = 'var(--card-background)';
+                btnFinalSetSuper.style.color = 'var(--text-primary)';
+                btnFinalSetSuper.style.borderColor = 'var(--border-color)';
+            });
+            
+            btnFinalSetSuper.addEventListener('click', () => {
+                finalSetInput.value = 'Super Tie Break';
+                // Update button styles (use bright green for selected)
+                // 更新按钮样式（选中时使用亮绿色）
+                btnFinalSetSuper.style.backgroundColor = '#4caf50';
+                btnFinalSetSuper.style.color = 'white';
+                btnFinalSetSuper.style.borderColor = '#4caf50';
+                btnFinalSetNormal.style.backgroundColor = 'var(--card-background)';
+                btnFinalSetNormal.style.color = 'var(--text-primary)';
+                btnFinalSetNormal.style.borderColor = 'var(--border-color)';
+            });
+        }
+
+        // Normal Tie Break Games button clicks
+        // Normal Tie Break Games按钮点击
+        const tieBreakGamesButtons = document.querySelectorAll('.btn-tie-break-games');
+        const tieBreakGamesInput = document.getElementById('match-tie-break-games');
+        
+        if (tieBreakGamesButtons.length > 0 && tieBreakGamesInput) {
+            tieBreakGamesButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const value = button.dataset.value;
+                    tieBreakGamesInput.value = value;
+                    
+                    // Update button styles (use bright green for selected)
+                    // 更新按钮样式（选中时使用亮绿色）
+                    tieBreakGamesButtons.forEach(btn => {
+                        if (btn.dataset.value === value) {
+                            btn.style.backgroundColor = '#4caf50';
+                            btn.style.color = 'white';
+                            btn.style.borderColor = '#4caf50';
+                        } else {
+                            btn.style.backgroundColor = 'var(--card-background)';
+                            btn.style.color = 'var(--text-primary)';
+                            btn.style.borderColor = 'var(--border-color)';
+                        }
+                    });
+                });
+            });
+        }
+
+        // Super Tie Break Points button clicks
+        // Super Tie Break Points按钮点击
+        const superTieBreakPointsButtons = document.querySelectorAll('.btn-super-tie-break-points');
+        const superTieBreakPointsInput = document.getElementById('match-super-tie-break-points');
+        
+        if (superTieBreakPointsButtons.length > 0 && superTieBreakPointsInput) {
+            superTieBreakPointsButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const value = button.dataset.value;
+                    superTieBreakPointsInput.value = value;
+                    
+                    // Update button styles (use bright green for selected)
+                    // 更新按钮样式（选中时使用亮绿色）
+                    superTieBreakPointsButtons.forEach(btn => {
+                        if (btn.dataset.value === value) {
+                            btn.style.backgroundColor = '#4caf50';
+                            btn.style.color = 'white';
+                            btn.style.borderColor = '#4caf50';
+                        } else {
+                            btn.style.backgroundColor = 'var(--card-background)';
+                            btn.style.color = 'var(--text-primary)';
+                            btn.style.borderColor = 'var(--border-color)';
+                        }
+                    });
+                });
+            });
+        }
+
+        // Court Type button clicks
+        // Court Type按钮点击
+        const courtTypeButtons = document.querySelectorAll('.btn-court-type');
+        const courtTypeInput = document.getElementById('match-court-type');
+        
+        if (courtTypeButtons.length > 0 && courtTypeInput) {
+            courtTypeButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const value = button.dataset.value;
+                    courtTypeInput.value = value;
+                    
+                    // Update button styles (use bright green for selected)
+                    // 更新按钮样式（选中时使用亮绿色）
+                    courtTypeButtons.forEach(btn => {
+                        if (btn.dataset.value === value) {
+                            btn.style.backgroundColor = '#4caf50';
+                            btn.style.color = 'white';
+                            btn.style.borderColor = '#4caf50';
+                        } else {
+                            btn.style.backgroundColor = 'var(--card-background)';
+                            btn.style.color = 'var(--text-primary)';
+                            btn.style.borderColor = 'var(--border-color)';
+                        }
+                    });
+                });
+            });
+        }
+
+        // First Server button clicks
+        // First Server按钮点击
+        const firstServerButtons = document.querySelectorAll('.btn-first-server');
+        const firstServerInput = document.getElementById('match-first-server');
+        
+        if (firstServerButtons.length > 0 && firstServerInput) {
+            firstServerButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const value = button.dataset.value;
+                    firstServerInput.value = value;
+                    
+                    // Update button styles (use bright green for selected)
+                    // 更新按钮样式（选中时使用亮绿色）
+                    firstServerButtons.forEach(btn => {
+                        if (btn.dataset.value === value) {
+                            btn.style.backgroundColor = '#4caf50';
+                            btn.style.color = 'white';
+                            btn.style.borderColor = '#4caf50';
+                        } else {
+                            btn.style.backgroundColor = 'var(--card-background)';
+                            btn.style.color = 'var(--text-primary)';
+                            btn.style.borderColor = 'var(--border-color)';
+                        }
+                    });
+                });
+            });
+        }
+
+        // Number of Sets button clicks
+        // Number of Sets按钮点击
+        const numberOfSetsButtons = document.querySelectorAll('.btn-number-of-sets');
+        const numberOfSetsInput = document.getElementById('match-sets');
+        
+        if (numberOfSetsButtons.length > 0 && numberOfSetsInput) {
+            numberOfSetsButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const value = button.dataset.value;
+                    numberOfSetsInput.value = value;
+                    
+                    // Update button styles (use bright green for selected)
+                    // 更新按钮样式（选中时使用亮绿色）
+                    numberOfSetsButtons.forEach(btn => {
+                        if (btn.dataset.value === value) {
+                            btn.style.backgroundColor = '#4caf50';
+                            btn.style.color = 'white';
+                            btn.style.borderColor = '#4caf50';
+                        } else {
+                            btn.style.backgroundColor = 'var(--card-background)';
+                            btn.style.color = 'var(--text-primary)';
+                            btn.style.borderColor = 'var(--border-color)';
+                        }
+                    });
+                });
+            });
+        }
+
+        // Games per Set button clicks
+        // Games per Set按钮点击
+        const gamesPerSetButtons = document.querySelectorAll('.btn-games-per-set');
+        const gamesPerSetInput = document.getElementById('match-games');
+        
+        if (gamesPerSetButtons.length > 0 && gamesPerSetInput) {
+            gamesPerSetButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const value = button.dataset.value;
+                    gamesPerSetInput.value = value;
+                    
+                    // Update button styles (use bright green for selected)
+                    // 更新按钮样式（选中时使用亮绿色）
+                    gamesPerSetButtons.forEach(btn => {
+                        if (btn.dataset.value === value) {
+                            btn.style.backgroundColor = '#4caf50';
+                            btn.style.color = 'white';
+                            btn.style.borderColor = '#4caf50';
+                        } else {
+                            btn.style.backgroundColor = 'var(--card-background)';
+                            btn.style.color = 'var(--text-primary)';
+                            btn.style.borderColor = 'var(--border-color)';
+                        }
+                    });
+                });
             });
         }
 
@@ -105,25 +296,15 @@ class MatchRecorder {
         }
     }
 
-    // Update final set options based on selection
-    // 根据选择更新最终盘选项
+    // Update final set options based on selection (no longer needed - both settings are always visible)
+    // 根据选择更新最终盘选项（不再需要 - 两个设置始终可见）
+    // This function is kept for backward compatibility but does nothing
+    // 保留此函数以保持向后兼容性，但不执行任何操作
     updateFinalSetOptions(finalSetType) {
-        const tieBreakGroup = document.getElementById('tie-break-group');
-        const tieBreakWinBy2Group = document.getElementById('tie-break-winby2-group');
-        const superTieBreakGroup = document.getElementById('super-tie-break-group');
-        const superTieBreakWinBy2Group = document.getElementById('super-tie-break-winby2-group');
-        
-        if (finalSetType === 'Normal Final Set') {
-            if (tieBreakGroup) tieBreakGroup.style.display = 'block';
-            if (tieBreakWinBy2Group) tieBreakWinBy2Group.style.display = 'block';
-            if (superTieBreakGroup) superTieBreakGroup.style.display = 'none';
-            if (superTieBreakWinBy2Group) superTieBreakWinBy2Group.style.display = 'none';
-        } else {
-            if (tieBreakGroup) tieBreakGroup.style.display = 'none';
-            if (tieBreakWinBy2Group) tieBreakWinBy2Group.style.display = 'none';
-            if (superTieBreakGroup) superTieBreakGroup.style.display = 'block';
-            if (superTieBreakWinBy2Group) superTieBreakWinBy2Group.style.display = 'block';
-        }
+        // Both Normal Tie Break and Super Tie Break settings are now always visible
+        // Normal Tie Break和Super Tie Break设置现在始终可见
+        // No need to show/hide based on finalSetType
+        // 无需根据finalSetType显示/隐藏
     }
 
     // Load players for match settings
@@ -270,13 +451,15 @@ class MatchRecorder {
             const courtType = document.getElementById('match-court-type').value;
             const indoor = document.getElementById('match-indoor').checked;
             
+            // Always read both Normal Tie Break and Super Tie Break settings
+            // 始终读取Normal Tie Break和Super Tie Break设置
             let tieBreakGames = null;
             let tieBreakWinBy2 = null;
             let superTieBreakPoints = null;
             let superTieBreakWinBy2 = null;
             
-            // Always read tie-break settings (for normal tie-breaks in any set)
-            // 始终读取普通抢七设置（用于任何盘中的普通抢七）
+            // Read Normal Tie Break settings (for normal tie-breaks in any set)
+            // 读取Normal Tie Break设置（用于任何盘中的普通抢七）
             const tieBreakGamesEl = document.getElementById('match-tie-break-games');
             const tieBreakWinBy2El = document.getElementById('match-tie-break-winby2');
             if (tieBreakGamesEl) {
@@ -286,14 +469,15 @@ class MatchRecorder {
                 tieBreakWinBy2 = tieBreakWinBy2El.checked;
             }
             
-            if (finalSetType === 'Normal Final Set') {
-                // Normal Final Set: tie-break settings already read above
-                // 普通决胜盘：抢七设置已在上面读取
-            } else {
-                // Super Tie Break: read super tie-break settings
-                // Super Tie Break：读取超级抢七设置
-                superTieBreakPoints = parseInt(document.getElementById('match-super-tie-break-points').value);
-                superTieBreakWinBy2 = document.getElementById('match-super-tie-break-winby2').checked;
+            // Always read Super Tie Break settings (regardless of finalSetType)
+            // 始终读取Super Tie Break设置（无论finalSetType如何）
+            const superTieBreakPointsEl = document.getElementById('match-super-tie-break-points');
+            const superTieBreakWinBy2El = document.getElementById('match-super-tie-break-winby2');
+            if (superTieBreakPointsEl) {
+                superTieBreakPoints = parseInt(superTieBreakPointsEl.value);
+            }
+            if (superTieBreakWinBy2El) {
+                superTieBreakWinBy2 = superTieBreakWinBy2El.checked;
             }
             
             const settings = createMatchSettings({
