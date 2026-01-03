@@ -743,6 +743,22 @@ class MatchEngine {
             return this.match.sets[this.match.sets.length - 1] || null;
         }
         
+        // Restore state from log before checking/creating sets
+        // 在检查/创建sets之前从日志恢复状态
+        // This ensures currentServer is correctly restored from the last log entry
+        // 这确保currentServer从最后一条日志条目正确恢复
+        if (this.match.log && this.match.sets.length > 0) {
+            const lastSet = this.match.sets[this.match.sets.length - 1];
+            if (lastSet && lastSet.winner && this.match.log.length > 0) {
+                // Previous set has ended, restore currentServer from last log entry
+                // 上一盘已结束，从最后一条日志条目恢复currentServer
+                const lastLogEntry = this.match.log[this.match.log.length - 1];
+                if (lastLogEntry && lastLogEntry.currentServer) {
+                    this.match.currentServer = lastLogEntry.currentServer;
+                }
+            }
+        }
+        
         let currentSet = this.match.sets[this.match.sets.length - 1];
         
         if (!currentSet || currentSet.winner) {
@@ -766,39 +782,57 @@ class MatchEngine {
             if (setNumber === 1) {
                 this.match.currentServer = this.settings.firstServer;
             } else {
-                // For subsequent sets, the server should be the opponent of the last server from previous set
-                // 对于后续的sets，发球方应该是上一盘最后一个发球方的对手
-                // If currentServer was already exchanged (e.g., after tie-break), use it
-                // 如果currentServer已经被交换（例如，tie break结束后），使用它
-                // Otherwise, exchange from the last set's last server
-                // 否则，从上一盘的最后一个发球方交换
-                // Note: currentServer should already be set correctly if tie-break just ended
-                // 注意：如果tie break刚结束，currentServer应该已经正确设置
-                // But if set ended normally (not via tie-break), we need to exchange
-                // 但如果set正常结束（不是通过tie break），我们需要交换
-                const previousSet = this.match.sets[this.match.sets.length - 2];
-                if (previousSet) {
-                    // Check if previous set ended with tie-break
-                    // 检查上一盘是否以tie break结束
-                    if (previousSet.tieBreak && previousSet.tieBreak.winner) {
-                        // Tie-break ended: currentServer was already exchanged in recordTieBreakPoint
-                        // Tie break结束：currentServer已经在recordTieBreakPoint中交换了
-                        // Keep currentServer as is
-                        // 保持currentServer不变
-                    } else {
-                        // Normal set end: find last game's server and exchange
-                        // 正常set结束：找到最后一个game的发球方并交换
-                        const lastGame = previousSet.games[previousSet.games.length - 1];
-                        if (lastGame && lastGame.server) {
-                            // Exchange from last game's server
-                            // 从最后一个game的发球方交换
-                            this.match.currentServer = lastGame.server === 'player1' ? 'player2' : 'player1';
-                        } else {
-                            // Fallback: alternate from firstServer
-                            // 备用：从firstServer交替
-                            this.match.currentServer = this.settings.firstServer === 'player1' ? 'player2' : 'player1';
+                // For subsequent sets, ALWAYS exchange serve (the opponent of the last server from previous set serves first)
+                // 对于后续的sets，总是交换发球权（上一盘最后一个发球方的对手在新set先发球）
+                // Find the last log entry from the previous set by checking setsScore
+                // 通过检查setsScore找到上一盘的最后一个日志条目
+                let lastServerFromPreviousSet = null;
+                
+                if (this.match.log && this.match.log.length > 0) {
+                    const previousSetNumber = setNumber - 1;
+                    
+                    // Find the last log entry where setsScore indicates the previous set is completed
+                    // 找到setsScore指示上一盘已完成的最后一个日志条目
+                    // The last entry of previous set should have setsScore showing (previousSetNumber-1) completed sets
+                    // 上一盘的最后一个条目应该有显示(previousSetNumber-1)个已完成的sets的setsScore
+                    // For example, if we're starting set 2, find the last entry with setsScore "1-0" or "0-1"
+                    // 例如，如果我们要开始set 2，找到setsScore为"1-0"或"0-1"的最后一个条目
+                    const targetCompletedSets = previousSetNumber - 1;
+                    
+                    for (let i = this.match.log.length - 1; i >= 0; i--) {
+                        const entry = this.match.log[i];
+                        if (entry && entry.setsScore) {
+                            const parts = entry.setsScore.split('-');
+                            if (parts.length === 2) {
+                                const p1Sets = parseInt(parts[0].trim()) || 0;
+                                const p2Sets = parseInt(parts[1].trim()) || 0;
+                                const totalCompletedSets = p1Sets + p2Sets;
+                                
+                                if (totalCompletedSets === targetCompletedSets) {
+                                    // This is the last entry of the previous set
+                                    // 这是上一盘的最后一个条目
+                                    // Get the server from this entry (currentServer is the server after this point)
+                                    // 从此条目获取发球方（currentServer是此点之后的发球方）
+                                    lastServerFromPreviousSet = entry.currentServer || entry.server;
+                                    break;
+                                } else if (totalCompletedSets > targetCompletedSets) {
+                                    // We've gone past the previous set, continue searching backwards
+                                    // 我们已经超过了上一盘，继续向后搜索
+                                    continue;
+                                } else {
+                                    // We've gone too far back, stop searching
+                                    // 我们搜索得太远了，停止搜索
+                                    break;
+                                }
+                            }
                         }
                     }
+                }
+                
+                // Exchange serve: the opponent of the last server from previous set serves first in new set
+                // 交换发球权：上一盘最后一个发球方的对手在新set先发球
+                if (lastServerFromPreviousSet) {
+                    this.match.currentServer = lastServerFromPreviousSet === 'player1' ? 'player2' : 'player1';
                 } else {
                     // Fallback: alternate from firstServer
                     // 备用：从firstServer交替
@@ -814,8 +848,13 @@ class MatchEngine {
             if (isFinal && this.settings.finalSetType === 'Super Tie Break') {
                 // Final set with Super Tie Break: start directly in tie-break mode
                 // 决胜盘使用 Super Tie Break：直接进入抢七模式
-                // Server is already set above, startTieBreak will exchange it
-                // 发球方已在上面设置，startTieBreak会交换它
+                // Server is already set above (exchanged from previous set)
+                // 发球方已在上面设置（从上一盘交换）
+                // For Super Tie Break, we need to exchange serve when entering tie-break
+                // 对于Super Tie Break，进入抢七时需要交换发球权
+                // Exchange serve before starting tie-break
+                // 在开始抢七之前交换发球权
+                this.match.currentServer = this.match.currentServer === 'player1' ? 'player2' : 'player1';
                 this.startTieBreak(currentSet);
             } else {
                 // Normal set: start with regular game
