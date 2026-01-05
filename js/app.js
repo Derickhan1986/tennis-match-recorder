@@ -1634,6 +1634,390 @@ const app = {
                 });
             }
             
+            // Technical Statistics
+            // 技术统计
+            try {
+                // Check if we need a new page
+                // 检查是否需要新页面
+                if (yPos > 200) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                
+                // Calculate match statistics
+                // 计算比赛统计
+                const calcMatchStats = window.calculateMatchStats || (typeof calculateMatchStats !== 'undefined' ? calculateMatchStats : null);
+                if (calcMatchStats) {
+                    const matchStats = calcMatchStats(match);
+                    const p1 = matchStats.player1;
+                    const p2 = matchStats.player2;
+                    
+                    doc.setFontSize(14);
+                    doc.text('Technical Statistics', 14, yPos);
+                    yPos += 10;
+                    
+                    doc.setFontSize(10);
+                    
+                    // Match Summary Section
+                    // 比赛摘要部分
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Match Summary', 14, yPos);
+                    yPos += 7;
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(9);
+                    
+                    // Helper function to add a stat row
+                    // 辅助函数：添加统计行
+                    const addStatRow = (label, p1Value, p2Value) => {
+                        if (yPos > 280) {
+                            doc.addPage();
+                            yPos = 20;
+                        }
+                        doc.text(`${p1Value}`, 14, yPos);
+                        doc.text(label, 70, yPos);
+                        doc.text(`${p2Value}`, 150, yPos);
+                        yPos += 6;
+                    };
+                    
+                    addStatRow('Total Point Won', p1.pointsWon || 0, p2.pointsWon || 0);
+                    addStatRow('Max Consecutive Points', p1.pointsWonInRow || 0, p2.pointsWonInRow || 0);
+                    addStatRow('ACEs', p1.aces || 0, p2.aces || 0);
+                    addStatRow('Double Faults', p1.doubleFaults || 0, p2.doubleFaults || 0);
+                    addStatRow('Winners', p1.winners || 0, p2.winners || 0);
+                    addStatRow('Unforced Errors', p1.unforcedErrors || 0, p2.unforcedErrors || 0);
+                    addStatRow('Forced Errors', p1.forcedErrors || 0, p2.forcedErrors || 0);
+                    addStatRow('Return Errors', p1.returnErrors || 0, p2.returnErrors || 0);
+                    addStatRow('Total Serve Point Win %', `${p1.totalServePointWinPercentage || '0.0'}%`, `${p2.totalServePointWinPercentage || '0.0'}%`);
+                    addStatRow('Break Point Converted/Opportunities', `${p1.breakPointsConverted || 0}/${p1.breakPointsOpportunities || 0}`, `${p2.breakPointsConverted || 0}/${p2.breakPointsOpportunities || 0}`);
+                    
+                    yPos += 5;
+                    
+                    // Serve Section
+                    // 发球部分
+                    if (yPos > 250) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Serve', 14, yPos);
+                    yPos += 7;
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(9);
+                    
+                    addStatRow('Total Serve Point Win %', `${p1.totalServePointWinPercentage || '0.0'}%`, `${p2.totalServePointWinPercentage || '0.0'}%`);
+                    addStatRow('1st Serve In %/Total', `${p1.firstServePercentage}%/${p1.firstServes}`, `${p2.firstServePercentage}%/${p2.firstServes}`);
+                    addStatRow('ACEs', p1.aces || 0, p2.aces || 0);
+                    addStatRow('Double Faults', p1.doubleFaults || 0, p2.doubleFaults || 0);
+                    addStatRow('1st Serve Won %', `${p1.firstServePointsWonPercentage || '0.0'}%`, `${p2.firstServePointsWonPercentage || '0.0'}%`);
+                    addStatRow('2nd Serve In %/Total', `${p1.secondServeInPercentage || '0.0'}%/${p1.secondServes}`, `${p2.secondServeInPercentage || '0.0'}%/${p2.secondServes}`);
+                    addStatRow('2nd Serve Won %', `${p1.secondServePercentage}%`, `${p2.secondServePercentage}%`);
+                    
+                    yPos += 5;
+                    
+                    // Return Section
+                    // 接发球部分
+                    if (yPos > 250) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Return', 14, yPos);
+                    yPos += 7;
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(9);
+                    
+                    addStatRow('Total Return Point Win %', `${p1.totalReturnPointWinPercentage || '0.0'}%`, `${p2.totalReturnPointWinPercentage || '0.0'}%`);
+                    addStatRow('Return 1st Serve Won %', `${p1.returnFirstServePointsWonPercentage || '0.0'}%`, `${p2.returnFirstServePointsWonPercentage || '0.0'}%`);
+                    addStatRow('Return 2nd Serve Won %', `${p1.returnSecondServePointsWonPercentage || '0.0'}%`, `${p2.returnSecondServePointsWonPercentage || '0.0'}%`);
+                    addStatRow('Return Errors', p1.returnErrors || 0, p2.returnErrors || 0);
+                    addStatRow('Break Point Converted/Opportunities', `${p1.breakPointsConverted || 0}/${p1.breakPointsOpportunities || 0}`, `${p2.breakPointsConverted || 0}/${p2.breakPointsOpportunities || 0}`);
+                    
+                    // Calculate detailed statistics by shot type
+                    // 按击球类型计算详细统计
+                    const logToUse = match.log || [];
+                    
+                    // Calculate unforced errors by shot type
+                    // 按击球类型统计非受迫性失误
+                    const calculateUnforcedErrorsByShotType = (playerRole) => {
+                        const stats = {
+                            total: 0,
+                            totalForehand: 0,
+                            forehandGround: 0,
+                            forehandSlice: 0,
+                            forehandVolley: 0,
+                            totalBackhand: 0,
+                            backhandGround: 0,
+                            backhandSlice: 0,
+                            backhandVolley: 0,
+                            approachShot: 0,
+                            overhead: 0,
+                            dropShot: 0,
+                            lob: 0
+                        };
+                        
+                        if (!logToUse || logToUse.length === 0) return stats;
+                        
+                        for (const entry of logToUse) {
+                            if (entry.player === playerRole && entry.action === 'Unforced Error' && entry.shotType) {
+                                stats.total++;
+                                const shotType = entry.shotType;
+                                
+                                if (shotType === 'Forehand Ground Stroke') {
+                                    stats.totalForehand++;
+                                    stats.forehandGround++;
+                                } else if (shotType === 'Forehand Slice') {
+                                    stats.totalForehand++;
+                                    stats.forehandSlice++;
+                                } else if (shotType === 'Forehand Volley') {
+                                    stats.totalForehand++;
+                                    stats.forehandVolley++;
+                                } else if (shotType === 'Backhand Ground Stroke') {
+                                    stats.totalBackhand++;
+                                    stats.backhandGround++;
+                                } else if (shotType === 'Backhand Slice') {
+                                    stats.totalBackhand++;
+                                    stats.backhandSlice++;
+                                } else if (shotType === 'Backhand Volley') {
+                                    stats.totalBackhand++;
+                                    stats.backhandVolley++;
+                                } else if (shotType === 'Approach Shot') {
+                                    stats.approachShot++;
+                                } else if (shotType === 'Overhead') {
+                                    stats.overhead++;
+                                } else if (shotType === 'Drop Shot') {
+                                    stats.dropShot++;
+                                } else if (shotType === 'Lob') {
+                                    stats.lob++;
+                                }
+                            }
+                        }
+                        
+                        return stats;
+                    };
+                    
+                    // Calculate forced errors by shot type
+                    // 按击球类型统计受迫性失误
+                    const calculateForcedErrorsByShotType = (playerRole) => {
+                        const stats = {
+                            total: 0,
+                            totalForehand: 0,
+                            forehandGround: 0,
+                            forehandSlice: 0,
+                            forehandVolley: 0,
+                            totalBackhand: 0,
+                            backhandGround: 0,
+                            backhandSlice: 0,
+                            backhandVolley: 0,
+                            approachShot: 0,
+                            overhead: 0,
+                            dropShot: 0,
+                            lob: 0
+                        };
+                        
+                        if (!logToUse || logToUse.length === 0) return stats;
+                        
+                        for (const entry of logToUse) {
+                            if (entry.player === playerRole && entry.action === 'Forced Error' && entry.shotType) {
+                                stats.total++;
+                                const shotType = entry.shotType;
+                                
+                                if (shotType === 'Forehand Ground Stroke') {
+                                    stats.totalForehand++;
+                                    stats.forehandGround++;
+                                } else if (shotType === 'Forehand Slice') {
+                                    stats.totalForehand++;
+                                    stats.forehandSlice++;
+                                } else if (shotType === 'Forehand Volley') {
+                                    stats.totalForehand++;
+                                    stats.forehandVolley++;
+                                } else if (shotType === 'Backhand Ground Stroke') {
+                                    stats.totalBackhand++;
+                                    stats.backhandGround++;
+                                } else if (shotType === 'Backhand Slice') {
+                                    stats.totalBackhand++;
+                                    stats.backhandSlice++;
+                                } else if (shotType === 'Backhand Volley') {
+                                    stats.totalBackhand++;
+                                    stats.backhandVolley++;
+                                } else if (shotType === 'Approach Shot') {
+                                    stats.approachShot++;
+                                } else if (shotType === 'Overhead') {
+                                    stats.overhead++;
+                                } else if (shotType === 'Drop Shot') {
+                                    stats.dropShot++;
+                                } else if (shotType === 'Lob') {
+                                    stats.lob++;
+                                }
+                            }
+                        }
+                        
+                        return stats;
+                    };
+                    
+                    // Calculate winners by shot type
+                    // 按击球类型统计制胜分
+                    const calculateWinnersByShotType = (playerRole) => {
+                        const stats = {
+                            total: 0,
+                            totalForehand: 0,
+                            forehandGround: 0,
+                            forehandSlice: 0,
+                            forehandVolley: 0,
+                            totalBackhand: 0,
+                            backhandGround: 0,
+                            backhandSlice: 0,
+                            backhandVolley: 0,
+                            approachShot: 0,
+                            overhead: 0,
+                            dropShot: 0,
+                            lob: 0,
+                            passingShot: 0
+                        };
+                        
+                        if (!logToUse || logToUse.length === 0) return stats;
+                        
+                        for (const entry of logToUse) {
+                            if (entry.player === playerRole && entry.action === 'Winner' && entry.shotType) {
+                                stats.total++;
+                                const shotType = entry.shotType;
+                                
+                                if (shotType === 'Forehand Ground Stroke') {
+                                    stats.totalForehand++;
+                                    stats.forehandGround++;
+                                } else if (shotType === 'Forehand Slice') {
+                                    stats.totalForehand++;
+                                    stats.forehandSlice++;
+                                } else if (shotType === 'Forehand Volley') {
+                                    stats.totalForehand++;
+                                    stats.forehandVolley++;
+                                } else if (shotType === 'Backhand Ground Stroke') {
+                                    stats.totalBackhand++;
+                                    stats.backhandGround++;
+                                } else if (shotType === 'Backhand Slice') {
+                                    stats.totalBackhand++;
+                                    stats.backhandSlice++;
+                                } else if (shotType === 'Backhand Volley') {
+                                    stats.totalBackhand++;
+                                    stats.backhandVolley++;
+                                } else if (shotType === 'Approach Shot') {
+                                    stats.approachShot++;
+                                } else if (shotType === 'Overhead') {
+                                    stats.overhead++;
+                                } else if (shotType === 'Drop Shot') {
+                                    stats.dropShot++;
+                                } else if (shotType === 'Lob') {
+                                    stats.lob++;
+                                } else if (shotType === 'Passing Shot') {
+                                    stats.passingShot++;
+                                }
+                            }
+                        }
+                        
+                        return stats;
+                    };
+                    
+                    const p1UnforcedErrors = calculateUnforcedErrorsByShotType('player1');
+                    const p2UnforcedErrors = calculateUnforcedErrorsByShotType('player2');
+                    const p1ForcedErrors = calculateForcedErrorsByShotType('player1');
+                    const p2ForcedErrors = calculateForcedErrorsByShotType('player2');
+                    const p1Winners = calculateWinnersByShotType('player1');
+                    const p2Winners = calculateWinnersByShotType('player2');
+                    
+                    // Winners Section
+                    // 制胜分部分
+                    if (yPos > 250) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Winners', 14, yPos);
+                    yPos += 7;
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(9);
+                    
+                    addStatRow('Total', p1Winners.total || 0, p2Winners.total || 0);
+                    addStatRow('Total Forehand', p1Winners.totalForehand || 0, p2Winners.totalForehand || 0);
+                    addStatRow('Forehand Ground', p1Winners.forehandGround || 0, p2Winners.forehandGround || 0);
+                    addStatRow('Forehand Slice', p1Winners.forehandSlice || 0, p2Winners.forehandSlice || 0);
+                    addStatRow('Forehand Volley', p1Winners.forehandVolley || 0, p2Winners.forehandVolley || 0);
+                    addStatRow('Total Backhand', p1Winners.totalBackhand || 0, p2Winners.totalBackhand || 0);
+                    addStatRow('Backhand Ground', p1Winners.backhandGround || 0, p2Winners.backhandGround || 0);
+                    addStatRow('Backhand Slice', p1Winners.backhandSlice || 0, p2Winners.backhandSlice || 0);
+                    addStatRow('Backhand Volley', p1Winners.backhandVolley || 0, p2Winners.backhandVolley || 0);
+                    addStatRow('Approach Shot', p1Winners.approachShot || 0, p2Winners.approachShot || 0);
+                    addStatRow('Overhead', p1Winners.overhead || 0, p2Winners.overhead || 0);
+                    addStatRow('Drop Shot', p1Winners.dropShot || 0, p2Winners.dropShot || 0);
+                    addStatRow('Lob', p1Winners.lob || 0, p2Winners.lob || 0);
+                    addStatRow('Passing Shot', p1Winners.passingShot || 0, p2Winners.passingShot || 0);
+                    
+                    yPos += 5;
+                    
+                    // Unforced Errors Section
+                    // 非受迫性失误部分
+                    if (yPos > 250) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Unforced Errors', 14, yPos);
+                    yPos += 7;
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(9);
+                    
+                    addStatRow('Total', p1UnforcedErrors.total || 0, p2UnforcedErrors.total || 0);
+                    addStatRow('Total Forehand', p1UnforcedErrors.totalForehand || 0, p2UnforcedErrors.totalForehand || 0);
+                    addStatRow('Forehand Ground', p1UnforcedErrors.forehandGround || 0, p2UnforcedErrors.forehandGround || 0);
+                    addStatRow('Forehand Slice', p1UnforcedErrors.forehandSlice || 0, p2UnforcedErrors.forehandSlice || 0);
+                    addStatRow('Forehand Volley', p1UnforcedErrors.forehandVolley || 0, p2UnforcedErrors.forehandVolley || 0);
+                    addStatRow('Total Backhand', p1UnforcedErrors.totalBackhand || 0, p2UnforcedErrors.totalBackhand || 0);
+                    addStatRow('Backhand Ground', p1UnforcedErrors.backhandGround || 0, p2UnforcedErrors.backhandGround || 0);
+                    addStatRow('Backhand Slice', p1UnforcedErrors.backhandSlice || 0, p2UnforcedErrors.backhandSlice || 0);
+                    addStatRow('Backhand Volley', p1UnforcedErrors.backhandVolley || 0, p2UnforcedErrors.backhandVolley || 0);
+                    addStatRow('Approach Shot', p1UnforcedErrors.approachShot || 0, p2UnforcedErrors.approachShot || 0);
+                    addStatRow('Overhead', p1UnforcedErrors.overhead || 0, p2UnforcedErrors.overhead || 0);
+                    addStatRow('Drop Shot', p1UnforcedErrors.dropShot || 0, p2UnforcedErrors.dropShot || 0);
+                    addStatRow('Lob', p1UnforcedErrors.lob || 0, p2UnforcedErrors.lob || 0);
+                    
+                    yPos += 5;
+                    
+                    // Forced Errors Section
+                    // 受迫性失误部分
+                    if (yPos > 250) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Forced Errors', 14, yPos);
+                    yPos += 7;
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(9);
+                    
+                    addStatRow('Total', p1ForcedErrors.total || 0, p2ForcedErrors.total || 0);
+                    addStatRow('Total Forehand', p1ForcedErrors.totalForehand || 0, p2ForcedErrors.totalForehand || 0);
+                    addStatRow('Forehand Ground', p1ForcedErrors.forehandGround || 0, p2ForcedErrors.forehandGround || 0);
+                    addStatRow('Forehand Slice', p1ForcedErrors.forehandSlice || 0, p2ForcedErrors.forehandSlice || 0);
+                    addStatRow('Forehand Volley', p1ForcedErrors.forehandVolley || 0, p2ForcedErrors.forehandVolley || 0);
+                    addStatRow('Total Backhand', p1ForcedErrors.totalBackhand || 0, p2ForcedErrors.totalBackhand || 0);
+                    addStatRow('Backhand Ground', p1ForcedErrors.backhandGround || 0, p2ForcedErrors.backhandGround || 0);
+                    addStatRow('Backhand Slice', p1ForcedErrors.backhandSlice || 0, p2ForcedErrors.backhandSlice || 0);
+                    addStatRow('Backhand Volley', p1ForcedErrors.backhandVolley || 0, p2ForcedErrors.backhandVolley || 0);
+                    addStatRow('Approach Shot', p1ForcedErrors.approachShot || 0, p2ForcedErrors.approachShot || 0);
+                    addStatRow('Overhead', p1ForcedErrors.overhead || 0, p2ForcedErrors.overhead || 0);
+                    addStatRow('Drop Shot', p1ForcedErrors.dropShot || 0, p2ForcedErrors.dropShot || 0);
+                    addStatRow('Lob', p1ForcedErrors.lob || 0, p2ForcedErrors.lob || 0);
+                }
+            } catch (error) {
+                console.error('Error adding technical statistics to PDF:', error);
+                // Continue without statistics if there's an error
+                // 如果出错，继续不包含统计
+            }
+            
             // Match Log
             // 比赛日志
             if (match.log && match.log.length > 0) {
