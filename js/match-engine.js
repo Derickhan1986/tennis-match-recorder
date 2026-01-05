@@ -698,10 +698,22 @@ class MatchEngine {
         
         if (player1Sets >= setsToWin) {
             this.match.winner = 'player1';
-            this.endMatch();
+            // Save match state with winner set (but status not yet completed)
+            // 保存比赛状态（winner已设置但status尚未完成）
+            storage.saveMatch(this.match);
+            // Don't call endMatch() directly - let the UI show confirmation dialog
+            // 不直接调用endMatch() - 让UI显示确认对话框
+            // endMatch() will be called after user confirms
+            // endMatch()将在用户确认后调用
         } else if (player2Sets >= setsToWin) {
             this.match.winner = 'player2';
-            this.endMatch();
+            // Save match state with winner set (but status not yet completed)
+            // 保存比赛状态（winner已设置但status尚未完成）
+            storage.saveMatch(this.match);
+            // Don't call endMatch() directly - let the UI show confirmation dialog
+            // 不直接调用endMatch() - 让UI显示确认对话框
+            // endMatch() will be called after user confirms
+            // endMatch()将在用户确认后调用
         }
     }
 

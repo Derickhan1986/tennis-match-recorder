@@ -274,6 +274,79 @@ class MatchRecorder {
             });
         }
         
+        // Match end modal buttons
+        // 比赛结束模态框按钮
+        const matchEndUndoBtn = document.getElementById('match-end-undo-btn');
+        const matchEndFinishBtn = document.getElementById('match-end-finish-btn');
+        if (matchEndUndoBtn) {
+            matchEndUndoBtn.addEventListener('click', () => {
+                this.handleMatchEndUndo();
+            });
+        }
+        if (matchEndFinishBtn) {
+            matchEndFinishBtn.addEventListener('click', () => {
+                this.handleMatchEndFinish();
+            });
+        }
+        
+        // Match settings modal buttons
+        // 比赛设置模态框按钮
+        const matchSettingsClose = document.getElementById('match-settings-close');
+        const matchSettingsCancel = document.getElementById('match-settings-cancel-btn');
+        const matchSettingsSave = document.getElementById('match-settings-save-btn');
+        if (matchSettingsClose) {
+            matchSettingsClose.addEventListener('click', () => {
+                this.hideMatchSettingsModal();
+            });
+        }
+        if (matchSettingsCancel) {
+            matchSettingsCancel.addEventListener('click', () => {
+                this.hideMatchSettingsModal();
+            });
+        }
+        if (matchSettingsSave) {
+            matchSettingsSave.addEventListener('click', () => {
+                this.saveMatchSettings();
+            });
+        }
+        
+        // Setup inline match settings form button handlers
+        // 设置内联比赛设置表单按钮处理程序
+        this.setupMatchSettingsFormHandlers();
+        
+        // Prevent match end modal from closing when clicking outside
+        // 防止比赛结束模态框在点击外部时关闭
+        const matchEndModal = document.getElementById('match-end-modal');
+        if (matchEndModal) {
+            // Ensure modal is hidden on page load
+            // 确保页面加载时模态框是隐藏的
+            matchEndModal.classList.add('hidden');
+            matchEndModal.style.display = 'none';
+            matchEndModal.style.visibility = 'hidden';
+            
+            // Don't close when clicking outside - user must choose an option
+            // 点击外部时不关闭 - 用户必须选择一个选项
+            // (No event listener needed - modal will only close via buttons)
+            // （不需要事件监听器 - 模态框只能通过按钮关闭）
+        }
+        
+        // Match settings modal - close when clicking outside
+        // 比赛设置模态框 - 点击外部时关闭
+        const matchSettingsModal = document.getElementById('match-settings-modal');
+        if (matchSettingsModal) {
+            // Ensure modal is hidden on page load
+            // 确保页面加载时模态框是隐藏的
+            matchSettingsModal.classList.add('hidden');
+            matchSettingsModal.style.display = 'none';
+            matchSettingsModal.style.visibility = 'hidden';
+            
+            matchSettingsModal.addEventListener('click', (e) => {
+                if (e.target === matchSettingsModal) {
+                    this.hideMatchSettingsModal();
+                }
+            });
+        }
+        
         // Close modal when clicking outside
         // 点击外部关闭模态框
         const modal = document.getElementById('shot-type-modal');
@@ -642,6 +715,8 @@ class MatchRecorder {
         
         // Generate shot type buttons
         // 生成击球类型按钮
+        // Base shot types (always available)
+        // 基础击球类型（始终可用）
         const shotTypes = [
             ShotType.FOREHAND_GROUND_STROKE,
             ShotType.BACKHAND_GROUND_STROKE,
@@ -654,6 +729,12 @@ class MatchRecorder {
             ShotType.APPROACH_SHOT,
             ShotType.DROP_SHOT
         ];
+        
+        // Add Passing Shot only for Winner (not for Unforced Error or Forced Error)
+        // 只为Winner添加Passing Shot（不为Unforced Error或Forced Error添加）
+        if (pointType === 'Winner') {
+            shotTypes.push(ShotType.PASSING_SHOT);
+        }
         
         options.innerHTML = shotTypes.map(shotType => `
             <button class="shot-type-btn" data-shot-type="${shotType}">
@@ -713,9 +794,15 @@ class MatchRecorder {
             // 仅从日志更新显示
             this.updateDisplay();
             
-            // Check if match is complete from log
-            // 从日志检查比赛是否结束
-            if (this.currentMatch.status === 'completed') {
+            // Check if match is complete (winner is set but status not yet completed)
+            // 检查比赛是否结束（winner已设置但status尚未完成）
+            if (this.currentMatch.winner && this.currentMatch.status !== 'completed') {
+                // Show confirmation dialog instead of directly ending match
+                // 显示确认对话框而不是直接结束比赛
+                this.showMatchEndConfirmation();
+            } else if (this.currentMatch.status === 'completed') {
+                // Match was already completed (e.g., manually ended)
+                // 比赛已经完成（例如，手动结束）
                 app.showToast('Match completed!', 'success');
                 setTimeout(() => {
                     app.showPage('matches');
@@ -790,9 +877,125 @@ class MatchRecorder {
     // Show match menu
     // 显示比赛菜单
     showMatchMenu() {
-        if (confirm('End match?')) {
-            this.endMatch();
+        // Create menu options
+        // 创建菜单选项
+        const menuOptions = [
+            { text: 'Match Settings', action: 'settings' },
+            { text: 'End Match', action: 'end' }
+        ];
+        
+        // Create menu modal
+        // 创建菜单模态框
+        const menuHtml = `
+            <div class="match-menu-modal">
+                <div class="match-menu-content">
+                    ${menuOptions.map(option => `
+                        <button class="match-menu-item" data-action="${option.action}">
+                            ${option.text}
+                        </button>
+                    `).join('')}
+                    <button class="match-menu-item match-menu-cancel" data-action="cancel">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing menu if any
+        // 删除现有菜单（如果有）
+        const existingMenu = document.querySelector('.match-menu-modal');
+        if (existingMenu) {
+            existingMenu.remove();
         }
+        
+        // Add menu to page
+        // 将菜单添加到页面
+        const menuContainer = document.createElement('div');
+        menuContainer.innerHTML = menuHtml;
+        const menuModal = menuContainer.querySelector('.match-menu-modal');
+        document.body.appendChild(menuModal);
+        
+        // Add click handlers
+        // 添加点击处理程序
+        menuModal.querySelectorAll('.match-menu-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const action = e.currentTarget.dataset.action;
+                menuModal.remove();
+                
+                if (action === 'settings') {
+                    this.showMatchSettingsModal();
+                } else if (action === 'end') {
+                    if (confirm('End match?')) {
+                        this.endMatch();
+                    }
+                }
+            });
+        });
+        
+        // Close menu when clicking outside
+        // 点击外部关闭菜单
+        menuModal.addEventListener('click', (e) => {
+            if (e.target === menuModal) {
+                menuModal.remove();
+            }
+        });
+    }
+
+    // Show match end confirmation dialog
+    // 显示比赛结束确认对话框
+    showMatchEndConfirmation() {
+        const modal = document.getElementById('match-end-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+        }
+    }
+    
+    // Handle match end undo (undo last point)
+    // 处理比赛结束撤销（撤销最后一分）
+    async handleMatchEndUndo() {
+        const modal = document.getElementById('match-end-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+            modal.style.visibility = 'hidden';
+        }
+        
+        // Undo the last point
+        // 撤销最后一分
+        await this.undoPoint();
+    }
+    
+    // Handle match end finish (confirm match end)
+    // 处理比赛结束完成（确认比赛结束）
+    async handleMatchEndFinish() {
+        const modal = document.getElementById('match-end-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+            modal.style.visibility = 'hidden';
+        }
+        
+        // Call endMatch to finalize the match
+        // 调用endMatch以完成比赛
+        if (this.matchEngine) {
+            this.matchEngine.endMatch();
+        }
+        
+        // Reload match to get updated status
+        // 重新加载比赛以获取更新的状态
+        this.currentMatch = await storage.getMatch(this.currentMatch.id);
+        this.matchEngine = new MatchEngine(this.currentMatch);
+        
+        app.showToast('Match completed!', 'success');
+        setTimeout(() => {
+            app.showPage('matches');
+            this.currentMatch = null;
+            this.matchEngine = null;
+            this.player1 = null;
+            this.player2 = null;
+        }, 2000);
     }
 
     // End match manually
@@ -814,6 +1017,336 @@ class MatchRecorder {
         } catch (error) {
             console.error('Error ending match:', error);
             app.showToast('Error ending match', 'error');
+        }
+    }
+    
+    // Setup match settings form button handlers
+    // 设置比赛设置表单按钮处理程序
+    setupMatchSettingsFormHandlers() {
+        // Number of Sets buttons
+        // 盘数按钮
+        const numberOfSetsButtons = document.querySelectorAll('.btn-number-of-sets-inline');
+        const numberOfSetsInput = document.getElementById('match-sets-inline');
+        if (numberOfSetsButtons.length > 0 && numberOfSetsInput) {
+            numberOfSetsButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const value = button.dataset.value;
+                    numberOfSetsInput.value = value;
+                    numberOfSetsButtons.forEach(btn => {
+                        if (btn.dataset.value === value) {
+                            btn.style.backgroundColor = '#4caf50';
+                            btn.style.color = 'white';
+                            btn.style.borderColor = '#4caf50';
+                        } else {
+                            btn.style.backgroundColor = 'var(--card-background)';
+                            btn.style.color = 'var(--text-primary)';
+                            btn.style.borderColor = 'var(--border-color)';
+                        }
+                    });
+                });
+            });
+        }
+        
+        // Games per Set buttons
+        // 每盘局数按钮
+        const gamesPerSetButtons = document.querySelectorAll('.btn-games-per-set-inline');
+        const gamesPerSetInput = document.getElementById('match-games-inline');
+        if (gamesPerSetButtons.length > 0 && gamesPerSetInput) {
+            gamesPerSetButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const value = button.dataset.value;
+                    gamesPerSetInput.value = value;
+                    gamesPerSetButtons.forEach(btn => {
+                        if (btn.dataset.value === value) {
+                            btn.style.backgroundColor = '#4caf50';
+                            btn.style.color = 'white';
+                            btn.style.borderColor = '#4caf50';
+                        } else {
+                            btn.style.backgroundColor = 'var(--card-background)';
+                            btn.style.color = 'var(--text-primary)';
+                            btn.style.borderColor = 'var(--border-color)';
+                        }
+                    });
+                });
+            });
+        }
+        
+        // Final Set Type buttons
+        // 最终盘类型按钮
+        const btnFinalSetNormal = document.getElementById('btn-final-set-normal-inline');
+        const btnFinalSetSuper = document.getElementById('btn-final-set-super-inline');
+        const finalSetInput = document.getElementById('match-final-set-inline');
+        if (btnFinalSetNormal && btnFinalSetSuper && finalSetInput) {
+            btnFinalSetNormal.addEventListener('click', () => {
+                finalSetInput.value = 'Normal Final Set';
+                btnFinalSetNormal.style.backgroundColor = '#4caf50';
+                btnFinalSetNormal.style.color = 'white';
+                btnFinalSetNormal.style.borderColor = '#4caf50';
+                btnFinalSetSuper.style.backgroundColor = 'var(--card-background)';
+                btnFinalSetSuper.style.color = 'var(--text-primary)';
+                btnFinalSetSuper.style.borderColor = 'var(--border-color)';
+            });
+            btnFinalSetSuper.addEventListener('click', () => {
+                finalSetInput.value = 'Super Tie Break';
+                btnFinalSetSuper.style.backgroundColor = '#4caf50';
+                btnFinalSetSuper.style.color = 'white';
+                btnFinalSetSuper.style.borderColor = '#4caf50';
+                btnFinalSetNormal.style.backgroundColor = 'var(--card-background)';
+                btnFinalSetNormal.style.color = 'var(--text-primary)';
+                btnFinalSetNormal.style.borderColor = 'var(--border-color)';
+            });
+        }
+        
+        // Normal Tie Break Games buttons
+        // 普通抢七局数按钮
+        const tieBreakGamesButtons = document.querySelectorAll('.btn-tie-break-games-inline');
+        const tieBreakGamesInput = document.getElementById('match-tie-break-games-inline');
+        if (tieBreakGamesButtons.length > 0 && tieBreakGamesInput) {
+            tieBreakGamesButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const value = button.dataset.value;
+                    tieBreakGamesInput.value = value;
+                    tieBreakGamesButtons.forEach(btn => {
+                        if (btn.dataset.value === value) {
+                            btn.style.backgroundColor = '#4caf50';
+                            btn.style.color = 'white';
+                            btn.style.borderColor = '#4caf50';
+                        } else {
+                            btn.style.backgroundColor = 'var(--card-background)';
+                            btn.style.color = 'var(--text-primary)';
+                            btn.style.borderColor = 'var(--border-color)';
+                        }
+                    });
+                });
+            });
+        }
+        
+        // Super Tie Break Points buttons
+        // Super Tie Break分数按钮
+        const superTieBreakPointsButtons = document.querySelectorAll('.btn-super-tie-break-points-inline');
+        const superTieBreakPointsInput = document.getElementById('match-super-tie-break-points-inline');
+        if (superTieBreakPointsButtons.length > 0 && superTieBreakPointsInput) {
+            superTieBreakPointsButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const value = button.dataset.value;
+                    superTieBreakPointsInput.value = value;
+                    superTieBreakPointsButtons.forEach(btn => {
+                        if (btn.dataset.value === value) {
+                            btn.style.backgroundColor = '#4caf50';
+                            btn.style.color = 'white';
+                            btn.style.borderColor = '#4caf50';
+                        } else {
+                            btn.style.backgroundColor = 'var(--card-background)';
+                            btn.style.color = 'var(--text-primary)';
+                            btn.style.borderColor = 'var(--border-color)';
+                        }
+                    });
+                });
+            });
+        }
+    }
+    
+    // Show match settings modal
+    // 显示比赛设置模态框
+    showMatchSettingsModal() {
+        if (!this.currentMatch) return;
+        
+        const modal = document.getElementById('match-settings-modal');
+        if (!modal) return;
+        
+        // Load current settings
+        // 加载当前设置
+        const settings = this.currentMatch.settings;
+        
+        // Set number of sets
+        // 设置盘数
+        const setsInput = document.getElementById('match-sets-inline');
+        if (setsInput) {
+            setsInput.value = settings.numberOfSets;
+            document.querySelectorAll('.btn-number-of-sets-inline').forEach(btn => {
+                if (btn.dataset.value === String(settings.numberOfSets)) {
+                    btn.style.backgroundColor = '#4caf50';
+                    btn.style.color = 'white';
+                    btn.style.borderColor = '#4caf50';
+                } else {
+                    btn.style.backgroundColor = 'var(--card-background)';
+                    btn.style.color = 'var(--text-primary)';
+                    btn.style.borderColor = 'var(--border-color)';
+                }
+            });
+        }
+        
+        // Set games per set
+        // 设置每盘局数
+        const gamesInput = document.getElementById('match-games-inline');
+        if (gamesInput) {
+            gamesInput.value = settings.gamesPerSet;
+            document.querySelectorAll('.btn-games-per-set-inline').forEach(btn => {
+                if (btn.dataset.value === String(settings.gamesPerSet)) {
+                    btn.style.backgroundColor = '#4caf50';
+                    btn.style.color = 'white';
+                    btn.style.borderColor = '#4caf50';
+                } else {
+                    btn.style.backgroundColor = 'var(--card-background)';
+                    btn.style.color = 'var(--text-primary)';
+                    btn.style.borderColor = 'var(--border-color)';
+                }
+            });
+        }
+        
+        // Set ad scoring
+        // 设置Ad计分
+        const adScoringInput = document.getElementById('match-ad-scoring-inline');
+        if (adScoringInput) {
+            adScoringInput.checked = settings.adScoring;
+        }
+        
+        // Set final set type
+        // 设置最终盘类型
+        const finalSetInput = document.getElementById('match-final-set-inline');
+        if (finalSetInput) {
+            finalSetInput.value = settings.finalSetType;
+            const btnNormal = document.getElementById('btn-final-set-normal-inline');
+            const btnSuper = document.getElementById('btn-final-set-super-inline');
+            if (btnNormal && btnSuper) {
+                if (settings.finalSetType === 'Normal Final Set') {
+                    btnNormal.style.backgroundColor = '#4caf50';
+                    btnNormal.style.color = 'white';
+                    btnNormal.style.borderColor = '#4caf50';
+                    btnSuper.style.backgroundColor = 'var(--card-background)';
+                    btnSuper.style.color = 'var(--text-primary)';
+                    btnSuper.style.borderColor = 'var(--border-color)';
+                } else {
+                    btnSuper.style.backgroundColor = '#4caf50';
+                    btnSuper.style.color = 'white';
+                    btnSuper.style.borderColor = '#4caf50';
+                    btnNormal.style.backgroundColor = 'var(--card-background)';
+                    btnNormal.style.color = 'var(--text-primary)';
+                    btnNormal.style.borderColor = 'var(--border-color)';
+                }
+            }
+        }
+        
+        // Set normal tie break games
+        // 设置普通抢七局数
+        const tieBreakGamesInput = document.getElementById('match-tie-break-games-inline');
+        if (tieBreakGamesInput) {
+            tieBreakGamesInput.value = settings.tieBreakGames;
+            document.querySelectorAll('.btn-tie-break-games-inline').forEach(btn => {
+                if (btn.dataset.value === String(settings.tieBreakGames)) {
+                    btn.style.backgroundColor = '#4caf50';
+                    btn.style.color = 'white';
+                    btn.style.borderColor = '#4caf50';
+                } else {
+                    btn.style.backgroundColor = 'var(--card-background)';
+                    btn.style.color = 'var(--text-primary)';
+                    btn.style.borderColor = 'var(--border-color)';
+                }
+            });
+        }
+        
+        // Set normal tie break win by 2
+        // 设置普通抢七是否领先2分
+        const tieBreakWinBy2Input = document.getElementById('match-tie-break-winby2-inline');
+        if (tieBreakWinBy2Input) {
+            tieBreakWinBy2Input.checked = settings.tieBreakWinBy2;
+        }
+        
+        // Set super tie break points
+        // 设置Super Tie Break分数
+        const superTieBreakPointsInput = document.getElementById('match-super-tie-break-points-inline');
+        if (superTieBreakPointsInput) {
+            superTieBreakPointsInput.value = settings.superTieBreakPoints;
+            document.querySelectorAll('.btn-super-tie-break-points-inline').forEach(btn => {
+                if (btn.dataset.value === String(settings.superTieBreakPoints)) {
+                    btn.style.backgroundColor = '#4caf50';
+                    btn.style.color = 'white';
+                    btn.style.borderColor = '#4caf50';
+                } else {
+                    btn.style.backgroundColor = 'var(--card-background)';
+                    btn.style.color = 'var(--text-primary)';
+                    btn.style.borderColor = 'var(--border-color)';
+                }
+            });
+        }
+        
+        // Set super tie break win by 2
+        // 设置Super Tie Break是否领先2分
+        const superTieBreakWinBy2Input = document.getElementById('match-super-tie-break-winby2-inline');
+        if (superTieBreakWinBy2Input) {
+            superTieBreakWinBy2Input.checked = settings.superTieBreakWinBy2;
+        }
+        
+        // Show modal
+        // 显示模态框
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+    }
+    
+    // Hide match settings modal
+    // 隐藏比赛设置模态框
+    hideMatchSettingsModal() {
+        const modal = document.getElementById('match-settings-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+            modal.style.visibility = 'hidden';
+        }
+    }
+    
+    // Save match settings
+    // 保存比赛设置
+    async saveMatchSettings() {
+        if (!this.currentMatch || !this.matchEngine) return;
+        
+        try {
+            // Get values from form
+            // 从表单获取值
+            const numberOfSets = parseInt(document.getElementById('match-sets-inline').value);
+            const gamesPerSet = parseInt(document.getElementById('match-games-inline').value);
+            const adScoring = document.getElementById('match-ad-scoring-inline').checked;
+            const finalSetType = document.getElementById('match-final-set-inline').value;
+            const tieBreakGames = parseInt(document.getElementById('match-tie-break-games-inline').value);
+            const tieBreakWinBy2 = document.getElementById('match-tie-break-winby2-inline').checked;
+            const superTieBreakPoints = parseInt(document.getElementById('match-super-tie-break-points-inline').value);
+            const superTieBreakWinBy2 = document.getElementById('match-super-tie-break-winby2-inline').checked;
+            
+            // Update settings
+            // 更新设置
+            this.currentMatch.settings.numberOfSets = numberOfSets;
+            this.currentMatch.settings.gamesPerSet = gamesPerSet;
+            this.currentMatch.settings.adScoring = adScoring;
+            this.currentMatch.settings.finalSetType = finalSetType;
+            this.currentMatch.settings.tieBreakGames = tieBreakGames;
+            this.currentMatch.settings.tieBreakWinBy2 = tieBreakWinBy2;
+            this.currentMatch.settings.superTieBreakPoints = superTieBreakPoints;
+            this.currentMatch.settings.superTieBreakWinBy2 = superTieBreakWinBy2;
+            
+            // Validate settings
+            // 验证设置
+            validateMatchSettings(this.currentMatch.settings);
+            
+            // Save match
+            // 保存比赛
+            await storage.saveMatch(this.currentMatch);
+            
+            // Reload match engine with updated settings
+            // 使用更新的设置重新加载比赛引擎
+            this.matchEngine = new MatchEngine(this.currentMatch);
+            
+            // Update display
+            // 更新显示
+            this.updateDisplay();
+            
+            // Hide modal
+            // 隐藏模态框
+            this.hideMatchSettingsModal();
+            
+            app.showToast('Settings updated', 'success');
+        } catch (error) {
+            console.error('Error saving match settings:', error);
+            app.showToast(error.message || 'Error saving settings', 'error');
         }
     }
 

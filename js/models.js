@@ -142,7 +142,8 @@ const ShotType = {
     LOB: 'Lob',
     OVERHEAD: 'Overhead',
     APPROACH_SHOT: 'Approach Shot',
-    DROP_SHOT: 'Drop Shot'
+    DROP_SHOT: 'Drop Shot',
+    PASSING_SHOT: 'Passing Shot'
 };
 
 // Match Log Entry (merged with Point - contains all point information plus score information)

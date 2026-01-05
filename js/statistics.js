@@ -27,6 +27,7 @@ window.createEmptyPlayerStats = function createEmptyPlayerStats() {
         totalPoints: 0,
         pointsWonOnServe: 0,
         pointsWonOnReturn: 0,
+        pointsWonInRow: 0, // Maximum consecutive points won (连续得分最大记录)
         
         // Serve statistics
         // 发球统计
@@ -91,7 +92,8 @@ window.createEmptyPlayerStats = function createEmptyPlayerStats() {
             'Lob': 0,
             'Overhead': 0,
             'Approach Shot': 0,
-            'Drop Shot': 0
+            'Drop Shot': 0,
+            'Passing Shot': 0
         }
     };
 };
@@ -192,7 +194,10 @@ async function calculatePlayerStats(playerId) {
                 'Forehand Volley': 0,
                 'Backhand Volley': 0,
                 'Lob': 0,
-                'Overhead': 0
+                'Overhead': 0,
+                'Approach Shot': 0,
+                'Drop Shot': 0,
+                'Passing Shot': 0
             },
             
             // Statistics by court type
@@ -909,6 +914,52 @@ window.calculateMatchStats = function calculateMatchStats(match) {
         }
         
         playerStats.totalPoints = playerStats.pointsWon + playerStats.pointsLost;
+    });
+    
+    // Calculate maximum consecutive points won for each player
+    // 计算每个玩家的最大连续得分
+    // This includes all points won by the player, including:
+    // 这包括玩家赢得的所有分数，包括：
+    // - Points won by own actions (ACE, Winner)
+    //   通过自己的行动得分（ACE、Winner）
+    // - Points won due to opponent errors (Double Fault, Return Error, Unforced Error, Forced Error)
+    //   由于对手失误而得分（Double Fault、Return Error、Unforced Error、Forced Error）
+    // The entry.winner field contains the player who won the point in all cases
+    // entry.winner字段在所有情况下都包含赢得这一分的玩家
+    ['player1', 'player2'].forEach(playerRole => {
+        const playerStats = stats[playerRole];
+        let currentStreak = 0; // Current consecutive points won (当前连续得分)
+        let maxStreak = 0; // Maximum consecutive points won (最大连续得分)
+        
+        // Iterate through log entries to find consecutive points won
+        // 遍历日志条目以查找连续得分
+        for (const entry of match.log) {
+            // Skip entries without winner (e.g., first serve faults that don't result in a point)
+            // 跳过没有winner的条目（例如，没有导致得分的一发失误）
+            if (!entry.winner) continue;
+            
+            // Check if player won this point (regardless of how - own action or opponent error)
+            // 检查玩家是否赢得了这一分（无论方式如何 - 自己的行动或对手失误）
+            if (entry.winner === playerRole) {
+                // Player won this point - increment streak
+                // This includes: ACE, Winner, and points won due to opponent errors
+                // 玩家得分 - 增加连续得分
+                // 这包括：ACE、Winner，以及由于对手失误而得分
+                currentStreak++;
+                // Update max streak if current streak is larger
+                // 如果当前连续得分更大，更新最大连续得分
+                if (currentStreak > maxStreak) {
+                    maxStreak = currentStreak;
+                }
+            } else {
+                // Player lost this point (opponent won) - reset streak
+                // 玩家失分（对手得分）- 重置连续得分
+                currentStreak = 0;
+            }
+        }
+        
+        // Set maximum consecutive points won (设置最大连续得分)
+        playerStats.pointsWonInRow = maxStreak;
     });
     
     return stats;

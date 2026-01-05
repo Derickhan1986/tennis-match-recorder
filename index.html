@@ -353,6 +353,134 @@
             </div>
         </div>
 
+        <!-- Match End Confirmation Modal -->
+        <div id="match-end-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Match Completed</h3>
+                </div>
+                <div class="modal-body">
+                    <p style="margin-bottom: 20px; text-align: center;">The match has ended. What would you like to do?</p>
+                    <div style="display: flex; gap: 10px; justify-content: center;">
+                        <button id="match-end-undo-btn" class="btn-secondary" style="flex: 1;">Undo last point</button>
+                        <button id="match-end-finish-btn" class="btn-primary" style="flex: 1;">Finish Match</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Match Settings Modal -->
+        <div id="match-settings-modal" class="modal hidden">
+            <div class="modal-content" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+                <div class="modal-header">
+                    <h3>Match Settings</h3>
+                    <button class="modal-close" id="match-settings-close">×</button>
+                </div>
+                <div class="modal-body">
+                    <form id="match-settings-form-inline">
+                        <!-- Number of Sets -->
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 10px;">
+                                Number of Sets
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <button type="button" class="btn-number-of-sets-inline" data-value="1" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">1</button>
+                                    <button type="button" class="btn-number-of-sets-inline" data-value="2" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">2</button>
+                                    <button type="button" class="btn-number-of-sets-inline" data-value="3" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">3</button>
+                                    <button type="button" class="btn-number-of-sets-inline" data-value="4" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">4</button>
+                                    <button type="button" class="btn-number-of-sets-inline" data-value="5" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">5</button>
+                                </div>
+                            </label>
+                            <input type="hidden" id="match-sets-inline" value="3">
+                        </div>
+                        
+                        <!-- Games per Set -->
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 10px;">
+                                Games per Set
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <button type="button" class="btn-games-per-set-inline" data-value="3" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">3</button>
+                                    <button type="button" class="btn-games-per-set-inline" data-value="4" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">4</button>
+                                    <button type="button" class="btn-games-per-set-inline" data-value="5" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">5</button>
+                                    <button type="button" class="btn-games-per-set-inline" data-value="6" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">6</button>
+                                    <button type="button" class="btn-games-per-set-inline" data-value="7" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">7</button>
+                                    <button type="button" class="btn-games-per-set-inline" data-value="8" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">8</button>
+                                </div>
+                            </label>
+                            <input type="hidden" id="match-games-inline" value="6">
+                        </div>
+                        
+                        <!-- Ad Scoring -->
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="match-ad-scoring-inline">
+                                Ad Scoring
+                            </label>
+                        </div>
+                        
+                        <!-- Final Set Type -->
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 10px;">
+                                Final Set Type
+                                <div style="display: flex; gap: 8px;">
+                                    <button type="button" class="btn-final-set-type-inline" id="btn-final-set-normal-inline" data-value="Normal Final Set" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">Normal Final Set</button>
+                                    <button type="button" class="btn-final-set-type-inline" id="btn-final-set-super-inline" data-value="Super Tie Break" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">Super Tie Break</button>
+                                </div>
+                            </label>
+                            <input type="hidden" id="match-final-set-inline" value="Normal Final Set">
+                        </div>
+                        
+                        <!-- Normal Tie Break Games -->
+                        <div class="form-group" id="tie-break-group-inline">
+                            <label style="display: flex; align-items: center; gap: 10px;">
+                                Normal Tie Break Games
+                                <div style="display: flex; gap: 8px;">
+                                    <button type="button" class="btn-tie-break-games-inline" data-value="5" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">5</button>
+                                    <button type="button" class="btn-tie-break-games-inline" data-value="7" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">7</button>
+                                    <button type="button" class="btn-tie-break-games-inline" data-value="10" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">10</button>
+                                </div>
+                            </label>
+                            <input type="hidden" id="match-tie-break-games-inline" value="7">
+                        </div>
+                        
+                        <!-- Normal Tie Break Win by 2 -->
+                        <div class="form-group" id="tie-break-winby2-group-inline">
+                            <label>
+                                <input type="checkbox" id="match-tie-break-winby2-inline">
+                                Normal Tie Break Win by 2 Points
+                            </label>
+                        </div>
+                        
+                        <!-- Super Tie Break Points -->
+                        <div class="form-group" id="super-tie-break-group-inline">
+                            <label style="display: flex; align-items: center; gap: 10px;">
+                                Super Tie Break Points
+                                <div style="display: flex; gap: 8px;">
+                                    <button type="button" class="btn-super-tie-break-points-inline" data-value="5" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">5</button>
+                                    <button type="button" class="btn-super-tie-break-points-inline" data-value="7" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">7</button>
+                                    <button type="button" class="btn-super-tie-break-points-inline" data-value="10" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">10</button>
+                                    <button type="button" class="btn-super-tie-break-points-inline" data-value="12" style="padding: 8px 16px; background-color: var(--card-background); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;">12</button>
+                                </div>
+                            </label>
+                            <input type="hidden" id="match-super-tie-break-points-inline" value="10">
+                        </div>
+                        
+                        <!-- Super Tie Break Win by 2 -->
+                        <div class="form-group" id="super-tie-break-winby2-group-inline">
+                            <label>
+                                <input type="checkbox" id="match-super-tie-break-winby2-inline">
+                                Super Tie Break Win by 2 Points
+                            </label>
+                        </div>
+                        
+                        <div class="form-actions" style="margin-top: 20px; display: flex; gap: 10px;">
+                            <button type="button" class="btn-secondary" id="match-settings-cancel-btn" style="flex: 1;">Cancel</button>
+                            <button type="button" class="btn-primary" id="match-settings-save-btn" style="flex: 1;">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <!-- Match Detail Page -->
         <div id="match-detail-page" class="page">
             <div class="match-detail-container" id="match-detail-content">

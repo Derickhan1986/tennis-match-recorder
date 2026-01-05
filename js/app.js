@@ -974,7 +974,8 @@ const app = {
                 approachShot: 0,
                 overhead: 0,
                 dropShot: 0,
-                lob: 0
+                lob: 0,
+                passingShot: 0
             };
             
             if (!logToUse || logToUse.length === 0) return stats;
@@ -1010,6 +1011,8 @@ const app = {
                         stats.dropShot++;
                     } else if (shotType === 'Lob') {
                         stats.lob++;
+                    } else if (shotType === 'Passing Shot') {
+                        stats.passingShot++;
                     }
                 }
             }
@@ -1038,6 +1041,12 @@ const app = {
                         <div class="comparison-value">${p1.pointsWon || 0}</div>
                         <div class="comparison-label">Total Point Won</div>
                         <div class="comparison-value">${p2.pointsWon || 0}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1.pointsWonInRow || 0}</div>
+                        <div class="comparison-label">Max Consecutive Points</div>
+                        <div class="comparison-value">${p2.pointsWonInRow || 0}</div>
                     </div>
                     
                     <div class="comparison-row">
@@ -1332,6 +1341,12 @@ const app = {
                         <div class="comparison-value">${p1Winners.lob}</div>
                         <div class="comparison-label">Lob</div>
                         <div class="comparison-value">${p2Winners.lob}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1Winners.passingShot || 0}</div>
+                        <div class="comparison-label">Passing Shot</div>
+                        <div class="comparison-value">${p2Winners.passingShot || 0}</div>
                     </div>
                     
                     <div class="comparison-section-header">

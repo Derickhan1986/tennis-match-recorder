@@ -1195,6 +1195,55 @@ body {
     padding: 20px;
 }
 
+/* Match Menu Modal */
+.match-menu-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.match-menu-content {
+    background-color: var(--card-background);
+    border-radius: 16px;
+    width: 90%;
+    max-width: 300px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+.match-menu-item {
+    width: 100%;
+    padding: 16px 20px;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+    font-size: 16px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.match-menu-item:hover {
+    background-color: var(--secondary-background);
+}
+
+.match-menu-item:last-child {
+    border-bottom: none;
+}
+
+.match-menu-cancel {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
 .shot-type-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
