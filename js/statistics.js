@@ -93,7 +93,8 @@ window.createEmptyPlayerStats = function createEmptyPlayerStats() {
             'Overhead': 0,
             'Approach Shot': 0,
             'Drop Shot': 0,
-            'Passing Shot': 0
+            'Passing Shot': 0,
+            'Return': 0
         }
     };
 };
@@ -197,7 +198,8 @@ async function calculatePlayerStats(playerId) {
                 'Overhead': 0,
                 'Approach Shot': 0,
                 'Drop Shot': 0,
-                'Passing Shot': 0
+                'Passing Shot': 0,
+                'Return': 0
             },
             
             // Statistics by court type

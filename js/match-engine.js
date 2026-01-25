@@ -1431,19 +1431,100 @@ class MatchEngine {
         
         // Create completed sets
         // 创建已完成的sets
+        // For each completed set, find the last log entry for that set to get the correct games score
+        // 对于每个已完成的set，找到该set的最后一个日志条目以获取正确的games比分
         for (let i = 0; i < totalSets; i++) {
             const set = createSet({ setNumber: i + 1 });
+            const setNumber = i + 1;
+            
+            // Determine winner based on setsScore
+            // 根据setsScore确定获胜者
             if (i < parseInt(setsScoreParsed.player1)) {
                 set.winner = 'player1';
             } else {
                 set.winner = 'player2';
             }
-            // For completed sets, we need to determine games won
-            // 对于已完成的sets，我们需要确定赢得的games
-            // This is complex, so we'll set a default (can be improved later)
-            // 这很复杂，所以我们设置一个默认值（可以稍后改进）
-            set.player1Games = set.winner === 'player1' ? this.settings.gamesPerSet : 0;
-            set.player2Games = set.winner === 'player2' ? this.settings.gamesPerSet : 0;
+            
+            // Find the last log entry for this completed set
+            // 找到此已完成set的最后一个日志条目
+            // The last entry of a completed set is the one where setsScore changes to show this set is completed
+            // 已完成set的最后一个条目是setsScore变为显示此set已完成的条目
+            // For set N, find the entry where setsScore changes from (N-1) completed sets to N completed sets
+            // 对于set N，找到setsScore从(N-1)个已完成sets变为N个已完成sets的条目
+            let lastEntryForSet = null;
+            let targetCompletedSets = setNumber;
+            
+            // Search through log to find the entry where setsScore changes to show this set is completed
+            // 搜索日志以找到setsScore变为显示此set已完成的条目
+            for (let j = 0; j < this.match.log.length; j++) {
+                const entry = this.match.log[j];
+                if (entry && entry.setsScore) {
+                    const entryParts = entry.setsScore.split('-');
+                    if (entryParts.length === 2) {
+                        const entryP1Sets = parseInt(entryParts[0].trim()) || 0;
+                        const entryP2Sets = parseInt(entryParts[1].trim()) || 0;
+                        const entryCompletedSets = entryP1Sets + entryP2Sets;
+                        
+                        // Check if this entry shows the target number of completed sets
+                        // 检查此条目是否显示目标数量的已完成sets
+                        if (entryCompletedSets === targetCompletedSets) {
+                            // Check previous entry to see if it had fewer completed sets
+                            // 检查前一个条目以查看它是否有更少的已完成sets
+                            let prevCompletedSets = 0;
+                            if (j > 0) {
+                                const prevEntry = this.match.log[j - 1];
+                                if (prevEntry && prevEntry.setsScore) {
+                                    const prevParts = prevEntry.setsScore.split('-');
+                                    if (prevParts.length === 2) {
+                                        const prevP1Sets = parseInt(prevParts[0].trim()) || 0;
+                                        const prevP2Sets = parseInt(prevParts[1].trim()) || 0;
+                                        prevCompletedSets = prevP1Sets + prevP2Sets;
+                                    }
+                                }
+                            }
+                            
+                            // If previous entry had fewer completed sets, this entry is from the last point of this set
+                            // 如果前一个条目有更少的已完成sets，此条目来自此set的最后一个point
+                            if (prevCompletedSets < targetCompletedSets) {
+                                // This is the entry where this set was completed
+                                // 这是此set完成的条目
+                                lastEntryForSet = entry;
+                                // Continue searching to find the last entry with this setsScore (in case there are multiple entries)
+                                // 继续搜索以找到具有此setsScore的最后一个条目（以防有多个条目）
+                            } else if (prevCompletedSets === targetCompletedSets && lastEntryForSet) {
+                                // Update to the last entry with this setsScore
+                                // 更新为此setsScore的最后一个条目
+                                lastEntryForSet = entry;
+                            }
+                        } else if (entryCompletedSets > targetCompletedSets) {
+                            // We've passed this set, stop searching
+                            // 我们已经超过此set，停止搜索
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Extract games score from the last entry of this set
+            // 从此set的最后一个条目提取games比分
+            if (lastEntryForSet && lastEntryForSet.gamesScore) {
+                const gamesScoreParts = lastEntryForSet.gamesScore.split('-');
+                if (gamesScoreParts.length === 2) {
+                    set.player1Games = parseInt(gamesScoreParts[0].trim()) || 0;
+                    set.player2Games = parseInt(gamesScoreParts[1].trim()) || 0;
+                } else {
+                    // Fallback to default if parsing fails
+                    // 如果解析失败，回退到默认值
+                    set.player1Games = set.winner === 'player1' ? this.settings.gamesPerSet : 0;
+                    set.player2Games = set.winner === 'player2' ? this.settings.gamesPerSet : 0;
+                }
+            } else {
+                // No log entry found for this set, use default
+                // 未找到此set的日志条目，使用默认值
+                set.player1Games = set.winner === 'player1' ? this.settings.gamesPerSet : 0;
+                set.player2Games = set.winner === 'player2' ? this.settings.gamesPerSet : 0;
+            }
+            
             this.match.sets.push(set);
         }
         

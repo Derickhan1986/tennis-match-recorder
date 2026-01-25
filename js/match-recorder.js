@@ -730,10 +730,11 @@ class MatchRecorder {
             ShotType.DROP_SHOT
         ];
         
-        // Add Passing Shot only for Winner (not for Unforced Error or Forced Error)
-        // 只为Winner添加Passing Shot（不为Unforced Error或Forced Error添加）
+        // Add Passing Shot and Return only for Winner (not for Unforced Error or Forced Error)
+        // 只为Winner添加Passing Shot和Return（不为Unforced Error或Forced Error添加）
         if (pointType === 'Winner') {
             shotTypes.push(ShotType.PASSING_SHOT);
+            shotTypes.push(ShotType.RETURN);
         }
         
         options.innerHTML = shotTypes.map(shotType => `

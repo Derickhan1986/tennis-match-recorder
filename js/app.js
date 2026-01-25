@@ -351,6 +351,16 @@ const app = {
                 return;
             }
             
+            // Rebuild match state from log to ensure sets data is correct
+            // 从日志重建比赛状态以确保sets数据正确
+            if (match.log && match.log.length > 0) {
+                const matchEngine = new MatchEngine(match);
+                matchEngine.rebuildMatchStateFromLog();
+                // Get the rebuilt match from engine
+                // 从引擎获取重建后的比赛
+                match.sets = matchEngine.match.sets;
+            }
+            
             const player1 = await storage.getPlayer(match.player1Id);
             const player2 = await storage.getPlayer(match.player2Id);
             const player1Name = player1 ? player1.name : 'Unknown Player 1';
@@ -975,7 +985,8 @@ const app = {
                 overhead: 0,
                 dropShot: 0,
                 lob: 0,
-                passingShot: 0
+                passingShot: 0,
+                return: 0
             };
             
             if (!logToUse || logToUse.length === 0) return stats;
@@ -1013,6 +1024,8 @@ const app = {
                         stats.lob++;
                     } else if (shotType === 'Passing Shot') {
                         stats.passingShot++;
+                    } else if (shotType === 'Return') {
+                        stats.return++;
                     }
                 }
             }
@@ -1349,6 +1362,12 @@ const app = {
                         <div class="comparison-value">${p2Winners.passingShot || 0}</div>
                     </div>
                     
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1Winners.return || 0}</div>
+                        <div class="comparison-label">Return</div>
+                        <div class="comparison-value">${p2Winners.return || 0}</div>
+                    </div>
+                    
                     <div class="comparison-section-header">
                         <div>Serve</div>
                     </div>
@@ -1421,6 +1440,12 @@ const app = {
                         <div class="comparison-value">${p1.returnErrors}</div>
                         <div class="comparison-label">Return Errors</div>
                         <div class="comparison-value">${p2.returnErrors}</div>
+                    </div>
+                    
+                    <div class="comparison-row">
+                        <div class="comparison-value">${p1Winners.return || 0}</div>
+                        <div class="comparison-label">Return Winners</div>
+                        <div class="comparison-value">${p2Winners.return || 0}</div>
                     </div>
                     
                     <div class="comparison-row">
@@ -1733,11 +1758,25 @@ const app = {
                     addStatRow('Return 1st Serve Won %', `${p1.returnFirstServePointsWonPercentage || '0.0'}%`, `${p2.returnFirstServePointsWonPercentage || '0.0'}%`);
                     addStatRow('Return 2nd Serve Won %', `${p1.returnSecondServePointsWonPercentage || '0.0'}%`, `${p2.returnSecondServePointsWonPercentage || '0.0'}%`);
                     addStatRow('Return Errors', p1.returnErrors || 0, p2.returnErrors || 0);
-                    addStatRow('Break Point Converted/Opportunities', `${p1.breakPointsConverted || 0}/${p1.breakPointsOpportunities || 0}`, `${p2.breakPointsConverted || 0}/${p2.breakPointsOpportunities || 0}`);
                     
-                    // Calculate detailed statistics by shot type
-                    // 按击球类型计算详细统计
+                    // Calculate Return Winners
+                    // 计算Return Winners
                     const logToUse = match.log || [];
+                    let p1ReturnWinners = 0;
+                    let p2ReturnWinners = 0;
+                    if (logToUse && logToUse.length > 0) {
+                        for (const entry of logToUse) {
+                            if (entry.action === 'Winner' && entry.shotType === 'Return') {
+                                if (entry.player === 'player1') {
+                                    p1ReturnWinners++;
+                                } else if (entry.player === 'player2') {
+                                    p2ReturnWinners++;
+                                }
+                            }
+                        }
+                    }
+                    addStatRow('Return Winners', p1ReturnWinners, p2ReturnWinners);
+                    addStatRow('Break Point Converted/Opportunities', `${p1.breakPointsConverted || 0}/${p1.breakPointsOpportunities || 0}`, `${p2.breakPointsConverted || 0}/${p2.breakPointsOpportunities || 0}`);
                     
                     // Calculate unforced errors by shot type
                     // 按击球类型统计非受迫性失误
@@ -1874,7 +1913,8 @@ const app = {
                             overhead: 0,
                             dropShot: 0,
                             lob: 0,
-                            passingShot: 0
+                            passingShot: 0,
+                            return: 0
                         };
                         
                         if (!logToUse || logToUse.length === 0) return stats;
@@ -1912,6 +1952,8 @@ const app = {
                                     stats.lob++;
                                 } else if (shotType === 'Passing Shot') {
                                     stats.passingShot++;
+                                } else if (shotType === 'Return') {
+                                    stats.return++;
                                 }
                             }
                         }
@@ -1953,6 +1995,7 @@ const app = {
                     addStatRow('Drop Shot', p1Winners.dropShot || 0, p2Winners.dropShot || 0);
                     addStatRow('Lob', p1Winners.lob || 0, p2Winners.lob || 0);
                     addStatRow('Passing Shot', p1Winners.passingShot || 0, p2Winners.passingShot || 0);
+                    addStatRow('Return', p1Winners.return || 0, p2Winners.return || 0);
                     
                     yPos += 5;
                     
