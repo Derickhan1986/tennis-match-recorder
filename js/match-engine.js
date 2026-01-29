@@ -1420,172 +1420,132 @@ class MatchEngine {
         const gamesScoreParsed = parseScore(lastLogEntry.gamesScore);
         const setsScoreParsed = parseScore(lastLogEntry.setsScore);
         
-        // Rebuild sets based on setsScore
-        // 根据setsScore重建sets
+        // Rebuild sets by replaying log: for each entry, track setsScore and gamesScore.
+        // 通过推演 log 重建 sets：对每条记录根据 setsScore 与 gamesScore 推演。
+        // When setsScore increases, the PREVIOUS entry was the last point of the set that just ended.
+        // 当 setsScore 增加时，上一条记录是该盘最后一分之前的状态。
+        // The set's final games = prevEntry.gamesScore + 1 game for the set winner (the point that ended the set).
+        // 该盘最终局分 = 上一条的 gamesScore + 盘获胜方多赢的那一局（结束该盘的那一分）。
         const totalSets = parseInt(setsScoreParsed.player1) + parseInt(setsScoreParsed.player2);
         const currentSetNumber = totalSets + 1;
         
-        // Reset all sets first
-        // 首先重置所有sets
-        this.match.sets = [];
+        const completedSetScores = []; // { player1Games, player2Games, winner } for each completed set
+        let prevP1Sets = 0;
+        let prevP2Sets = 0;
+        let prevEntry = null;
         
-        // Create completed sets
-        // 创建已完成的sets
-        // For each completed set, find the last log entry for that set to get the correct games score
-        // 对于每个已完成的set，找到该set的最后一个日志条目以获取正确的games比分
+        for (let j = 0; j < this.match.log.length; j++) {
+            const entry = this.match.log[j];
+            if (!entry || !entry.setsScore) continue;
+            
+            const parts = entry.setsScore.split('-');
+            if (parts.length !== 2) continue;
+            
+            const p1Sets = parseInt(parts[0].trim()) || 0;
+            const p2Sets = parseInt(parts[1].trim()) || 0;
+            const totalCompleted = p1Sets + p2Sets;
+            const prevTotal = prevP1Sets + prevP2Sets;
+            
+            if (totalCompleted > prevTotal && prevEntry && prevEntry.gamesScore) {
+                // A set just ended. The previous entry was the last point before the set ended.
+                // 刚结束一盘。上一条是该盘最后一分之前的状态。
+                // Final score for that set = prevEntry.gamesScore + 1 game for the set winner.
+                // 该盘最终局分 = 上一条 gamesScore + 盘获胜方多赢的一局。
+                const setWinner = (p1Sets > prevP1Sets) ? 'player1' : 'player2';
+                const gParts = prevEntry.gamesScore.split('-');
+                if (gParts.length === 2) {
+                    let g1 = parseInt(gParts[0].trim()) || 0;
+                    let g2 = parseInt(gParts[1].trim()) || 0;
+                    if (setWinner === 'player1') g1 += 1; else g2 += 1;
+                    completedSetScores.push({ player1Games: g1, player2Games: g2, winner: setWinner });
+                } else {
+                    const setWinner = (p1Sets > prevP1Sets) ? 'player1' : 'player2';
+                    completedSetScores.push({
+                        player1Games: setWinner === 'player1' ? this.settings.gamesPerSet : 0,
+                        player2Games: setWinner === 'player2' ? this.settings.gamesPerSet : 0,
+                        winner: setWinner
+                    });
+                }
+            }
+            
+            prevP1Sets = p1Sets;
+            prevP2Sets = p2Sets;
+            prevEntry = entry;
+        }
+        
+        // Reset all sets and create from replayed scores
+        // 重置所有 sets 并用推演得到的比分创建
+        this.match.sets = [];
         for (let i = 0; i < totalSets; i++) {
             const set = createSet({ setNumber: i + 1 });
-            const setNumber = i + 1;
-            
-            // Determine winner based on setsScore
-            // 根据setsScore确定获胜者
-            if (i < parseInt(setsScoreParsed.player1)) {
-                set.winner = 'player1';
+            if (i < completedSetScores.length) {
+                const s = completedSetScores[i];
+                set.player1Games = s.player1Games;
+                set.player2Games = s.player2Games;
+                set.winner = s.winner;
             } else {
-                set.winner = 'player2';
-            }
-            
-            // Find the last log entry for this completed set
-            // 找到此已完成set的最后一个日志条目
-            // The last entry of a completed set is the one where setsScore changes to show this set is completed
-            // 已完成set的最后一个条目是setsScore变为显示此set已完成的条目
-            // For set N, find the entry where setsScore changes from (N-1) completed sets to N completed sets
-            // 对于set N，找到setsScore从(N-1)个已完成sets变为N个已完成sets的条目
-            let lastEntryForSet = null;
-            let targetCompletedSets = setNumber;
-            
-            // Search through log to find the entry where setsScore changes to show this set is completed
-            // 搜索日志以找到setsScore变为显示此set已完成的条目
-            for (let j = 0; j < this.match.log.length; j++) {
-                const entry = this.match.log[j];
-                if (entry && entry.setsScore) {
-                    const entryParts = entry.setsScore.split('-');
-                    if (entryParts.length === 2) {
-                        const entryP1Sets = parseInt(entryParts[0].trim()) || 0;
-                        const entryP2Sets = parseInt(entryParts[1].trim()) || 0;
-                        const entryCompletedSets = entryP1Sets + entryP2Sets;
-                        
-                        // Check if this entry shows the target number of completed sets
-                        // 检查此条目是否显示目标数量的已完成sets
-                        if (entryCompletedSets === targetCompletedSets) {
-                            // Check previous entry to see if it had fewer completed sets
-                            // 检查前一个条目以查看它是否有更少的已完成sets
-                            let prevCompletedSets = 0;
-                            if (j > 0) {
-                                const prevEntry = this.match.log[j - 1];
-                                if (prevEntry && prevEntry.setsScore) {
-                                    const prevParts = prevEntry.setsScore.split('-');
-                                    if (prevParts.length === 2) {
-                                        const prevP1Sets = parseInt(prevParts[0].trim()) || 0;
-                                        const prevP2Sets = parseInt(prevParts[1].trim()) || 0;
-                                        prevCompletedSets = prevP1Sets + prevP2Sets;
-                                    }
-                                }
-                            }
-                            
-                            // If previous entry had fewer completed sets, this entry is from the last point of this set
-                            // 如果前一个条目有更少的已完成sets，此条目来自此set的最后一个point
-                            if (prevCompletedSets < targetCompletedSets) {
-                                // This is the entry where this set was completed
-                                // 这是此set完成的条目
-                                lastEntryForSet = entry;
-                                // Continue searching to find the last entry with this setsScore (in case there are multiple entries)
-                                // 继续搜索以找到具有此setsScore的最后一个条目（以防有多个条目）
-                            } else if (prevCompletedSets === targetCompletedSets && lastEntryForSet) {
-                                // Update to the last entry with this setsScore
-                                // 更新为此setsScore的最后一个条目
-                                lastEntryForSet = entry;
-                            }
-                        } else if (entryCompletedSets > targetCompletedSets) {
-                            // We've passed this set, stop searching
-                            // 我们已经超过此set，停止搜索
-                            break;
-                        }
-                    }
-                }
-            }
-            
-            // Extract games score from the last entry of this set
-            // 从此set的最后一个条目提取games比分
-            if (lastEntryForSet && lastEntryForSet.gamesScore) {
-                const gamesScoreParts = lastEntryForSet.gamesScore.split('-');
-                if (gamesScoreParts.length === 2) {
-                    set.player1Games = parseInt(gamesScoreParts[0].trim()) || 0;
-                    set.player2Games = parseInt(gamesScoreParts[1].trim()) || 0;
-                } else {
-                    // Fallback to default if parsing fails
-                    // 如果解析失败，回退到默认值
-                    set.player1Games = set.winner === 'player1' ? this.settings.gamesPerSet : 0;
-                    set.player2Games = set.winner === 'player2' ? this.settings.gamesPerSet : 0;
-                }
-            } else {
-                // No log entry found for this set, use default
-                // 未找到此set的日志条目，使用默认值
+                set.winner = (i < parseInt(setsScoreParsed.player1)) ? 'player1' : 'player2';
                 set.player1Games = set.winner === 'player1' ? this.settings.gamesPerSet : 0;
                 set.player2Games = set.winner === 'player2' ? this.settings.gamesPerSet : 0;
             }
-            
             this.match.sets.push(set);
         }
         
-        // Create current set
-        // 创建当前set
-        const currentSet = createSet({ setNumber: currentSetNumber });
-        currentSet.player1Games = parseInt(gamesScoreParsed.player1) || 0;
-        currentSet.player2Games = parseInt(gamesScoreParsed.player2) || 0;
+        // Check if match is completed (one player has won enough sets, e.g. 2 in best of 3)
+        // 检查比赛是否已结束（一方已赢得足够盘数，例如三盘两胜中赢 2 盘）
+        const setsToWin = Math.ceil(this.settings.numberOfSets / 2);
+        const player1SetsWon = parseInt(setsScoreParsed.player1) || 0;
+        const player2SetsWon = parseInt(setsScoreParsed.player2) || 0;
+        const matchCompleted = player1SetsWon >= setsToWin || player2SetsWon >= setsToWin;
         
-        // Update current game
-        // 更新当前game
-        if (gameScoreParsed.isTieBreak) {
-            // In tie-break
-            // 在抢七
-            currentSet.tieBreak = createTieBreak();
-            currentSet.tieBreak.player1Points = gameScoreParsed.player1;
-            currentSet.tieBreak.player2Points = gameScoreParsed.player2;
-            currentSet.tieBreak.winner = null; // Tie-break not finished yet
-            // 抢七尚未结束
-            // Create a placeholder game for tie-break context
-            // 为抢七上下文创建一个占位game
-            if (currentSet.games.length === 0) {
-                currentSet.games.push(createGame({ gameNumber: this.settings.gamesPerSet }));
-            }
-        } else {
-            // In regular game
-            // 在常规game
-            // Calculate game number from gamesScore
-            // 从gamesScore计算game number
-            const totalGames = parseInt(gamesScoreParsed.player1) + parseInt(gamesScoreParsed.player2);
-            const currentGameNumber = totalGames + 1;
+        if (!matchCompleted) {
+            // Match not over: create current set and push it
+            // 比赛未结束：创建当前盘并加入
+            const currentSet = createSet({ setNumber: currentSetNumber });
+            currentSet.player1Games = parseInt(gamesScoreParsed.player1) || 0;
+            currentSet.player2Games = parseInt(gamesScoreParsed.player2) || 0;
             
-            // Create all previous games (won games)
-            // 创建所有之前的games（已赢得的games）
-            for (let i = 0; i < totalGames; i++) {
-                const game = createGame({ gameNumber: i + 1 });
-                if (i < parseInt(gamesScoreParsed.player1)) {
-                    game.winner = 'player1';
-                } else {
-                    game.winner = 'player2';
+            if (gameScoreParsed.isTieBreak) {
+                currentSet.tieBreak = createTieBreak();
+                currentSet.tieBreak.player1Points = gameScoreParsed.player1;
+                currentSet.tieBreak.player2Points = gameScoreParsed.player2;
+                currentSet.tieBreak.winner = null;
+                if (currentSet.games.length === 0) {
+                    currentSet.games.push(createGame({ gameNumber: this.settings.gamesPerSet }));
                 }
-                currentSet.games.push(game);
+            } else {
+                const totalGames = parseInt(gamesScoreParsed.player1) + parseInt(gamesScoreParsed.player2);
+                const currentGameNumber = totalGames + 1;
+                for (let i = 0; i < totalGames; i++) {
+                    const game = createGame({ gameNumber: i + 1 });
+                    if (i < parseInt(gamesScoreParsed.player1)) {
+                        game.winner = 'player1';
+                    } else {
+                        game.winner = 'player2';
+                    }
+                    currentSet.games.push(game);
+                }
+                const currentGame = createGame({ gameNumber: currentGameNumber });
+                currentGame.player1Score = gameScoreParsed.player1;
+                currentGame.player2Score = gameScoreParsed.player2;
+                currentGame.winner = null;
+                currentSet.games.push(currentGame);
             }
-            
-            // Create current game
-            // 创建当前game
-            const currentGame = createGame({ gameNumber: currentGameNumber });
-            currentGame.player1Score = gameScoreParsed.player1;
-            currentGame.player2Score = gameScoreParsed.player2;
-            currentGame.winner = null; // Game not finished yet
-            // Game尚未结束
-            currentSet.games.push(currentGame);
+            this.match.sets.push(currentSet);
         }
-        
-        this.match.sets.push(currentSet);
         
         // Update match status
         // 更新比赛状态
-        this.match.winner = null;
-        this.match.status = 'in-progress';
-        this.match.endTime = null;
+        if (matchCompleted) {
+            this.match.winner = player1SetsWon >= setsToWin ? 'player1' : 'player2';
+            this.match.status = 'completed';
+            // Keep existing endTime if already set (e.g. from endMatch)
+            // 若已有 endTime（例如来自 endMatch）则保留
+        } else {
+            this.match.winner = null;
+            this.match.status = 'in-progress';
+            this.match.endTime = null;
+        }
     }
     
     // Old undo logic below (keep for reference)
