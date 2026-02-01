@@ -8,7 +8,7 @@
 
 // Match Review API: backend proxy URL. Set to your Vercel/Netlify endpoint after deployment.
 // 比赛战报 API：后端代理地址。部署后在 Vercel/Netlify 中设置你的端点。
-const MATCH_REVIEW_API_URL = ''; // e.g. 'https://your-app.vercel.app/api/match-review'
+const MATCH_REVIEW_API_URL = 'https://tennis-match-recorder.vercel.app/api/match-review'; // e.g. 'https://your-app.vercel.app/api/match-review'
 
 const app = {
     currentPage: 'matches',
@@ -1671,7 +1671,11 @@ const app = {
             this.showToast('Review ready', 'success');
         } catch (error) {
             console.error('Error requesting match review:', error);
-            this.showToast(error.message || 'Error generating match review', 'error', 5000);
+            let msg = error.message || 'Error generating match review';
+            if (msg.toLowerCase().includes('insufficient balance')) {
+                msg = 'Deepseek account balance is low. Please top up at platform.deepseek.com';
+            }
+            this.showToast(msg, 'error', 6000);
         }
     },
     
