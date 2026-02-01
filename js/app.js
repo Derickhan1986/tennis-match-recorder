@@ -6,6 +6,10 @@
 //  处理导航、页面管理和应用初始化
 //
 
+// Match Review API: backend proxy URL. Set to your Vercel/Netlify endpoint after deployment.
+// 比赛战报 API：后端代理地址。部署后在 Vercel/Netlify 中设置你的端点。
+const MATCH_REVIEW_API_URL = ''; // e.g. 'https://your-app.vercel.app/api/match-review'
+
 const app = {
     currentPage: 'matches',
     
@@ -572,6 +576,7 @@ const app = {
                 
                 <div class="form-actions">
                     <button class="btn-primary" onclick="app.exportMatchToPDF('${match.id}')">Export to PDF</button>
+                    <button class="btn-secondary" onclick="app.requestMatchReview('${match.id}')">Match Review</button>
                     <button class="btn-danger" onclick="app.deleteMatch('${match.id}')">Delete Match</button>
                 </div>
             `;
@@ -1549,6 +1554,173 @@ const app = {
         if (statsContainer) {
             statsContainer.innerHTML = statsHtml;
         }
+    },
+    
+    // Build plain-text match summary for AI (same info as PDF, no binary)
+    // 为 AI 构建纯文本比赛摘要（与 PDF 信息一致，非二进制）
+    buildMatchSummaryForAI(match, player1Name, player2Name) {
+        const lines = [];
+        lines.push('=== Match Information ===');
+        lines.push(`Player 1: ${player1Name}`);
+        lines.push(`Player 2: ${player2Name}`);
+        lines.push(`Date: ${formatDate(match.startTime)}`);
+        lines.push(`Duration: ${formatDuration(match.startTime, match.endTime)}`);
+        lines.push(`Court: ${match.settings.courtType} ${match.settings.indoor ? '(Indoor)' : '(Outdoor)'}`);
+        lines.push(`Winner: ${match.winner === 'player1' ? player1Name : match.winner === 'player2' ? player2Name : 'Not finished'}`);
+        lines.push('');
+        if (match.sets && match.sets.length > 0) {
+            lines.push('=== Sets ===');
+            match.sets.forEach((set) => {
+                const hasTieBreak = set.tieBreak && (set.tieBreak.winner || (set.tieBreak.player1Points !== undefined));
+                let setScore = `${set.player1Games}-${set.player2Games}`;
+                if (hasTieBreak) {
+                    const tb = set.tieBreak;
+                    const tbScore = `${tb.player1Points || 0}-${tb.player2Points || 0}`;
+                    setScore += set.tieBreak.winner ? ` (${tbScore})` : ` (TB: ${tbScore})`;
+                }
+                const setWinner = set.winner === 'player1' ? player1Name : set.winner === 'player2' ? player2Name : 'Not finished';
+                lines.push(`Set ${set.setNumber}: ${setScore}, Winner: ${setWinner}`);
+            });
+            lines.push('');
+        }
+        const calcMatchStats = window.calculateMatchStats || (typeof calculateMatchStats !== 'undefined' ? calculateMatchStats : null);
+        if (calcMatchStats) {
+            const stats = calcMatchStats(match);
+            const p1 = stats.player1;
+            const p2 = stats.player2;
+            lines.push('=== Technical Statistics ===');
+            lines.push('Match Summary:');
+            lines.push(`  Points Won: ${p1.pointsWon || 0} / ${p2.pointsWon || 0}`);
+            lines.push(`  Max Consecutive Points: ${p1.pointsWonInRow || 0} / ${p2.pointsWonInRow || 0}`);
+            lines.push(`  ACEs: ${p1.aces || 0} / ${p2.aces || 0}`);
+            lines.push(`  Double Faults: ${p1.doubleFaults || 0} / ${p2.doubleFaults || 0}`);
+            lines.push(`  Winners: ${p1.winners || 0} / ${p2.winners || 0}`);
+            lines.push(`  Unforced Errors: ${p1.unforcedErrors || 0} / ${p2.unforcedErrors || 0}`);
+            lines.push(`  Forced Errors: ${p1.forcedErrors || 0} / ${p2.forcedErrors || 0}`);
+            lines.push(`  Return Errors: ${p1.returnErrors || 0} / ${p2.returnErrors || 0}`);
+            lines.push(`  Total Serve Point Win %: ${p1.totalServePointWinPercentage || '0.0'}% / ${p2.totalServePointWinPercentage || '0.0'}%`);
+            lines.push(`  Break Points: ${p1.breakPointsConverted || 0}/${p1.breakPointsOpportunities || 0} / ${p2.breakPointsConverted || 0}/${p2.breakPointsOpportunities || 0}`);
+            lines.push('Serve:');
+            lines.push(`  1st Serve In %: ${p1.firstServePercentage}% / ${p2.firstServePercentage}%`);
+            lines.push(`  1st Serve Won %: ${p1.firstServePointsWonPercentage || '0.0'}% / ${p2.firstServePointsWonPercentage || '0.0'}%`);
+            lines.push(`  2nd Serve Won %: ${p1.secondServePercentage}% / ${p2.secondServePercentage}%`);
+            lines.push('Return:');
+            lines.push(`  Total Return Point Win %: ${p1.totalReturnPointWinPercentage || '0.0'}% / ${p2.totalReturnPointWinPercentage || '0.0'}%`);
+            lines.push(`  Return 1st Serve Won %: ${p1.returnFirstServePointsWonPercentage || '0.0'}% / ${p2.returnFirstServePointsWonPercentage || '0.0'}%`);
+            lines.push(`  Return 2nd Serve Won %: ${p1.returnSecondServePointsWonPercentage || '0.0'}% / ${p2.returnSecondServePointsWonPercentage || '0.0'}%`);
+        }
+        return lines.join('\n');
+    },
+    
+    // Request AI match review via backend proxy (Option A: no user API key)
+    // 通过后端代理请求 AI 比赛战报（方案 A：用户无需 API Key）
+    async requestMatchReview(matchId) {
+        if (!MATCH_REVIEW_API_URL || MATCH_REVIEW_API_URL.trim() === '') {
+            this.showToast('Match Review is not configured. Set MATCH_REVIEW_API_URL in app.js and deploy the backend.', 'error', 5000);
+            return;
+        }
+        try {
+            const match = await storage.getMatch(matchId);
+            if (!match) {
+                this.showToast('Match not found', 'error');
+                return;
+            }
+            if (match.log && match.log.length > 0) {
+                const matchEngine = new MatchEngine(match);
+                matchEngine.rebuildMatchStateFromLog();
+                match.sets = matchEngine.match.sets;
+            }
+            const player1 = await storage.getPlayer(match.player1Id);
+            const player2 = await storage.getPlayer(match.player2Id);
+            const player1Name = player1 ? player1.name : 'Unknown Player 1';
+            const player2Name = player2 ? player2.name : 'Unknown Player 2';
+            const summary = this.buildMatchSummaryForAI(match, player1Name, player2Name);
+            let systemPrompt = '';
+            try {
+                const rulesRes = await fetch('data/match-review-rules.md');
+                if (rulesRes.ok) systemPrompt = await rulesRes.text();
+            } catch (e) {
+                console.warn('Could not load match-review-rules.md, using default prompt.', e);
+            }
+            if (!systemPrompt.trim()) {
+                systemPrompt = 'You are a professional tennis match analyst. Write a structured, data-driven match review in English based on the match data provided. Include: brief overview, key statistics, serve/return analysis, turning points, strengths and weaknesses, and suggestions. Be concise and professional.';
+            }
+            this.showToast('Generating review...', 'info', 60000);
+            const res = await fetch(MATCH_REVIEW_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ systemPrompt, userMessage: summary })
+            });
+            const text = await res.text();
+            if (!res.ok) {
+                try {
+                    const err = JSON.parse(text);
+                    throw new Error(err.error || err.message || `HTTP ${res.status}`);
+                } catch (parseErr) {
+                    throw new Error(text || `HTTP ${res.status}`);
+                }
+            }
+            let reviewText = text;
+            try {
+                const data = JSON.parse(text);
+                if (data.review != null) reviewText = data.review;
+                else if (data.text != null) reviewText = data.text;
+                else if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) reviewText = data.choices[0].message.content;
+            } catch (_) {}
+            this.showMatchReviewModal(reviewText, player1Name, player2Name, match.startTime);
+            this.showToast('Review ready', 'success');
+        } catch (error) {
+            console.error('Error requesting match review:', error);
+            this.showToast(error.message || 'Error generating match review', 'error', 5000);
+        }
+    },
+    
+    // Show match review in modal with Download and Close
+    // 在弹窗中显示比赛战报，提供下载和关闭
+    showMatchReviewModal(reviewText, player1Name, player2Name, startTime) {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal';
+        overlay.setAttribute('aria-label', 'Match Review');
+        const dateStr = formatDate(startTime).replace(/\//g, '-').replace(/\s/g, '_').replace(/:/g, '-');
+        const safe1 = (player1Name || 'Player1').replace(/[^a-zA-Z0-9\s-]/g, '').trim() || 'Player1';
+        const safe2 = (player2Name || 'Player2').replace(/[^a-zA-Z0-9\s-]/g, '').trim() || 'Player2';
+        const filename = `MatchReview_${safe1}_vs_${safe2}_${dateStr}.txt`;
+        const content = document.createElement('div');
+        content.className = 'modal-content';
+        content.innerHTML = `
+            <div class="modal-header">
+                <h3>Match Review</h3>
+                <button type="button" class="modal-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <pre class="match-review-text" style="white-space: pre-wrap; word-break: break-word; max-height: 50vh; overflow-y: auto; margin: 0 0 16px 0; font-size: 14px;">${this.escapeHtml(reviewText)}</pre>
+                <div class="form-actions">
+                    <button type="button" class="btn-primary download-review-btn">Download</button>
+                    <button type="button" class="btn-secondary modal-close-btn">Close</button>
+                </div>
+            </div>
+        `;
+        overlay.appendChild(content);
+        const close = () => {
+            overlay.classList.add('hidden');
+            setTimeout(() => overlay.remove(), 300);
+        };
+        content.querySelector('.modal-close').addEventListener('click', close);
+        content.querySelector('.modal-close-btn').addEventListener('click', close);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+        content.querySelector('.download-review-btn').addEventListener('click', () => {
+            const blob = new Blob([reviewText], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            this.showToast('Review saved to downloads', 'success');
+        });
+        document.body.appendChild(overlay);
     },
     
     // Export match to PDF
