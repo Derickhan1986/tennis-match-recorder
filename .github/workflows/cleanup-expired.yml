@@ -1,0 +1,31 @@
+# Daily cleanup of expired user_data (User temporary uploads after 7 days)
+# 每日清理过期的 user_data（User 临时上传 7 天后）
+#
+# Add repository secrets: CRON_SECRET (same as Vercel CRON_SECRET), API_BASE_URL (e.g. https://your-app.vercel.app)
+# 在仓库 Settings → Secrets 中添加：CRON_SECRET（与 Vercel 中一致），API_BASE_URL（如 https://your-app.vercel.app）
+
+name: Cleanup expired user data
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call cleanup API
+        run: |
+          if [ -z "${{ secrets.CRON_SECRET }}" ] || [ -z "${{ secrets.API_BASE_URL }}" ]; then
+            echo "Skipping: CRON_SECRET or API_BASE_URL not set in repository secrets."
+            exit 0
+          fi
+          resp=$(curl -s -w "\n%{http_code}" -X GET "${{ secrets.API_BASE_URL }}/api/cron/cleanup-expired" -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          code=$(echo "$resp" | tail -n1)
+          body=$(echo "$resp" | sed '$d')
+          echo "Response ($code): $body"
+          if [ "$code" != "200" ]; then
+            echo "Cleanup request failed with HTTP $code"
+            exit 1
+          fi

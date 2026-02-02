@@ -37,6 +37,14 @@ const app = {
         // 设置事件监听器
         this.setupNavigation();
         this.setupEventListeners();
+        this.setupAccountEvents();
+        if (typeof auth !== 'undefined' && auth.init) {
+            await auth.init().catch(() => {});
+            this.refreshSettingsAccount();
+            if (auth.pendingPasswordRecovery) {
+                this.showPage('settings');
+            }
+        }
         
         // Load initial data
         // 加载初始数据
@@ -154,6 +162,269 @@ const app = {
         this.loadGitHubSettings();
     },
     
+    // Setup account and server data event listeners
+    // 设置账户与云端数据事件监听
+    setupAccountEvents() {
+        const loginBtn = document.getElementById('account-login-btn');
+        const registerBtn = document.getElementById('account-register-btn');
+        const logoutBtn = document.getElementById('account-logout-btn');
+        const forgotBtn = document.getElementById('account-forgot-password-btn');
+        const sendResetBtn = document.getElementById('account-send-reset-btn');
+        const cancelForgotBtn = document.getElementById('account-cancel-forgot-btn');
+        const updatePwBtn = document.getElementById('account-update-password-btn');
+        const uploadBtn = document.getElementById('server-upload-btn');
+        const downloadBtn = document.getElementById('server-download-btn');
+        if (loginBtn) loginBtn.addEventListener('click', () => this.accountLogin());
+        if (registerBtn) registerBtn.addEventListener('click', () => this.accountRegister());
+        if (logoutBtn) logoutBtn.addEventListener('click', () => this.accountLogout());
+        if (forgotBtn) forgotBtn.addEventListener('click', () => this.showForgotPasswordForm());
+        if (sendResetBtn) sendResetBtn.addEventListener('click', () => this.accountSendResetLink());
+        if (cancelForgotBtn) cancelForgotBtn.addEventListener('click', () => this.hideForgotPasswordForm());
+        if (updatePwBtn) updatePwBtn.addEventListener('click', () => this.accountUpdatePassword());
+        if (uploadBtn) uploadBtn.addEventListener('click', () => this.serverUpload());
+        if (downloadBtn) downloadBtn.addEventListener('click', () => this.serverDownload());
+    },
+    
+    refreshSettingsAccount() {
+        const loggedOut = document.getElementById('account-logged-out');
+        const loggedIn = document.getElementById('account-logged-in');
+        const serverSection = document.getElementById('server-data-section');
+        const creditsRow = document.getElementById('account-credits-row');
+        const permanentGroup = document.getElementById('upload-permanent-group');
+        const statusEl = document.getElementById('account-auth-status');
+        if (statusEl) statusEl.textContent = '';
+        const forgotBlock = document.getElementById('account-forgot-block');
+        const recoveryBlock = document.getElementById('account-recovery-block');
+        const loginRow = document.getElementById('account-login-row');
+        const isRecovery = typeof auth !== 'undefined' && auth.pendingPasswordRecovery;
+        if (forgotBlock) forgotBlock.classList.add('hidden');
+        if (recoveryBlock) recoveryBlock.classList.toggle('hidden', !isRecovery);
+        if (loginRow) loginRow.classList.toggle('hidden', isRecovery);
+        if (isRecovery) {
+            if (loggedOut) loggedOut.classList.remove('hidden');
+            if (loggedIn) loggedIn.classList.add('hidden');
+            if (serverSection) serverSection.classList.add('hidden');
+            const statusEl = document.getElementById('account-recovery-status');
+            if (statusEl) statusEl.textContent = '';
+            return;
+        }
+        if (typeof auth === 'undefined' || !auth.isLoggedIn()) {
+            if (loggedOut) loggedOut.classList.remove('hidden');
+            if (loggedIn) loggedIn.classList.add('hidden');
+            if (serverSection) serverSection.classList.add('hidden');
+            return;
+        }
+        if (loggedOut) loggedOut.classList.add('hidden');
+        if (loggedIn) loggedIn.classList.remove('hidden');
+        const emailEl = document.getElementById('account-display-email');
+        const roleEl = document.getElementById('account-display-role');
+        const creditsEl = document.getElementById('account-display-credits');
+        if (emailEl) emailEl.textContent = auth.getEmail();
+        if (roleEl) roleEl.textContent = auth.getRole();
+        const role = auth.getRole();
+        const isUser = role === 'User';
+        if (creditsRow) creditsRow.classList.toggle('hidden', !isUser);
+        if (creditsEl) creditsEl.textContent = isUser ? auth.getCredits() : '-';
+        if (serverSection) serverSection.classList.remove('hidden');
+        if (permanentGroup) permanentGroup.classList.toggle('hidden', !isUser);
+    },
+    
+    async accountLogin() {
+        const email = document.getElementById('account-email')?.value?.trim();
+        const password = document.getElementById('account-password')?.value;
+        const statusEl = document.getElementById('account-auth-status');
+        if (!email || !password) {
+            if (statusEl) statusEl.textContent = 'Enter email and password';
+            return;
+        }
+        try {
+            await auth.login(email, password);
+            this.refreshSettingsAccount();
+            this.showToast('Logged in', 'success');
+            if (statusEl) statusEl.textContent = '';
+        } catch (e) {
+            if (statusEl) statusEl.textContent = e.message || 'Login failed';
+            this.showToast(e.message || 'Login failed', 'error');
+        }
+    },
+    
+    async accountRegister() {
+        const email = document.getElementById('account-email')?.value?.trim();
+        const password = document.getElementById('account-password')?.value;
+        const statusEl = document.getElementById('account-auth-status');
+        if (!email || !password) {
+            if (statusEl) statusEl.textContent = 'Enter email and password';
+            return;
+        }
+        try {
+            const result = await auth.register(email, password);
+            this.refreshSettingsAccount();
+            if (result && result.needsConfirmation) {
+                if (statusEl) statusEl.textContent = 'Please check your email and confirm your account, then log in.';
+                this.showToast('Please confirm your email, then log in.', 'success', 5000);
+            } else {
+                if (statusEl) statusEl.textContent = '';
+                this.showToast('Registered. You can log in now.', 'success');
+            }
+        } catch (e) {
+            if (statusEl) statusEl.textContent = e.message || 'Register failed';
+            this.showToast(e.message || 'Register failed', 'error');
+        }
+    },
+    
+    async accountLogout() {
+        try {
+            await auth.logout();
+            this.refreshSettingsAccount();
+            this.showToast('Logged out', 'success');
+        } catch (e) {
+            this.showToast('Logout failed', 'error');
+        }
+    },
+
+    showForgotPasswordForm() {
+        const forgotBlock = document.getElementById('account-forgot-block');
+        const emailInput = document.getElementById('account-reset-email');
+        const loginEmail = document.getElementById('account-email')?.value?.trim();
+        if (forgotBlock) forgotBlock.classList.remove('hidden');
+        if (emailInput && loginEmail) emailInput.value = loginEmail;
+        const statusEl = document.getElementById('account-forgot-status');
+        if (statusEl) statusEl.textContent = '';
+    },
+
+    hideForgotPasswordForm() {
+        const forgotBlock = document.getElementById('account-forgot-block');
+        if (forgotBlock) forgotBlock.classList.add('hidden');
+        const statusEl = document.getElementById('account-forgot-status');
+        if (statusEl) statusEl.textContent = '';
+    },
+
+    async accountSendResetLink() {
+        const emailInput = document.getElementById('account-reset-email');
+        const email = (emailInput?.value || document.getElementById('account-email')?.value || '').trim();
+        const statusEl = document.getElementById('account-forgot-status');
+        if (!email) {
+            if (statusEl) statusEl.textContent = 'Enter your email address';
+            return;
+        }
+        try {
+            await auth.resetPasswordForEmail(email);
+            if (statusEl) statusEl.textContent = 'Check your email for the reset link.';
+            this.showToast('Reset link sent. Check your email.', 'success', 5000);
+            this.hideForgotPasswordForm();
+        } catch (e) {
+            const msg = e.message || 'Failed to send reset link';
+            if (statusEl) statusEl.textContent = msg;
+            this.showToast(msg, 'error');
+        }
+    },
+
+    async accountUpdatePassword() {
+        const newPw = document.getElementById('account-new-password')?.value || '';
+        const confirmPw = document.getElementById('account-confirm-password')?.value || '';
+        const statusEl = document.getElementById('account-recovery-status');
+        if (!newPw) {
+            if (statusEl) statusEl.textContent = 'Enter a new password';
+            return;
+        }
+        if (newPw !== confirmPw) {
+            if (statusEl) statusEl.textContent = 'Passwords do not match';
+            return;
+        }
+        try {
+            await auth.updatePassword(newPw);
+            document.getElementById('account-new-password').value = '';
+            document.getElementById('account-confirm-password').value = '';
+            if (statusEl) statusEl.textContent = '';
+            this.refreshSettingsAccount();
+            this.showToast('Password updated. You are now logged in.', 'success');
+        } catch (e) {
+            const msg = e.message || 'Failed to update password';
+            if (statusEl) statusEl.textContent = msg;
+            this.showToast(msg, 'error');
+        }
+    },
+    
+    async serverUpload() {
+        const baseUrl = (window.DATA_API_URL || (typeof MATCH_REVIEW_API_URL !== 'undefined' && MATCH_REVIEW_API_URL ? MATCH_REVIEW_API_URL.replace(/\/api\/match-review\/?$/, '') : '')).replace(/\/$/, '');
+        if (!baseUrl) {
+            this.showToast('Server URL not configured. Set DATA_API_URL in js/config.js.', 'error');
+            return;
+        }
+        let token = null;
+        if (typeof auth !== 'undefined' && auth.getToken) token = await auth.getToken();
+        if (!token) {
+            this.showToast('Please log in first', 'error');
+            return;
+        }
+        const permanent = document.getElementById('upload-permanent')?.checked === true;
+        const statusEl = document.getElementById('server-data-status');
+        if (statusEl) statusEl.textContent = 'Uploading...';
+        try {
+            const data = await storage.exportData();
+            const res = await fetch(`${baseUrl}/api/data/upload`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ players: data.players, matches: data.matches, permanent })
+            });
+            const text = await res.text();
+            if (!res.ok) {
+                const err = JSON.parse(text || '{}').error || text || `HTTP ${res.status}`;
+                throw new Error(err);
+            }
+            if (statusEl) statusEl.textContent = permanent ? 'Saved permanently.' : 'Saved for 7 days. Download to keep or save permanently (1 credit) next time.';
+            this.showToast('Uploaded to server', 'success');
+            if (auth && auth.fetchProfile) await auth.fetchProfile();
+            this.refreshSettingsAccount();
+        } catch (e) {
+            if (statusEl) statusEl.textContent = '';
+            this.showToast(e.message || 'Upload failed', 'error');
+        }
+    },
+    
+    async serverDownload() {
+        const baseUrl = (window.DATA_API_URL || (typeof MATCH_REVIEW_API_URL !== 'undefined' && MATCH_REVIEW_API_URL ? MATCH_REVIEW_API_URL.replace(/\/api\/match-review\/?$/, '') : '')).replace(/\/$/, '');
+        if (!baseUrl) {
+            this.showToast('Server URL not configured. Set DATA_API_URL in js/config.js.', 'error');
+            return;
+        }
+        let token = null;
+        if (typeof auth !== 'undefined' && auth.getToken) token = await auth.getToken();
+        if (!token) {
+            this.showToast('Please log in first', 'error');
+            return;
+        }
+        const statusEl = document.getElementById('server-data-status');
+        if (statusEl) statusEl.textContent = 'Downloading...';
+        try {
+            const res = await fetch(`${baseUrl}/api/data/download`, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const text = await res.text();
+            if (!res.ok) {
+                const err = JSON.parse(text || '{}').error || text || `HTTP ${res.status}`;
+                throw new Error(err);
+            }
+            const data = JSON.parse(text || '{}');
+            if (data.players && data.matches) {
+                await storage.importData(data);
+                await this.loadMatches();
+                await playerManager.loadPlayers();
+                if (statusEl) statusEl.textContent = 'Data loaded.';
+                this.showToast('Downloaded from server', 'success');
+            } else {
+                if (statusEl) statusEl.textContent = 'No data on server.';
+                this.showToast('No data on server', 'info');
+            }
+            if (auth && auth.fetchProfile) await auth.fetchProfile();
+            this.refreshSettingsAccount();
+        } catch (e) {
+            if (statusEl) statusEl.textContent = '';
+            this.showToast(e.message || 'Download failed', 'error');
+        }
+    },
+    
     // Show page
     // 显示页面
     showPage(pageName) {
@@ -191,6 +462,8 @@ const app = {
             // Refresh player list when opening new match page
             // 打开新比赛页面时刷新玩家列表
             matchRecorder.loadPlayersForMatch();
+        } else if (pageName === 'settings') {
+            this.refreshSettingsAccount();
         }
         
         this.currentPage = pageName;
@@ -1686,9 +1959,14 @@ const app = {
                 systemPrompt = 'You are a professional tennis match analyst. Write a structured, data-driven match review in English based on the match data provided. Include: brief overview, key statistics, serve/return analysis, turning points, strengths and weaknesses, and suggestions. Be concise and professional.';
             }
             this.showToast('Generating review...', 'info', 60000);
+            const headers = { 'Content-Type': 'application/json' };
+            if (typeof auth !== 'undefined' && auth.getToken) {
+                const token = await auth.getToken();
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+            }
             const res = await fetch(MATCH_REVIEW_API_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({ systemPrompt, userMessage: summary })
             });
             const text = await res.text();

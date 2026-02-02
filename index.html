@@ -53,6 +53,73 @@
         <!-- Settings Page -->
         <div id="settings-page" class="page">
             <div class="settings-content">
+                <section class="settings-section" id="account-section">
+                    <h2>Account</h2>
+                    <div id="account-logged-out">
+                        <div id="account-login-row">
+                            <div class="form-group">
+                                <label>Email</label>
+                                <input type="email" id="account-email" placeholder="your@email.com" autocomplete="email">
+                            </div>
+                            <div class="form-group">
+                                <label>Password</label>
+                                <input type="password" id="account-password" placeholder="Password" autocomplete="current-password">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="account-login-btn">Login</button>
+                                <button type="button" class="btn-secondary" id="account-register-btn">Register</button>
+                            </div>
+                            <div class="form-group" style="margin-top: 8px;">
+                                <button type="button" class="btn-link" id="account-forgot-password-btn">Forgot password?</button>
+                            </div>
+                        </div>
+                        <div id="account-forgot-block" class="hidden">
+                            <div class="form-group">
+                                <label>Email for reset link</label>
+                                <input type="email" id="account-reset-email" placeholder="your@email.com" autocomplete="email">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="account-send-reset-btn">Send reset link</button>
+                                <button type="button" class="btn-secondary" id="account-cancel-forgot-btn">Cancel</button>
+                            </div>
+                            <div id="account-forgot-status" class="setting-hint"></div>
+                        </div>
+                        <div id="account-recovery-block" class="hidden">
+                            <p class="setting-hint">Set a new password for your account.</p>
+                            <div class="form-group">
+                                <label>New password</label>
+                                <input type="password" id="account-new-password" placeholder="New password" autocomplete="new-password">
+                            </div>
+                            <div class="form-group">
+                                <label>Confirm new password</label>
+                                <input type="password" id="account-confirm-password" placeholder="Confirm" autocomplete="new-password">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn-primary" id="account-update-password-btn">Update password</button>
+                            </div>
+                            <div id="account-recovery-status" class="setting-hint"></div>
+                        </div>
+                        <div id="account-auth-status" class="setting-hint"></div>
+                    </div>
+                    <div id="account-logged-in" class="hidden">
+                        <div class="detail-row"><span>Email</span><span id="account-display-email"></span></div>
+                        <div class="detail-row"><span>Role</span><span id="account-display-role"></span></div>
+                        <div class="detail-row" id="account-credits-row"><span>Credits</span><span id="account-display-credits"></span></div>
+                        <button type="button" class="btn-secondary" id="account-logout-btn">Logout</button>
+                    </div>
+                </section>
+                <section class="settings-section hidden" id="server-data-section">
+                    <h2>Server Data</h2>
+                    <p class="setting-hint">Upload or download your matches and players to the server.</p>
+                    <div class="form-group" id="upload-permanent-group">
+                        <label><input type="checkbox" id="upload-permanent" value="1"> Save permanently (1 credit, User only)</label>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-primary" id="server-upload-btn">Upload matches to server</button>
+                        <button type="button" class="btn-secondary" id="server-download-btn">Download matches from server</button>
+                    </div>
+                    <div id="server-data-status" class="setting-hint"></div>
+                </section>
                 <section class="settings-section">
                     <h2>GitHub Sync</h2>
                     <div class="setting-item">
@@ -505,7 +572,10 @@
     <!-- Toast Notification -->
     <div id="toast" class="toast hidden"></div>
 
+    <!-- Supabase (for auth) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Scripts -->
+    <script src="js/config.js"></script>
     <script src="js/models.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/match-engine.js"></script>
@@ -513,6 +583,7 @@
     <script src="js/player-manager.js"></script>
     <script src="js/match-recorder.js"></script>
     <script src="js/github-sync.js"></script>
+    <script src="js/auth.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

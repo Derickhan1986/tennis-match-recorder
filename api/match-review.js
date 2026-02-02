@@ -13,8 +13,37 @@ const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions';
 function cors(res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     return res;
+}
+
+async function getUserFromToken(supabaseUrl, token) {
+    const r = await fetch(`${supabaseUrl}/auth/v1/user`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d.id ? d : null;
+}
+
+async function getProfile(supabaseUrl, serviceKey, userId) {
+    const r = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=role,credits`, {
+        headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d[0] || null;
+}
+
+async function decrementCredits(supabaseUrl, serviceKey, userId) {
+    const getRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=credits`, {
+        headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
+    });
+    const rows = await getRes.json();
+    const current = (rows[0] && rows[0].credits) != null ? rows[0].credits : 0;
+    await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
+        method: 'PATCH',
+        headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credits: Math.max(0, current - 1), updated_at: new Date().toISOString() })
+    });
 }
 
 module.exports = async function handler(req, res) {
@@ -31,6 +60,23 @@ module.exports = async function handler(req, res) {
     if (!apiKey) {
         res.status(500).json({ error: 'DEEPSEEK_API_KEY is not configured' });
         return;
+    }
+    const auth = req.headers.authorization;
+    const token = auth && auth.startsWith('Bearer ') ? auth.slice(7) : null;
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (token && supabaseUrl && serviceKey) {
+        const user = await getUserFromToken(supabaseUrl, token);
+        if (user) {
+            const profile = await getProfile(supabaseUrl, serviceKey, user.id);
+            if (profile && profile.role === 'User') {
+                const credits = profile.credits != null ? profile.credits : 0;
+                if (credits < 1) {
+                    res.status(429).json({ error: 'Insufficient credits' });
+                    return;
+                }
+            }
+        }
     }
     let body;
     try {
@@ -68,6 +114,15 @@ module.exports = async function handler(req, res) {
             return;
         }
         const content = data.choices?.[0]?.message?.content ?? '';
+        if (token && supabaseUrl && serviceKey) {
+            const user = await getUserFromToken(supabaseUrl, token);
+            if (user) {
+                const profile = await getProfile(supabaseUrl, serviceKey, user.id);
+                if (profile && profile.role === 'User') {
+                    await decrementCredits(supabaseUrl, serviceKey, user.id);
+                }
+            }
+        }
         res.status(200).json({ review: content });
     } catch (err) {
         console.error('Match review proxy error:', err);
