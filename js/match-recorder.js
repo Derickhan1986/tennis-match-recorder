@@ -147,34 +147,6 @@ class MatchRecorder {
             });
         }
 
-        // First Server button clicks
-        // First Server按钮点击
-        const firstServerButtons = document.querySelectorAll('.btn-first-server');
-        const firstServerInput = document.getElementById('match-first-server');
-        
-        if (firstServerButtons.length > 0 && firstServerInput) {
-            firstServerButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    const value = button.dataset.value;
-                    firstServerInput.value = value;
-                    
-                    // Update button styles (use bright green for selected)
-                    // 更新按钮样式（选中时使用亮绿色）
-                    firstServerButtons.forEach(btn => {
-                        if (btn.dataset.value === value) {
-                            btn.style.backgroundColor = '#4caf50';
-                            btn.style.color = 'white';
-                            btn.style.borderColor = '#4caf50';
-                        } else {
-                            btn.style.backgroundColor = 'var(--card-background)';
-                            btn.style.color = 'var(--text-primary)';
-                            btn.style.borderColor = 'var(--border-color)';
-                        }
-                    });
-                });
-            });
-        }
-
         // Number of Sets button clicks
         // Number of Sets按钮点击
         const numberOfSetsButtons = document.querySelectorAll('.btn-number-of-sets');
@@ -498,15 +470,88 @@ class MatchRecorder {
         }
     }
 
-    // Start new match
-    // 开始新比赛
+    // Show "Who serves first?" modal with player names; on select call onSelect('player1'|'player2')
+    // 显示“谁先发球？”弹窗（用姓名）；选择后调用 onSelect('player1'|'player2')
+    showFirstServerModal(player1, player2, onSelect) {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal';
+        overlay.setAttribute('aria-label', 'Who serves first?');
+        const name1 = (player1 && player1.name) ? player1.name : 'Player 1';
+        const name2 = (player2 && player2.name) ? player2.name : 'Player 2';
+        const content = document.createElement('div');
+        content.className = 'modal-content';
+        content.innerHTML = `
+            <div class="modal-header">
+                <h3>Who serves first?</h3>
+                <button type="button" class="modal-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin: 0 0 16px 0; color: var(--text-secondary);">Select the player who will serve first.</p>
+                <div class="form-actions" style="flex-direction: column; gap: 12px;">
+                    <button type="button" class="btn-primary btn-first-server-choice" data-value="player1" style="width: 100%;">${this.escapeHtml(name1)}</button>
+                    <button type="button" class="btn-primary btn-first-server-choice" data-value="player2" style="width: 100%;">${this.escapeHtml(name2)}</button>
+                </div>
+            </div>
+        `;
+        overlay.appendChild(content);
+        const close = () => {
+            overlay.classList.add('hidden');
+            setTimeout(() => overlay.remove(), 300);
+        };
+        content.querySelector('.modal-close').addEventListener('click', close);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) close();
+        });
+        content.querySelectorAll('.btn-first-server-choice').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const value = btn.getAttribute('data-value');
+                close();
+                if (value) onSelect(value);
+            });
+        });
+        document.body.appendChild(overlay);
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Start new match: validate, show first-server modal, then doStartMatch(firstServer)
+    // 开始新比赛：校验后弹出先发球选择，再执行 doStartMatch(firstServer)
     async startMatch() {
         try {
             const player1Id = document.getElementById('match-player1').value;
             const player2Id = document.getElementById('match-player2').value;
             
-            // Validate that player1 and player2 are different
-            // 验证player1和player2不能是同一个人
+            if (!player1Id || !player2Id) {
+                app.showToast('Please select both players', 'error');
+                return;
+            }
+            if (player1Id === player2Id) {
+                app.showToast('Player 1 and Player 2 cannot be the same person', 'error');
+                return;
+            }
+
+            const player1 = await storage.getPlayer(player1Id);
+            const player2 = await storage.getPlayer(player2Id);
+            this.showFirstServerModal(player1, player2, (firstServer) => {
+                this.doStartMatch(firstServer);
+            });
+        } catch (error) {
+            console.error('Error in startMatch:', error);
+            app.showToast('Error starting match', 'error');
+        }
+    }
+
+    // Create match and go to recording page (called after user picks first server in modal)
+    // 创建比赛并进入记录页（在用户于弹窗中选择发球方后调用）
+    async doStartMatch(firstServer) {
+        try {
+            const player1Id = document.getElementById('match-player1').value;
+            const player2Id = document.getElementById('match-player2').value;
+            
             if (!player1Id || !player2Id) {
                 app.showToast('Please select both players', 'error');
                 return;
@@ -516,7 +561,6 @@ class MatchRecorder {
                 return;
             }
             
-            const firstServer = document.getElementById('match-first-server').value;
             const numberOfSets = parseInt(document.getElementById('match-sets').value);
             const gamesPerSet = parseInt(document.getElementById('match-games').value);
             const adScoring = document.getElementById('match-ad-scoring').checked;
