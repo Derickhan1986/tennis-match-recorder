@@ -54,7 +54,9 @@ async function decrementCredits(supabaseUrl, serviceKey, userId) {
     }
 }
 
-module.exports = async function handler(req, res) {
+// Allow up to 60s for Deepseek to return (Vercel default is 10s on Hobby)
+// 允许 Deepseek 最多 60 秒返回（Vercel 免费版默认 10 秒）
+const handler = async function (req, res) {
     cors(res);
     if (req.method === 'OPTIONS') {
         res.status(200).end();
@@ -144,4 +146,6 @@ module.exports = async function handler(req, res) {
         console.error('Match review proxy error:', err);
         res.status(500).json({ error: err.message || 'Failed to call Deepseek API' });
     }
-}
+};
+handler.maxDuration = 60;
+module.exports = handler;

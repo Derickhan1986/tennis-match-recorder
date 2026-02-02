@@ -7,6 +7,7 @@ const auth = {
     supabase: null,
     user: null,
     profile: null,
+    accessToken: null,
 
     init() {
         if (typeof window.supabase === 'undefined' || !window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
@@ -22,6 +23,8 @@ const auth = {
                 this.pendingPasswordRecovery = true;
                 this.user = session?.user ?? null;
                 this.profile = null;
+                this.accessToken = session?.access_token || null;
+                this._saveTokenToStorage(this.accessToken);
                 return;
             }
             if (session && session.user) {
@@ -29,26 +32,39 @@ const auth = {
                     this.supabase.auth.signOut();
                     this.user = null;
                     this.profile = null;
+                    this.accessToken = null;
+                    this._saveTokenToStorage(null);
                 } else {
                     this.user = session.user;
+                    this.accessToken = session?.access_token || null;
+                    this._saveTokenToStorage(this.accessToken);
                     this.fetchProfile();
                 }
             } else {
                 this.user = null;
                 this.profile = null;
+                this.accessToken = null;
+                this._saveTokenToStorage(null);
             }
         });
-        return this.supabase.auth.getSession().then(({ data: { session } }) => {
+        return this.supabase.auth.getSession().then((res) => {
+            const session = (res && res.data && res.data.session) ? res.data.session : (res && res.data) ? res.data : null;
             if (session && session.user) {
                 if (!session.user.email_confirmed_at) {
                     this.supabase.auth.signOut();
                     this.user = null;
                     this.profile = null;
+                    this.accessToken = null;
+                    this._saveTokenToStorage(null);
                     return Promise.resolve();
                 }
                 this.user = session.user;
+                this.accessToken = session.access_token || null;
+                this._saveTokenToStorage(this.accessToken);
                 return this.fetchProfile();
             }
+            this.accessToken = null;
+            this._saveTokenToStorage(null);
             return Promise.resolve();
         });
     },
@@ -68,10 +84,45 @@ const auth = {
         return data;
     },
 
+    // Storage key for token fallback (avoids relying on getSession() return shape)
+    _TOKEN_KEY: 'supabase_access_token',
+
+    _tokenFromResult(res) {
+        if (!res) return null;
+        if (typeof res === 'string') return res;
+        if (res.access_token) return res.access_token;
+        const s = res.data?.session ?? res.session ?? (res.data && typeof res.data.access_token === 'string' ? res.data : null);
+        return (s && s.access_token) ? s.access_token : (res.data && res.data.access_token) ? res.data.access_token : null;
+    },
+
+    _saveTokenToStorage(token) {
+        try {
+            if (token) window.sessionStorage.setItem(this._TOKEN_KEY, token);
+            else window.sessionStorage.removeItem(this._TOKEN_KEY);
+        } catch (e) {}
+    },
+
     async getToken() {
+        if (this.accessToken) return this.accessToken;
+        try {
+            const stored = window.sessionStorage && window.sessionStorage.getItem(this._TOKEN_KEY);
+            if (stored) {
+                this.accessToken = stored;
+                return stored;
+            }
+        } catch (e) {}
         if (!this.supabase) return null;
-        const { data: { session } } = await this.supabase.auth.getSession();
-        return session?.access_token || null;
+        const result = await this.supabase.auth.getSession();
+        let token = this._tokenFromResult(result);
+        if (!token && this.user) {
+            const refresh = await this.supabase.auth.refreshSession();
+            token = this._tokenFromResult(refresh);
+        }
+        if (token) {
+            this.accessToken = token;
+            this._saveTokenToStorage(token);
+        }
+        return token;
     },
 
     isLoggedIn() {
@@ -95,6 +146,8 @@ const auth = {
         const { data, error } = await this.supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         this.user = data.user;
+        this.accessToken = (data.session && data.session.access_token) || null;
+        this._saveTokenToStorage(this.accessToken);
         await this.fetchProfile();
         return data;
     },
@@ -120,6 +173,8 @@ const auth = {
         if (this.supabase) await this.supabase.auth.signOut();
         this.user = null;
         this.profile = null;
+        this.accessToken = null;
+        this._saveTokenToStorage(null);
         this.pendingPasswordRecovery = false;
     },
 

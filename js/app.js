@@ -564,6 +564,30 @@ const app = {
                 this.showToast('Match not found', 'error');
                 return;
             }
+            // Refresh auth from Supabase session so Match Review button reflects current login
+            // 从 Supabase 会话刷新 auth，使 Match Review 按钮与当前登录状态一致
+            if (typeof auth !== 'undefined' && auth.supabase) {
+                const res = await auth.supabase.auth.getSession();
+                const session = (res && res.data && res.data.session) ? res.data.session : (res && res.session) ? res.session : (res && res.data && (res.data.user || res.data.access_token)) ? res.data : null;
+                const token = auth._tokenFromResult ? auth._tokenFromResult(res) : (session && session.access_token) ? session.access_token : null;
+                if (session && session.user) {
+                    if (!session.user.email_confirmed_at) {
+                        auth.user = null;
+                        auth.profile = null;
+                        auth.accessToken = null;
+                    } else {
+                        auth.user = session.user;
+                        auth.accessToken = token || (session.access_token) || null;
+                        if (auth._saveTokenToStorage) auth._saveTokenToStorage(auth.accessToken);
+                        await auth.fetchProfile();
+                    }
+                } else {
+                    auth.user = null;
+                    auth.profile = null;
+                    auth.accessToken = null;
+                    if (auth._saveTokenToStorage) auth._saveTokenToStorage(null);
+                }
+            }
             
             // Rebuild match state from log to ensure sets data is correct
             // 从日志重建比赛状态以确保sets数据正确
@@ -1832,12 +1856,68 @@ const app = {
             this.showToast('Match Review is not configured. Set MATCH_REVIEW_API_URL in app.js and deploy the backend.', 'error', 5000);
             return;
         }
-        if (typeof auth === 'undefined' || !auth.isLoggedIn()) {
-            this.showToast('Please log in to use Match Review.', 'error', 5000);
-            return;
+        // Button is only enabled when logged in; get token from Supabase localStorage first, then getSession()
+        // 按钮仅在登录后可用；优先从 Supabase localStorage 取 token，再尝试 getSession()
+        const projectRef = (window.SUPABASE_URL && window.SUPABASE_URL.match(/https?:\/\/([^.]+)\.supabase\.co/)) ? window.SUPABASE_URL.match(/https?:\/\/([^.]+)\.supabase\.co/)[1] : null;
+        const SUPABASE_AUTH_KEY = projectRef ? `sb-${projectRef}-auth-token` : 'sb-aefxxgffuuduvzkgjttu-auth-token';
+        let token = null;
+        if (typeof localStorage !== 'undefined' && SUPABASE_AUTH_KEY) {
+            try {
+                const raw = localStorage.getItem(SUPABASE_AUTH_KEY);
+                if (raw) {
+                    const data = JSON.parse(raw);
+                    if (data && typeof data === 'object') {
+                        token = data.access_token
+                            || (data.currentSession && data.currentSession.access_token)
+                            || (data.session && data.session.access_token)
+                            || (Array.isArray(data) && data[0] && data[0].access_token)
+                            || null;
+                        if (!token) {
+                            const s = data.currentSession || data.session || (Array.isArray(data) ? data[0] : data);
+                            if (s && s.access_token) token = s.access_token;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('localStorage parse failed', e);
+            }
         }
-        if (auth.getRole() === 'User' && (auth.getCredits() == null || auth.getCredits() < 1)) {
-            this.showToast('Insufficient credits. Go to Settings to see your credits.', 'error', 5000);
+        if (!token && typeof sessionStorage !== 'undefined' && typeof auth !== 'undefined' && auth._TOKEN_KEY) {
+            try {
+                token = sessionStorage.getItem(auth._TOKEN_KEY);
+            } catch (e) {}
+        }
+        if (!token && typeof auth !== 'undefined' && auth.supabase) {
+            try {
+                const res = await auth.supabase.auth.getSession();
+                token = (res && res.data && res.data.session && res.data.session.access_token) ? res.data.session.access_token
+                    : (res && res.data && res.data.access_token) ? res.data.access_token
+                    : (res && res.session && res.session.access_token) ? res.session.access_token
+                    : (res && res.access_token) ? res.access_token
+                    : null;
+            } catch (e) {
+                console.warn('getSession failed', e);
+            }
+        }
+        if (!token && typeof localStorage !== 'undefined') {
+            try {
+                const projectRef = (window.SUPABASE_URL && window.SUPABASE_URL.match(/https?:\/\/([^.]+)\.supabase\.co/)) ? window.SUPABASE_URL.match(/https?:\/\/([^.]+)\.supabase\.co/)[1] : null;
+                if (projectRef) {
+                    const key = `sb-${projectRef}-auth-token`;
+                    if (key !== SUPABASE_AUTH_KEY) {
+                        const raw = localStorage.getItem(key);
+                        if (raw) {
+                            const data = JSON.parse(raw);
+                            const s = data?.currentSession || data?.session || data;
+                            if (s && s.access_token) token = s.access_token;
+                            else if (data && data.access_token) token = data.access_token;
+                        }
+                    }
+                }
+            } catch (e) {}
+        }
+        if (!token) {
+            this.showToast('Please log in to use Match Review.', 'error', 5000);
             return;
         }
         try {
@@ -1866,12 +1946,8 @@ const app = {
             if (!systemPrompt.trim()) {
                 systemPrompt = 'You are a professional tennis match analyst. Write a structured, data-driven match review in English based on the match data provided. Include: brief overview, key statistics, serve/return analysis, turning points, strengths and weaknesses, and suggestions. Be concise and professional.';
             }
-            this.showToast('Generating review...', 'info', 60000);
-            const headers = { 'Content-Type': 'application/json' };
-            if (typeof auth !== 'undefined' && auth.getToken) {
-                const token = await auth.getToken();
-                if (token) headers['Authorization'] = `Bearer ${token}`;
-            }
+            this.showToast('Generating review... This may take up to a minute.', 'info', 70000);
+            const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
             const res = await fetch(MATCH_REVIEW_API_URL, {
                 method: 'POST',
                 headers,
@@ -1879,6 +1955,9 @@ const app = {
             });
             const text = await res.text();
             if (!res.ok) {
+                if (res.status === 504 || res.status === 408) {
+                    throw new Error('Request timed out. Generating review can take up to a minute. Please try again.');
+                }
                 try {
                     const err = JSON.parse(text);
                     throw new Error(err.error || err.message || `HTTP ${res.status}`);
@@ -1905,8 +1984,10 @@ const app = {
                 msg = 'Insufficient credits. Go to Settings to see your credits.';
             } else if (msg.toLowerCase().includes('insufficient balance')) {
                 msg = 'Deepseek account balance is low. Please top up at platform.deepseek.com';
+            } else if (msg.toLowerCase().includes('timeout') || msg.toLowerCase().includes('timed out') || msg.toLowerCase().includes('504') || msg.toLowerCase().includes('408')) {
+                msg = 'Request timed out. Generating review can take up to a minute. Please try again.';
             }
-            this.showToast(msg, 'error', 6000);
+            this.showToast(msg, 'error', 7000);
         }
     },
     
