@@ -25,7 +25,6 @@ self.addEventListener('install', (event) => {
                 '/js/match-engine.js',
                 '/js/player-manager.js',
                 '/js/match-recorder.js',
-                '/js/github-sync.js',
                 '/manifest.json'
             ]);
         })

@@ -33,17 +33,25 @@ async function getProfile(supabaseUrl, serviceKey, userId) {
     return d[0] || null;
 }
 
+// Deduct 1 credit for User role after successful Match Review. Throws if PATCH fails.
+// 比赛战报成功后为 User 角色扣除 1 积分；PATCH 失败时抛出。
 async function decrementCredits(supabaseUrl, serviceKey, userId) {
     const getRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=credits`, {
         headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
     });
+    if (!getRes.ok) throw new Error('Failed to read credits');
     const rows = await getRes.json();
     const current = (rows[0] && rows[0].credits) != null ? rows[0].credits : 0;
-    await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
+    const patchRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
         method: 'PATCH',
         headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ credits: Math.max(0, current - 1), updated_at: new Date().toISOString() })
     });
+    if (!patchRes.ok) {
+        const errText = await patchRes.text();
+        console.error('decrementCredits PATCH failed:', patchRes.status, errText);
+        throw new Error('Failed to deduct credit');
+    }
 }
 
 module.exports = async function handler(req, res) {
@@ -65,17 +73,26 @@ module.exports = async function handler(req, res) {
     const token = auth && auth.startsWith('Bearer ') ? auth.slice(7) : null;
     const supabaseUrl = process.env.SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (token && supabaseUrl && serviceKey) {
-        const user = await getUserFromToken(supabaseUrl, token);
-        if (user) {
-            const profile = await getProfile(supabaseUrl, serviceKey, user.id);
-            if (profile && profile.role === 'User') {
-                const credits = profile.credits != null ? profile.credits : 0;
-                if (credits < 1) {
-                    res.status(429).json({ error: 'Insufficient credits' });
-                    return;
-                }
-            }
+    // Require login to use Match Review / 必须登录才能使用比赛战报
+    if (!token || !supabaseUrl || !serviceKey) {
+        res.status(401).json({ error: 'Please log in to use Match Review' });
+        return;
+    }
+    const user = await getUserFromToken(supabaseUrl, token);
+    if (!user) {
+        res.status(401).json({ error: 'Please log in to use Match Review' });
+        return;
+    }
+    const profile = await getProfile(supabaseUrl, serviceKey, user.id);
+    if (!profile) {
+        res.status(401).json({ error: 'Please log in to use Match Review' });
+        return;
+    }
+    if (profile.role === 'User') {
+        const credits = profile.credits != null ? profile.credits : 0;
+        if (credits < 1) {
+            res.status(429).json({ error: 'Insufficient credits' });
+            return;
         }
     }
     let body;
@@ -114,13 +131,12 @@ module.exports = async function handler(req, res) {
             return;
         }
         const content = data.choices?.[0]?.message?.content ?? '';
-        if (token && supabaseUrl && serviceKey) {
-            const user = await getUserFromToken(supabaseUrl, token);
-            if (user) {
-                const profile = await getProfile(supabaseUrl, serviceKey, user.id);
-                if (profile && profile.role === 'User') {
-                    await decrementCredits(supabaseUrl, serviceKey, user.id);
-                }
+        // Deduct 1 credit for User role (Admin/Pro unlimited) / User 扣 1 积分，Admin/Pro 不扣
+        const userAgain = await getUserFromToken(supabaseUrl, token);
+        if (userAgain) {
+            const profileAgain = await getProfile(supabaseUrl, serviceKey, userAgain.id);
+            if (profileAgain && profileAgain.role === 'User') {
+                await decrementCredits(supabaseUrl, serviceKey, userAgain.id);
             }
         }
         res.status(200).json({ review: content });

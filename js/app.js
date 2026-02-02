@@ -10,10 +10,6 @@
 // 比赛战报 API：后端代理地址。部署后在 Vercel/Netlify 中设置你的端点。
 const MATCH_REVIEW_API_URL = 'https://tennis-match-recorder.vercel.app/api/match-review'; // e.g. 'https://your-app.vercel.app/api/match-review'
 
-// Match Review daily limit per user (client-side). Change this to allow more or fewer uses per day.
-// 比赛战报每日使用次数上限（前端限制）。修改此值可调整每日允许次数。
-const MATCH_REVIEW_DAILY_LIMIT = 3;
-
 const app = {
     currentPage: 'matches',
     
@@ -97,69 +93,6 @@ const app = {
     // Setup event listeners
     // 设置事件监听器
     setupEventListeners() {
-        // Export button
-        // 导出按钮
-        const exportBtn = document.getElementById('export-button');
-        if (exportBtn) {
-            exportBtn.addEventListener('click', () => {
-                this.exportData();
-            });
-        }
-        
-        // Import button
-        // 导入按钮
-        const importBtn = document.getElementById('import-button');
-        const importFile = document.getElementById('import-file');
-        if (importBtn && importFile) {
-            importBtn.addEventListener('click', () => {
-                importFile.click();
-            });
-            importFile.addEventListener('change', (e) => {
-                this.importData(e.target.files[0]);
-            });
-        }
-        
-        // GitHub sync button
-        // GitHub同步按钮
-        const syncBtn = document.getElementById('sync-button');
-        if (syncBtn) {
-            syncBtn.addEventListener('click', () => {
-                githubSync.sync();
-            });
-        }
-        
-        // GitHub pull button
-        // GitHub拉取按钮
-        const pullBtn = document.getElementById('pull-button');
-        if (pullBtn) {
-            pullBtn.addEventListener('click', async () => {
-                const statusEl = document.getElementById('sync-status');
-                try {
-                    if (statusEl) {
-                        statusEl.textContent = 'Pulling data...';
-                        statusEl.className = 'success';
-                    }
-                    await githubSync.pull();
-                    if (statusEl) {
-                        statusEl.textContent = 'Data pulled successfully!';
-                        statusEl.className = 'success';
-                    }
-                    // Reload matches and players after pull
-                    // 拉取后重新加载比赛和玩家
-                    await this.loadMatches();
-                    await playerManager.loadPlayers();
-                } catch (error) {
-                    if (statusEl) {
-                        statusEl.textContent = `Error: ${error.message}`;
-                        statusEl.className = 'error';
-                    }
-                }
-            });
-        }
-        
-        // Load saved GitHub settings
-        // 加载保存的GitHub设置
-        this.loadGitHubSettings();
     },
     
     // Setup account and server data event listeners
@@ -813,9 +746,9 @@ const app = {
                 console.error('Available functions:', typeof window.calculateMatchStats, typeof calculateMatchStats, typeof window.calculatePlayerStats);
                 statsHtml = `<div class="detail-section"><p>Statistics unavailable</p><p style="font-size: 12px; color: #888;">Error: ${error.message}</p></div>`;
             }
-            const matchReviewUsage = this.getMatchReviewUsageToday();
-            const matchReviewRemaining = Math.max(0, MATCH_REVIEW_DAILY_LIMIT - matchReviewUsage.count);
-            const matchReviewLimitReached = matchReviewRemaining <= 0;
+            const matchReviewLoggedIn = typeof auth !== 'undefined' && auth.isLoggedIn();
+            const matchReviewCanUse = matchReviewLoggedIn && (auth.getRole() !== 'User' || (auth.getCredits() != null && auth.getCredits() >= 1));
+            const matchReviewBtnText = !matchReviewLoggedIn ? 'Match Review (log in to use)' : (auth.getRole() === 'User' ? `Match Review (1 credit, ${auth.getCredits()} left)` : 'Match Review');
             
             container.innerHTML = `
                 <div class="detail-section">
@@ -856,7 +789,7 @@ const app = {
                 
                 <div class="form-actions">
                     <button class="btn-primary" onclick="app.exportMatchToPDF('${match.id}')">Export to PDF</button>
-                    <button class="btn-secondary" ${matchReviewLimitReached ? 'disabled' : ''} onclick="app.requestMatchReview('${match.id}')">Match Review (${matchReviewRemaining}/${MATCH_REVIEW_DAILY_LIMIT} today)</button>
+                    <button class="btn-secondary" ${!matchReviewCanUse ? 'disabled' : ''} onclick="app.requestMatchReview('${match.id}')">${matchReviewBtnText}</button>
                     <button class="btn-danger" onclick="app.deleteMatch('${match.id}')">Delete Match</button>
                 </div>
             `;
@@ -1892,44 +1825,19 @@ const app = {
         return lines.join('\n');
     },
     
-    // Get today's Match Review usage count from localStorage (client-side limit)
-    // 从 localStorage 获取今日比赛战报使用次数（前端限制）
-    getMatchReviewUsageToday() {
-        const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-        const key = 'matchReviewUsage';
-        try {
-            const raw = localStorage.getItem(key);
-            const data = raw ? JSON.parse(raw) : {};
-            if (data.date !== today) return { date: today, count: 0 };
-            return { date: today, count: Math.max(0, parseInt(data.count, 10) || 0) };
-        } catch (e) {
-            return { date: today, count: 0 };
-        }
-    },
-
-    // Record one Match Review use for today (call after successful API response)
-    // 记录今日一次比赛战报使用（在 API 成功返回后调用）
-    recordMatchReviewUsage() {
-        const today = new Date().toISOString().slice(0, 10);
-        const usage = this.getMatchReviewUsageToday();
-        usage.count += 1;
-        try {
-            localStorage.setItem('matchReviewUsage', JSON.stringify({ date: today, count: usage.count }));
-        } catch (e) {
-            console.warn('Could not save match review usage', e);
-        }
-    },
-
-    // Request AI match review via backend proxy (Option A: no user API key)
-    // 通过后端代理请求 AI 比赛战报（方案 A：用户无需 API Key）
+    // Request AI match review via backend proxy (requires login; credits checked by API)
+    // 通过后端代理请求 AI 比赛战报（须登录；积分由 API 校验）
     async requestMatchReview(matchId) {
         if (!MATCH_REVIEW_API_URL || MATCH_REVIEW_API_URL.trim() === '') {
             this.showToast('Match Review is not configured. Set MATCH_REVIEW_API_URL in app.js and deploy the backend.', 'error', 5000);
             return;
         }
-        const usage = this.getMatchReviewUsageToday();
-        if (usage.count >= MATCH_REVIEW_DAILY_LIMIT) {
-            this.showToast(`Daily limit reached (${MATCH_REVIEW_DAILY_LIMIT} per day). Try again tomorrow.`, 'error', 5000);
+        if (typeof auth === 'undefined' || !auth.isLoggedIn()) {
+            this.showToast('Please log in to use Match Review.', 'error', 5000);
+            return;
+        }
+        if (auth.getRole() === 'User' && (auth.getCredits() == null || auth.getCredits() < 1)) {
+            this.showToast('Insufficient credits. Go to Settings to see your credits.', 'error', 5000);
             return;
         }
         try {
@@ -1985,13 +1893,17 @@ const app = {
                 else if (data.text != null) reviewText = data.text;
                 else if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) reviewText = data.choices[0].message.content;
             } catch (_) {}
-            this.recordMatchReviewUsage();
+            if (typeof auth !== 'undefined' && auth.fetchProfile) await auth.fetchProfile();
             this.showMatchReviewModal(reviewText, player1Name, player2Name, match.startTime);
             this.showToast('Review ready', 'success');
         } catch (error) {
             console.error('Error requesting match review:', error);
             let msg = error.message || 'Error generating match review';
-            if (msg.toLowerCase().includes('insufficient balance')) {
+            if (msg.toLowerCase().includes('please log in')) {
+                msg = 'Please log in to use Match Review.';
+            } else if (msg.toLowerCase().includes('insufficient credits')) {
+                msg = 'Insufficient credits. Go to Settings to see your credits.';
+            } else if (msg.toLowerCase().includes('insufficient balance')) {
                 msg = 'Deepseek account balance is low. Please top up at platform.deepseek.com';
             }
             this.showToast(msg, 'error', 6000);
@@ -2638,62 +2550,6 @@ const app = {
         } catch (error) {
             console.error('Error deleting match:', error);
             this.showToast('Error deleting match', 'error');
-        }
-    },
-    
-    // Export data
-    // 导出数据
-    async exportData() {
-        try {
-            const data = await storage.exportData();
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `tennis-data-${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            this.showToast('Data exported', 'success');
-        } catch (error) {
-            console.error('Error exporting data:', error);
-            this.showToast('Error exporting data', 'error');
-        }
-    },
-    
-    // Import data
-    // 导入数据
-    async importData(file) {
-        if (!file) return;
-        
-        try {
-            const text = await file.text();
-            const data = JSON.parse(text);
-            await storage.importData(data);
-            this.showToast('Data imported', 'success');
-            await this.loadMatches();
-            await playerManager.loadPlayers();
-        } catch (error) {
-            console.error('Error importing data:', error);
-            this.showToast('Error importing data', 'error');
-        }
-    },
-    
-    // Load GitHub settings
-    // 加载GitHub设置
-    async loadGitHubSettings() {
-        try {
-            const token = await storage.getSetting('githubToken', '');
-            const repo = await storage.getSetting('githubRepo', '');
-            
-            const tokenInput = document.getElementById('github-token');
-            const repoInput = document.getElementById('github-repo');
-            
-            if (tokenInput) tokenInput.value = token;
-            if (repoInput) repoInput.value = repo;
-        } catch (error) {
-            console.error('Error loading GitHub settings:', error);
         }
     },
     
