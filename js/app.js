@@ -10,6 +10,10 @@
 // 比赛战报 API：后端代理地址。部署后在 Vercel/Netlify 中设置你的端点。
 const MATCH_REVIEW_API_URL = 'https://tennis-match-recorder.vercel.app/api/match-review'; // e.g. 'https://your-app.vercel.app/api/match-review'
 
+// Match Review daily limit per user (client-side). Change this to allow more or fewer uses per day.
+// 比赛战报每日使用次数上限（前端限制）。修改此值可调整每日允许次数。
+const MATCH_REVIEW_DAILY_LIMIT = 3;
+
 const app = {
     currentPage: 'matches',
     
@@ -536,6 +540,9 @@ const app = {
                 console.error('Available functions:', typeof window.calculateMatchStats, typeof calculateMatchStats, typeof window.calculatePlayerStats);
                 statsHtml = `<div class="detail-section"><p>Statistics unavailable</p><p style="font-size: 12px; color: #888;">Error: ${error.message}</p></div>`;
             }
+            const matchReviewUsage = this.getMatchReviewUsageToday();
+            const matchReviewRemaining = Math.max(0, MATCH_REVIEW_DAILY_LIMIT - matchReviewUsage.count);
+            const matchReviewLimitReached = matchReviewRemaining <= 0;
             
             container.innerHTML = `
                 <div class="detail-section">
@@ -576,7 +583,7 @@ const app = {
                 
                 <div class="form-actions">
                     <button class="btn-primary" onclick="app.exportMatchToPDF('${match.id}')">Export to PDF</button>
-                    <button class="btn-secondary" onclick="app.requestMatchReview('${match.id}')">Match Review</button>
+                    <button class="btn-secondary" ${matchReviewLimitReached ? 'disabled' : ''} onclick="app.requestMatchReview('${match.id}')">Match Review (${matchReviewRemaining}/${MATCH_REVIEW_DAILY_LIMIT} today)</button>
                     <button class="btn-danger" onclick="app.deleteMatch('${match.id}')">Delete Match</button>
                 </div>
             `;
@@ -1612,11 +1619,44 @@ const app = {
         return lines.join('\n');
     },
     
+    // Get today's Match Review usage count from localStorage (client-side limit)
+    // 从 localStorage 获取今日比赛战报使用次数（前端限制）
+    getMatchReviewUsageToday() {
+        const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+        const key = 'matchReviewUsage';
+        try {
+            const raw = localStorage.getItem(key);
+            const data = raw ? JSON.parse(raw) : {};
+            if (data.date !== today) return { date: today, count: 0 };
+            return { date: today, count: Math.max(0, parseInt(data.count, 10) || 0) };
+        } catch (e) {
+            return { date: today, count: 0 };
+        }
+    },
+
+    // Record one Match Review use for today (call after successful API response)
+    // 记录今日一次比赛战报使用（在 API 成功返回后调用）
+    recordMatchReviewUsage() {
+        const today = new Date().toISOString().slice(0, 10);
+        const usage = this.getMatchReviewUsageToday();
+        usage.count += 1;
+        try {
+            localStorage.setItem('matchReviewUsage', JSON.stringify({ date: today, count: usage.count }));
+        } catch (e) {
+            console.warn('Could not save match review usage', e);
+        }
+    },
+
     // Request AI match review via backend proxy (Option A: no user API key)
     // 通过后端代理请求 AI 比赛战报（方案 A：用户无需 API Key）
     async requestMatchReview(matchId) {
         if (!MATCH_REVIEW_API_URL || MATCH_REVIEW_API_URL.trim() === '') {
             this.showToast('Match Review is not configured. Set MATCH_REVIEW_API_URL in app.js and deploy the backend.', 'error', 5000);
+            return;
+        }
+        const usage = this.getMatchReviewUsageToday();
+        if (usage.count >= MATCH_REVIEW_DAILY_LIMIT) {
+            this.showToast(`Daily limit reached (${MATCH_REVIEW_DAILY_LIMIT} per day). Try again tomorrow.`, 'error', 5000);
             return;
         }
         try {
@@ -1667,6 +1707,7 @@ const app = {
                 else if (data.text != null) reviewText = data.text;
                 else if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) reviewText = data.choices[0].message.content;
             } catch (_) {}
+            this.recordMatchReviewUsage();
             this.showMatchReviewModal(reviewText, player1Name, player2Name, match.startTime);
             this.showToast('Review ready', 'success');
         } catch (error) {
