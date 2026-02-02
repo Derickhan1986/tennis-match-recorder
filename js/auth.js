@@ -49,6 +49,7 @@ const auth = {
         });
         return this.supabase.auth.getSession().then((res) => {
             const session = (res && res.data && res.data.session) ? res.data.session : (res && res.data) ? res.data : null;
+            console.log('[MatchReview Debug] auth.init getSession: res keys=', res ? Object.keys(res) : 'null', ', hasSession=', !!session, ', hasUser=', !!(session && session.user));
             if (session && session.user) {
                 if (!session.user.email_confirmed_at) {
                     this.supabase.auth.signOut();
@@ -61,6 +62,7 @@ const auth = {
                 this.user = session.user;
                 this.accessToken = session.access_token || null;
                 this._saveTokenToStorage(this.accessToken);
+                console.log('[MatchReview Debug] auth.init: set user.id=', this.user?.id, ', tokenLen=', this.accessToken ? this.accessToken.length : 0);
                 return this.fetchProfile();
             }
             this.accessToken = null;
@@ -103,15 +105,22 @@ const auth = {
     },
 
     async getToken() {
-        if (this.accessToken) return this.accessToken;
+        if (this.accessToken) {
+            console.log('[MatchReview Debug] getToken: from cache, len=', this.accessToken.length);
+            return this.accessToken;
+        }
         try {
             const stored = window.sessionStorage && window.sessionStorage.getItem(this._TOKEN_KEY);
             if (stored) {
                 this.accessToken = stored;
+                console.log('[MatchReview Debug] getToken: from sessionStorage, len=', stored.length);
                 return stored;
             }
         } catch (e) {}
-        if (!this.supabase) return null;
+        if (!this.supabase) {
+            console.log('[MatchReview Debug] getToken: no supabase, return null');
+            return null;
+        }
         const result = await this.supabase.auth.getSession();
         let token = this._tokenFromResult(result);
         if (!token && this.user) {
@@ -121,6 +130,9 @@ const auth = {
         if (token) {
             this.accessToken = token;
             this._saveTokenToStorage(token);
+            console.log('[MatchReview Debug] getToken: from getSession/refresh, len=', token.length);
+        } else {
+            console.log('[MatchReview Debug] getToken: getSession returned no token, result keys=', result ? Object.keys(result) : 'null');
         }
         return token;
     },

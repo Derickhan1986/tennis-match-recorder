@@ -62,6 +62,7 @@ This guide explains how to create a Supabase project and run the schema for user
    | Key | Value | 说明 |
    |-----|--------|------|
    | `SUPABASE_URL` | `https://aefxxgffuuduvzkgjttu.supabase.co` | 你在 Step 3 复制的 Project URL（换成你自己的） |
+   | `SUPABASE_ANON_KEY` | 粘贴 Supabase API 页里的 **anon** (public) 密钥 | Match Review 用 JWT 校验用户时 Supabase Auth 需要此头；与前端 config 里的 anon key 一致 |
    | `SUPABASE_SERVICE_ROLE_KEY` | 粘贴 Supabase API 页里的 **service_role** 密钥 | 一长串字符，不要复制 anon，要 **service_role** |
    | `DEEPSEEK_API_KEY` | 你的 Deepseek API Key | 若已有 Match Review，这里应已存在，不用改 |
    | `CRON_SECRET` | 任意一串随机字符（如 `mySecret123` 或更长） | 用于每日清理接口的校验，自己记住即可 |

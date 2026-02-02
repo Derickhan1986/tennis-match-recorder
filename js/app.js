@@ -567,25 +567,31 @@ const app = {
             // Refresh auth from Supabase session so Match Review button reflects current login
             // 从 Supabase 会话刷新 auth，使 Match Review 按钮与当前登录状态一致
             if (typeof auth !== 'undefined' && auth.supabase) {
+                console.log('[MatchReview Debug] showMatchDetail: refreshing auth, auth.supabase exists=', !!auth.supabase);
                 const res = await auth.supabase.auth.getSession();
+                console.log('[MatchReview Debug] getSession result: keys=', res ? Object.keys(res) : 'null', ', data?.session?=', !!(res && res.data && res.data.session), ', data keys=', res && res.data ? Object.keys(res.data) : 'n/a');
                 const session = (res && res.data && res.data.session) ? res.data.session : (res && res.session) ? res.session : (res && res.data && (res.data.user || res.data.access_token)) ? res.data : null;
                 const token = auth._tokenFromResult ? auth._tokenFromResult(res) : (session && session.access_token) ? session.access_token : null;
+                console.log('[MatchReview Debug] after parse: hasSession=', !!session, ', hasUser=', !!(session && session.user), ', tokenLength=', token ? token.length : 0);
                 if (session && session.user) {
                     if (!session.user.email_confirmed_at) {
                         auth.user = null;
                         auth.profile = null;
                         auth.accessToken = null;
+                        console.log('[MatchReview Debug] user not confirmed, cleared auth');
                     } else {
                         auth.user = session.user;
                         auth.accessToken = token || (session.access_token) || null;
                         if (auth._saveTokenToStorage) auth._saveTokenToStorage(auth.accessToken);
                         await auth.fetchProfile();
+                        console.log('[MatchReview Debug] auth set: user.id=', auth.user?.id, ', role=', auth.profile?.role, ', tokenLen=', auth.accessToken ? auth.accessToken.length : 0);
                     }
                 } else {
                     auth.user = null;
                     auth.profile = null;
                     auth.accessToken = null;
                     if (auth._saveTokenToStorage) auth._saveTokenToStorage(null);
+                    console.log('[MatchReview Debug] no session/user, cleared auth');
                 }
             }
             
@@ -772,7 +778,8 @@ const app = {
             }
             const matchReviewLoggedIn = typeof auth !== 'undefined' && auth.isLoggedIn();
             const matchReviewCanUse = matchReviewLoggedIn && (auth.getRole() !== 'User' || (auth.getCredits() != null && auth.getCredits() >= 1));
-            const matchReviewBtnText = !matchReviewLoggedIn ? 'Match Review (log in to use)' : (auth.getRole() === 'User' ? `Match Review (1 credit, ${auth.getCredits()} left)` : 'Match Review');
+            const matchReviewBtnText = !matchReviewLoggedIn ? 'Match Review (log in to use)' : 'Match Review';
+            console.log('[MatchReview Debug] button state: loggedIn=', matchReviewLoggedIn, ', canUse=', matchReviewCanUse, ', text=', matchReviewBtnText, ', auth.user=', !!auth?.user, ', auth.accessToken=', !!auth?.accessToken);
             
             container.innerHTML = `
                 <div class="detail-section">
@@ -1852,7 +1859,9 @@ const app = {
     // Request AI match review via backend proxy (requires login; credits checked by API)
     // 通过后端代理请求 AI 比赛战报（须登录；积分由 API 校验）
     async requestMatchReview(matchId) {
+        console.log('[MatchReview] start, matchId=', matchId, ', SUPABASE_URL=', typeof window !== 'undefined' && window.SUPABASE_URL ? '(set)' : '(not set)');
         if (!MATCH_REVIEW_API_URL || MATCH_REVIEW_API_URL.trim() === '') {
+            console.log('[MatchReview] abort: MATCH_REVIEW_API_URL not configured');
             this.showToast('Match Review is not configured. Set MATCH_REVIEW_API_URL in app.js and deploy the backend.', 'error', 5000);
             return;
         }
@@ -1860,10 +1869,17 @@ const app = {
         // 按钮仅在登录后可用；优先从 Supabase localStorage 取 token，再尝试 getSession()
         const projectRef = (window.SUPABASE_URL && window.SUPABASE_URL.match(/https?:\/\/([^.]+)\.supabase\.co/)) ? window.SUPABASE_URL.match(/https?:\/\/([^.]+)\.supabase\.co/)[1] : null;
         const SUPABASE_AUTH_KEY = projectRef ? `sb-${projectRef}-auth-token` : 'sb-aefxxgffuuduvzkgjttu-auth-token';
+        console.log('[MatchReview] token lookup: projectRef=', projectRef, ', SUPABASE_AUTH_KEY=', SUPABASE_AUTH_KEY);
+        if (typeof localStorage !== 'undefined') {
+            const sbKeys = Object.keys(localStorage).filter(k => k.indexOf('sb-') === 0 || k.indexOf('auth') !== -1);
+            console.log('[MatchReview] localStorage keys (sb-/auth)=', sbKeys.length ? sbKeys : 'none');
+        }
         let token = null;
+        let tokenSource = '';
         if (typeof localStorage !== 'undefined' && SUPABASE_AUTH_KEY) {
             try {
                 const raw = localStorage.getItem(SUPABASE_AUTH_KEY);
+                console.log('[MatchReview] localStorage.getItem(SUPABASE_AUTH_KEY): hasRaw=', !!raw, 'rawLength=', raw ? raw.length : 0);
                 if (raw) {
                     const data = JSON.parse(raw);
                     if (data && typeof data === 'object') {
@@ -1878,13 +1894,15 @@ const app = {
                         }
                     }
                 }
+                if (token) tokenSource = 'localStorage(' + SUPABASE_AUTH_KEY + ')';
             } catch (e) {
-                console.warn('localStorage parse failed', e);
+                console.warn('[MatchReview] localStorage parse failed', e);
             }
         }
         if (!token && typeof sessionStorage !== 'undefined' && typeof auth !== 'undefined' && auth._TOKEN_KEY) {
             try {
                 token = sessionStorage.getItem(auth._TOKEN_KEY);
+                if (token) tokenSource = 'sessionStorage';
             } catch (e) {}
         }
         if (!token && typeof auth !== 'undefined' && auth.supabase) {
@@ -1895,15 +1913,20 @@ const app = {
                     : (res && res.session && res.session.access_token) ? res.session.access_token
                     : (res && res.access_token) ? res.access_token
                     : null;
+                if (token) tokenSource = 'getSession()';
+                else {
+                    console.log('[MatchReview] getSession() returned no token. res keys=', res ? Object.keys(res) : 'null');
+                    if (res && res.data) console.log('[MatchReview] res.data keys=', Object.keys(res.data), ', res.data=', JSON.stringify(res.data).slice(0, 200));
+                }
             } catch (e) {
-                console.warn('getSession failed', e);
+                console.warn('[MatchReview] getSession failed', e);
             }
         }
         if (!token && typeof localStorage !== 'undefined') {
             try {
-                const projectRef = (window.SUPABASE_URL && window.SUPABASE_URL.match(/https?:\/\/([^.]+)\.supabase\.co/)) ? window.SUPABASE_URL.match(/https?:\/\/([^.]+)\.supabase\.co/)[1] : null;
-                if (projectRef) {
-                    const key = `sb-${projectRef}-auth-token`;
+                const projectRef2 = (window.SUPABASE_URL && window.SUPABASE_URL.match(/https?:\/\/([^.]+)\.supabase\.co/)) ? window.SUPABASE_URL.match(/https?:\/\/([^.]+)\.supabase\.co/)[1] : null;
+                if (projectRef2) {
+                    const key = `sb-${projectRef2}-auth-token`;
                     if (key !== SUPABASE_AUTH_KEY) {
                         const raw = localStorage.getItem(key);
                         if (raw) {
@@ -1912,14 +1935,17 @@ const app = {
                             if (s && s.access_token) token = s.access_token;
                             else if (data && data.access_token) token = data.access_token;
                         }
+                        if (token) tokenSource = 'localStorage(' + key + ')';
                     }
                 }
             } catch (e) {}
         }
         if (!token) {
+            console.log('[MatchReview] no token from any source, abort');
             this.showToast('Please log in to use Match Review.', 'error', 5000);
             return;
         }
+        console.log('[MatchReview] token from', tokenSource, ', token length=', token.length);
         try {
             const match = await storage.getMatch(matchId);
             if (!match) {
@@ -1948,13 +1974,16 @@ const app = {
             }
             this.showToast('Generating review... This may take up to a minute.', 'info', 70000);
             const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+            console.log('[MatchReview] sending POST to', MATCH_REVIEW_API_URL);
             const res = await fetch(MATCH_REVIEW_API_URL, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({ systemPrompt, userMessage: summary })
             });
             const text = await res.text();
+            console.log('[MatchReview] response status=', res.status, 'ok=', res.ok, 'body length=', text.length);
             if (!res.ok) {
+                console.log('[MatchReview] error body (first 300 chars)=', text.slice(0, 300));
                 if (res.status === 504 || res.status === 408) {
                     throw new Error('Request timed out. Generating review can take up to a minute. Please try again.');
                 }
@@ -1972,10 +2001,12 @@ const app = {
                 else if (data.text != null) reviewText = data.text;
                 else if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) reviewText = data.choices[0].message.content;
             } catch (_) {}
+            console.log('[MatchReview] success, review length=', reviewText.length);
             if (typeof auth !== 'undefined' && auth.fetchProfile) await auth.fetchProfile();
             this.showMatchReviewModal(reviewText, player1Name, player2Name, match.startTime);
             this.showToast('Review ready', 'success');
         } catch (error) {
+            console.log('[MatchReview] catch:', error.message);
             console.error('Error requesting match review:', error);
             let msg = error.message || 'Error generating match review';
             if (msg.toLowerCase().includes('please log in')) {

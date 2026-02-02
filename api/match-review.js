@@ -17,9 +17,17 @@ function cors(res) {
     return res;
 }
 
-async function getUserFromToken(supabaseUrl, token) {
-    const r = await fetch(`${supabaseUrl}/auth/v1/user`, { headers: { Authorization: `Bearer ${token}` } });
-    if (!r.ok) return null;
+// Get user from JWT. Supabase Auth may require apikey (anon) header; pass anonKey if available.
+async function getUserFromToken(supabaseUrl, token, anonKey) {
+    const headers = { Authorization: `Bearer ${token}` };
+    if (anonKey) headers.apikey = anonKey;
+    const r = await fetch(`${supabaseUrl}/auth/v1/user`, { headers });
+    if (!r.ok) {
+        const errText = await r.text();
+        const host = supabaseUrl ? supabaseUrl.replace(/^https?:\/\//, '').split('/')[0] : '';
+        console.log('[MatchReview API] Supabase /auth/v1/user failed: status=', r.status, 'host=', host, 'body=', errText.slice(0, 200));
+        return null;
+    }
     const d = await r.json();
     return d.id ? d : null;
 }
@@ -57,6 +65,7 @@ async function decrementCredits(supabaseUrl, serviceKey, userId) {
 // Allow up to 60s for Deepseek to return (Vercel default is 10s on Hobby)
 // 允许 Deepseek 最多 60 秒返回（Vercel 免费版默认 10 秒）
 const handler = async function (req, res) {
+    console.log('[MatchReview API] request received: method=', req.method, 'path=', req.url || req.path);
     cors(res);
     if (req.method === 'OPTIONS') {
         res.status(200).end();
@@ -75,24 +84,33 @@ const handler = async function (req, res) {
     const token = auth && auth.startsWith('Bearer ') ? auth.slice(7) : null;
     const supabaseUrl = process.env.SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const anonKey = process.env.SUPABASE_ANON_KEY || '';
+    const supabaseHost = supabaseUrl ? supabaseUrl.replace(/^https?:\/\//, '').split('/')[0] : '';
+    console.log('[MatchReview API] token present:', !!token, 'token length:', token ? token.length : 0, 'supabaseHost:', supabaseHost || '(none)', 'serviceKey:', !!serviceKey, 'anonKey:', !!anonKey);
     // Require login to use Match Review / 必须登录才能使用比赛战报
     if (!token || !supabaseUrl || !serviceKey) {
+        console.log('[MatchReview API] 401: missing token or Supabase config (token=', !!token, 'url=', !!supabaseUrl, 'key=', !!serviceKey, ')');
         res.status(401).json({ error: 'Please log in to use Match Review' });
         return;
     }
-    const user = await getUserFromToken(supabaseUrl, token);
+    const user = await getUserFromToken(supabaseUrl, token, anonKey);
+    console.log('[MatchReview API] user from token:', !!user, user ? 'userId=' + user.id : '');
     if (!user) {
+        console.log('[MatchReview API] 401: getUserFromToken returned null');
         res.status(401).json({ error: 'Please log in to use Match Review' });
         return;
     }
     const profile = await getProfile(supabaseUrl, serviceKey, user.id);
+    console.log('[MatchReview API] profile:', !!profile, profile ? 'role=' + profile.role + ' credits=' + profile.credits : '');
     if (!profile) {
+        console.log('[MatchReview API] 401: getProfile returned null');
         res.status(401).json({ error: 'Please log in to use Match Review' });
         return;
     }
     if (profile.role === 'User') {
         const credits = profile.credits != null ? profile.credits : 0;
         if (credits < 1) {
+            console.log('[MatchReview API] 429: insufficient credits');
             res.status(429).json({ error: 'Insufficient credits' });
             return;
         }
@@ -101,19 +119,23 @@ const handler = async function (req, res) {
     try {
         body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     } catch (e) {
+        console.log('[MatchReview API] 400: JSON parse error', e.message);
         res.status(400).json({ error: 'Invalid JSON body' });
         return;
     }
     const { systemPrompt, userMessage } = body || {};
     if (!userMessage || typeof userMessage !== 'string') {
+        console.log('[MatchReview API] 400: userMessage missing');
         res.status(400).json({ error: 'userMessage is required' });
         return;
     }
+    console.log('[MatchReview API] body ok, userMessage length=', userMessage.length);
     const messages = [
         ...(systemPrompt && systemPrompt.trim() ? [{ role: 'system', content: systemPrompt.trim() }] : []),
         { role: 'user', content: userMessage }
     ];
     try {
+        console.log('[MatchReview API] calling Deepseek...');
         const response = await fetch(DEEPSEEK_API, {
             method: 'POST',
             headers: {
@@ -127,8 +149,10 @@ const handler = async function (req, res) {
             })
         });
         const data = await response.json();
+        console.log('[MatchReview API] Deepseek status=', response.status, 'content length=', (data.choices?.[0]?.message?.content ?? '').length);
         if (!response.ok) {
             const errMsg = data.error?.message || data.message || JSON.stringify(data);
+            console.log('[MatchReview API] Deepseek error:', errMsg);
             res.status(response.status).json({ error: errMsg });
             return;
         }
@@ -141,9 +165,10 @@ const handler = async function (req, res) {
                 await decrementCredits(supabaseUrl, serviceKey, userAgain.id);
             }
         }
+        console.log('[MatchReview API] success, returning review length=', content.length);
         res.status(200).json({ review: content });
     } catch (err) {
-        console.error('Match review proxy error:', err);
+        console.error('[MatchReview API] catch:', err.message, err.stack);
         res.status(500).json({ error: err.message || 'Failed to call Deepseek API' });
     }
 };
