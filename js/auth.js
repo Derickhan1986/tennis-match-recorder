@@ -166,7 +166,20 @@ const auth = {
 
     async register(email, password) {
         if (!this.supabase) throw new Error('Supabase not configured');
-        const { data, error } = await this.supabase.auth.signUp({ email, password });
+        // After email confirmation, redirect to confirm-thanks.html (must be in Supabase Redirect URLs)
+        // 邮箱确认后跳转到 confirm-thanks.html（该地址须在 Supabase Redirect URLs 中）
+        let emailRedirectTo;
+        if (typeof window !== 'undefined' && window.location) {
+            const origin = window.location.origin;
+            const path = (window.location.pathname || '/');
+            const basePath = path.substring(0, path.lastIndexOf('/') + 1);
+            emailRedirectTo = origin + basePath + 'confirm-thanks.html';
+        }
+        const { data, error } = await this.supabase.auth.signUp({
+            email,
+            password,
+            options: emailRedirectTo ? { emailRedirectTo } : {}
+        });
         if (error) throw error;
         // If email confirmation is required and not yet confirmed, do not stay logged in
         // 若需要邮件确认且尚未确认，则不保持登录状态

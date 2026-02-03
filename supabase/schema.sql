@@ -78,6 +78,21 @@ CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- Trigger: when a user is deleted from Authentication, delete their profile (and user_data via CASCADE)
+-- 触发器：在 Authentication 中删除用户时，同步删除其 profile（user_data 通过 CASCADE 一并删除）
+CREATE OR REPLACE FUNCTION public.handle_user_deleted()
+RETURNS TRIGGER AS $$
+BEGIN
+    DELETE FROM public.profiles WHERE id = OLD.id;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_deleted ON auth.users;
+CREATE TRIGGER on_auth_user_deleted
+    AFTER DELETE ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_user_deleted();
+
 -- Optional: seed one Admin (replace with your email and run once)
 -- 可选：手动创建一个 Admin（将邮箱改为你的邮箱后执行一次）
 -- INSERT INTO public.profiles (id, email, role, credits)

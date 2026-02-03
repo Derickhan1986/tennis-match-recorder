@@ -140,12 +140,13 @@ Users can reset their password from **Settings → Account**: click **Forgot pas
 1. In the Supabase dashboard, go to **Authentication** → **URL Configuration**.
 2. Under **Redirect URLs**, add your app URL(s), e.g.:
    - `http://localhost:5500/` (or your local dev URL) for testing
-   - `https://your-app.vercel.app/` (or your production URL)
-3. Save. The reset email will redirect users to this origin so the app can show the “Set new password” form.
+   - Your production base URL (e.g. `https://your-username.github.io/tennis-match-recorder/`)
+   - **Confirm email thank-you page:** `https://your-username.github.io/tennis-match-recorder/confirm-thanks.html` (use your real base URL + `/confirm-thanks.html`)
+3. Save. The app sends the confirm-thanks URL when registering so new users land there after clicking the email link. The reset email will redirect users to this origin so the app can show the “Set new password” form.
 
 1. 在 Supabase 控制台进入 **Authentication** → **URL Configuration**。
-2. 在 **Redirect URLs** 中添加你的应用地址，例如本地开发地址或 Vercel 部署地址。
-3. 保存后，重置邮件中的链接会跳转到该地址，应用会显示“设置新密码”表单。
+2. 在 **Redirect URLs** 中添加你的应用地址；**若希望注册确认后跳转到感谢页**，还需添加 `https://你的域名/confirm-thanks.html`（如 GitHub Pages：`https://你的用户名.github.io/tennis-match-recorder/confirm-thanks.html`）。
+3. 保存后，重置与确认邮件中的链接会跳转到上述地址。注册时应用会带上 confirm-thanks 地址，用户点击邮件确认后会打开感谢页。
 
 ---
 
