@@ -158,7 +158,7 @@ const handler = async function (req, res) {
         }
         const content = data.choices?.[0]?.message?.content ?? '';
         // Deduct 1 credit for User role (Admin/Pro unlimited) / User 扣 1 积分，Admin/Pro 不扣
-        const userAgain = await getUserFromToken(supabaseUrl, token);
+        const userAgain = await getUserFromToken(supabaseUrl, token, anonKey);
         if (userAgain) {
             const profileAgain = await getProfile(supabaseUrl, serviceKey, userAgain.id);
             console.log('[MatchReview API] post-success profile: role=', profileAgain?.role, 'credits=', profileAgain?.credits);
