@@ -161,8 +161,13 @@ const handler = async function (req, res) {
         const userAgain = await getUserFromToken(supabaseUrl, token);
         if (userAgain) {
             const profileAgain = await getProfile(supabaseUrl, serviceKey, userAgain.id);
+            console.log('[MatchReview API] post-success profile: role=', profileAgain?.role, 'credits=', profileAgain?.credits);
             if (profileAgain && profileAgain.role === 'User') {
+                console.log('[MatchReview API] deducting 1 credit for User userId=', userAgain.id);
                 await decrementCredits(supabaseUrl, serviceKey, userAgain.id);
+                console.log('[MatchReview API] credit deducted ok');
+            } else {
+                console.log('[MatchReview API] skip deduct: not User role or no profile');
             }
         }
         console.log('[MatchReview API] success, returning review length=', content.length);
