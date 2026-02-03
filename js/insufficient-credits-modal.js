@@ -23,7 +23,7 @@
         var feedbackLabel = options.feedbackLabel != null ? options.feedbackLabel : 'Buy me a coffee';
 
         var msgBefore = 'You don\'t have enough credits. During the test period, contact ';
-        var msgAfter = ' for a free top-up. The creator covers operating costs during the test period; each Match Review uses paid API, so please use sparingly. Your feedback helps improve the app—leave yours at ';
+        var msgAfter = ' for a free top-up. The creator covers operating costs during the test period; this function uses paid API, so please use sparingly. Your feedback helps improve the app—leave yours at ';
 
         var overlay = document.createElement('div');
         overlay.className = 'modal';
