@@ -48,9 +48,10 @@ const app = {
         await playerManager.loadPlayers();
         await matchRecorder.loadPlayersForMatch();
         
-        // Show initial page
-        // 显示初始页面
-        this.showPage('matches');
+        // Show initial page: if user landed from reset-password email link, show Log in with set-new-password form
+        // 显示初始页面：若从重置密码邮件链接进入，则显示 Log in 并展示设置新密码表单
+        const initialPage = (typeof auth !== 'undefined' && auth.pendingPasswordRecovery) ? 'settings' : 'matches';
+        this.showPage(initialPage);
     },
     
     // Setup navigation

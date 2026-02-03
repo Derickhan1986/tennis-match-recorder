@@ -76,4 +76,4 @@ Reset your password - Tennis Match Recorder
 
 ---
 
-说明：`{{ .ConfirmationURL }}` 是 Supabase 变量，不要改。用户点击后会被重定向到你在 **Redirect URLs** 中配置的应用地址，应用会显示“设置新密码”表单。
+说明：`{{ .ConfirmationURL }}` 是 Supabase 变量，不要改。用户点击后会被重定向到**专用重置密码页** `reset-password.html`（须在 **Redirect URLs** 中添加该页完整地址，如 `https://你的域名/reset-password.html`），在该页设置新密码后即可回到应用登录。

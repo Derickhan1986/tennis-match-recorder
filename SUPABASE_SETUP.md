@@ -128,25 +128,26 @@ WHERE email = 'admin@gmail.com';
 ## Forgot password / Redirect URL
 ## 忘记密码与重定向 URL
 
-Users can reset their password from **Settings → Account**: click **Forgot password?**, enter email, then **Send reset link**. Supabase sends an email; when the user clicks the link, they are redirected back to your app to set a new password.
-用户可在 **Settings → Account** 中重置密码：点击 **Forgot password?**，输入邮箱后点击 **Send reset link**。Supabase 会发送邮件；用户点击邮件中的链接后会被重定向回应用以设置新密码。
+Users can reset their password from **Log in** (ex-Settings) → **Account**: click **Forgot password?**, enter email, then **Send reset link**. Supabase sends an email; when the user clicks the link, they are redirected to the **dedicated reset-password page** (`reset-password.html`) to set a new password (no conflict with the Log in page).
+用户可在 **Log in**（原 Settings）→ **Account** 中重置密码：点击 **Forgot password?**，输入邮箱后点击 **Send reset link**。Supabase 会发邮件；用户点击邮件中的链接后会跳转到**专用重置密码页**（`reset-password.html`）设置新密码，与 Log in 页分离。
 
-**Same list as email confirmation.** Supabase has one **Redirect URLs** list in **Authentication → URL Configuration**. Both **email confirmation** (after signup) and **password reset** use this list. Adding your app URL here does not conflict—one URL works for both flows. If you already added it for confirm signup, password reset will work with the same URL.
-**与注册邮箱确认共用同一列表。** Supabase 在 **Authentication → URL Configuration** 里只有一份 **Redirect URLs** 列表，注册确认和密码重置都使用这份列表。添加应用地址不会冲突，同一个地址两种流程都能用；若你已为注册确认添加过，密码重置也会生效。
+**Same list as email confirmation.** Supabase has one **Redirect URLs** list in **Authentication → URL Configuration**. Both **email confirmation** and **password reset** use this list. You need to add both the confirm-thanks and reset-password URLs.
+**与注册邮箱确认共用同一列表。** Supabase 在 **Authentication → URL Configuration** 里只有一份 **Redirect URLs** 列表，注册确认和密码重置都使用该列表；需同时添加 confirm-thanks 与 reset-password 的地址。
 
 **Configure redirect URL in Supabase** (required for reset link and confirm link to work):  
 在 Supabase 中配置重定向 URL（重置链接与确认链接生效所必需）：
 
 1. In the Supabase dashboard, go to **Authentication** → **URL Configuration**.
-2. Under **Redirect URLs**, add your app URL(s), e.g.:
+2. Under **Redirect URLs**, add:
    - `http://localhost:5500/` (or your local dev URL) for testing
    - Your production base URL (e.g. `https://your-username.github.io/tennis-match-recorder/`)
-   - **Confirm email thank-you page:** `https://your-username.github.io/tennis-match-recorder/confirm-thanks.html` (use your real base URL + `/confirm-thanks.html`)
-3. Save. The app sends the confirm-thanks URL when registering so new users land there after clicking the email link. The reset email will redirect users to this origin so the app can show the “Set new password” form.
+   - **Confirm email thank-you page:** `https://your-username.github.io/tennis-match-recorder/confirm-thanks.html`
+   - **Password reset page:** `https://your-username.github.io/tennis-match-recorder/reset-password.html` (use your real base URL + `/reset-password.html`)
+3. Save. After signup confirmation users land on confirm-thanks.html; after clicking the reset-password email link they land on reset-password.html to set a new password.
 
 1. 在 Supabase 控制台进入 **Authentication** → **URL Configuration**。
-2. 在 **Redirect URLs** 中添加你的应用地址；**若希望注册确认后跳转到感谢页**，还需添加 `https://你的域名/confirm-thanks.html`（如 GitHub Pages：`https://你的用户名.github.io/tennis-match-recorder/confirm-thanks.html`）。
-3. 保存后，重置与确认邮件中的链接会跳转到上述地址。注册时应用会带上 confirm-thanks 地址，用户点击邮件确认后会打开感谢页。
+2. 在 **Redirect URLs** 中添加：应用根地址、`https://你的域名/confirm-thanks.html`、以及 **`https://你的域名/reset-password.html`**（如 GitHub Pages：`https://你的用户名.github.io/tennis-match-recorder/reset-password.html`）。
+3. 保存后，注册确认会跳转到感谢页；重置密码邮件链接会跳转到 reset-password.html 设置新密码。
 
 ---
 

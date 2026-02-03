@@ -49,8 +49,19 @@ const auth = {
         });
         return this.supabase.auth.getSession().then((res) => {
             const session = (res && res.data && res.data.session) ? res.data.session : (res && res.data) ? res.data : null;
+            // If user landed from reset-password email link, URL hash contains type=recovery
+            // 若从重置密码邮件链接进入，URL hash 会包含 type=recovery
+            if (typeof window !== 'undefined' && window.location && window.location.hash && window.location.hash.includes('type=recovery')) {
+                this.pendingPasswordRecovery = true;
+            }
             console.log('[MatchReview Debug] auth.init getSession: res keys=', res ? Object.keys(res) : 'null', ', hasSession=', !!session, ', hasUser=', !!(session && session.user));
             if (session && session.user) {
+                if (this.pendingPasswordRecovery) {
+                    this.user = session.user;
+                    this.accessToken = session.access_token || null;
+                    this._saveTokenToStorage(this.accessToken);
+                    return Promise.resolve();
+                }
                 if (!session.user.email_confirmed_at) {
                     this.supabase.auth.signOut();
                     this.user = null;
@@ -211,7 +222,16 @@ const auth = {
      */
     async resetPasswordForEmail(email, options = {}) {
         if (!this.supabase) throw new Error('Supabase not configured');
-        const redirectTo = options.redirectTo || (typeof window !== 'undefined' && window.location ? `${window.location.origin}${window.location.pathname || '/'}`.replace(/\/?$/, '/') : '');
+        // Redirect to dedicated reset-password page (must be in Supabase Redirect URLs)
+        // 跳转到专用重置密码页面（该地址须在 Supabase Redirect URLs 中）
+        let redirectTo = options.redirectTo;
+        if (!redirectTo && typeof window !== 'undefined' && window.location) {
+            const origin = window.location.origin;
+            let path = (window.location.pathname || '/');
+            if (path.indexOf('reset-password.html') !== -1) path = path.replace(/reset-password\.html.*$/, '');
+            path = path.replace(/\/[^/]*$/, '/') || '/';
+            redirectTo = origin + path + (path.endsWith('/') ? 'reset-password.html' : '/reset-password.html');
+        }
         const { error } = await this.supabase.auth.resetPasswordForEmail(email, { redirectTo });
         if (error) throw error;
     },
