@@ -1959,7 +1959,11 @@ const app = {
             if (typeof auth.fetchProfile === 'function') await auth.fetchProfile();
             const credits = auth.getCredits();
             if (credits == null || credits < 1) {
-                this.showInsufficientCreditsModal();
+                if (typeof window.showInsufficientCreditsModal === 'function') {
+                    window.showInsufficientCreditsModal();
+                } else {
+                    this.showInsufficientCreditsModal();
+                }
                 return;
             }
         }
@@ -2039,39 +2043,13 @@ const app = {
         }
     },
     
-    // Show modal when User has insufficient credits (no API call)
-    // 当 User 积分不足时弹出提示，不请求生成战报
+    // Fallback if insufficient-credits-modal.js not loaded; otherwise use window.showInsufficientCreditsModal()
     showInsufficientCreditsModal() {
-        const overlay = document.createElement('div');
-        overlay.className = 'modal';
-        overlay.setAttribute('aria-label', 'Credit insufficient');
-        const content = document.createElement('div');
-        content.className = 'modal-content';
-        const msg = 'You don\'t have enough credits. During the test period, contact donghan1986@icloud.com for a free top-up. The creator covers operating costs during the test period; each Match Review uses paid API, so please use sparingly. Your feedback helps improve the app—leave yours at:';
-        const feedbackUrl = 'https://buymeacoffee.com/tennismatchrecorder';
-        content.innerHTML = `
-            <div class="modal-header">
-                <h3>Insufficient credits</h3>
-                <button type="button" class="modal-close" aria-label="Close">&times;</button>
-            </div>
-            <div class="modal-body" style="line-height: 1.6;">
-                <p style="margin-bottom: 12px;">${this.escapeHtml(msg)}</p>
-                <p><a href="${this.escapeHtml(feedbackUrl)}" target="_blank" rel="noopener noreferrer" style="color: #1a472a; font-weight: 600;">${this.escapeHtml(feedbackUrl)}</a></p>
-                <div class="form-actions" style="margin-top: 16px;">
-                    <a href="mailto:donghan1986@icloud.com" class="btn-primary" style="text-decoration: none; display: inline-block; text-align: center;">Contact for top-up</a>
-                    <button type="button" class="btn-secondary modal-close-btn">Close</button>
-                </div>
-            </div>
-        `;
-        overlay.appendChild(content);
-        const close = () => {
-            overlay.classList.add('hidden');
-            setTimeout(() => overlay.remove(), 300);
-        };
-        content.querySelector('.modal-close').addEventListener('click', close);
-        content.querySelector('.modal-close-btn').addEventListener('click', close);
-        overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-        document.body.appendChild(overlay);
+        if (typeof window.showInsufficientCreditsModal === 'function') {
+            window.showInsufficientCreditsModal();
+            return;
+        }
+        this.showToast('Insufficient credits. Contact donghan1986@icloud.com for top-up.', 'error', 6000);
     },
     
     // Show match review in modal with Download and Close
