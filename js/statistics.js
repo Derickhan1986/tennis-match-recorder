@@ -113,10 +113,10 @@ async function calculatePlayerStats(playerId) {
             match.player1Id === playerId || match.player2Id === playerId
         );
         
-        // Only calculate for completed matches
-        // 只计算已完成的比赛
+        // Only calculate for completed matches with a clear winner (exclude unfinished/abandoned)
+        // 只计算已完成且有明确胜者的比赛（未完成/放弃的比赛不计入统计）
         const completedMatches = playerMatches.filter(match => 
-            match.status === 'completed'
+            match.status === 'completed' && (match.winner === 'player1' || match.winner === 'player2')
         );
         
         // Initialize statistics
@@ -138,6 +138,8 @@ async function calculatePlayerStats(playerId) {
             // Serve statistics
             // 发球统计
             totalServes: 0,
+            pointsWonOnServe: 0,
+            pointsWonOnReturn: 0,
             firstServes: 0,
             firstServeFaults: 0,
             firstServesIn: 0, // First serves that went in (successful first serves)
@@ -515,8 +517,10 @@ async function calculatePlayerStats(playerId) {
         
         // Total Serve Point Win % = Points won on serve / Total serves
         // 总发球得分率 = 发球得分 / 总发球数
-        if (stats.totalServes > 0) {
+        if (stats.totalServes > 0 && typeof stats.pointsWonOnServe === 'number' && !Number.isNaN(stats.pointsWonOnServe)) {
             stats.totalServePointWinPercentage = (stats.pointsWonOnServe / stats.totalServes * 100).toFixed(1);
+        } else {
+            stats.totalServePointWinPercentage = '0.0';
         }
         
         // Calculate total return points using opponent's total serves
@@ -869,8 +873,10 @@ window.calculateMatchStats = function calculateMatchStats(match) {
         
         // Total Serve Point Win % = Points won on serve / Total serves
         // 总发球得分率 = 发球得分 / 总发球数
-        if (playerStats.totalServes > 0) {
+        if (playerStats.totalServes > 0 && typeof playerStats.pointsWonOnServe === 'number' && !Number.isNaN(playerStats.pointsWonOnServe)) {
             playerStats.totalServePointWinPercentage = (playerStats.pointsWonOnServe / playerStats.totalServes * 100).toFixed(1);
+        } else {
+            playerStats.totalServePointWinPercentage = '0.0';
         }
         
         // Calculate Total Return Point Win % using opponent's statistics
