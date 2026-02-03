@@ -396,7 +396,13 @@ const app = {
             // 打开新比赛页面时刷新玩家列表
             matchRecorder.loadPlayersForMatch();
         } else if (pageName === 'settings') {
-            this.refreshSettingsAccount();
+            // Fetch latest profile (including credits) from Supabase so Settings shows current data
+            // 从 Supabase 拉取最新 profile（含 credits），使设置页显示当前数据
+            if (typeof auth !== 'undefined' && auth.isLoggedIn() && auth.fetchProfile) {
+                auth.fetchProfile().then(() => this.refreshSettingsAccount());
+            } else {
+                this.refreshSettingsAccount();
+            }
         }
         
         this.currentPage = pageName;
