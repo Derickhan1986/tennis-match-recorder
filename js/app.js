@@ -444,7 +444,7 @@ const app = {
         const titles = {
             'matches': 'Matches',
             'players': 'Players',
-            'settings': 'Settings',
+            'settings': 'Log in',
             'new-match': 'New Match',
             'match-recording': 'Recording',
             'match-detail': 'Match Details',
@@ -2018,7 +2018,7 @@ const app = {
             if (msg.toLowerCase().includes('please log in')) {
                 msg = 'Please log in to use Match Review.';
             } else if (msg.toLowerCase().includes('insufficient credits')) {
-                msg = 'Insufficient credits. Go to Settings to see your credits.';
+                msg = 'Insufficient credits. Go to Log in to see your credits.';
             } else if (msg.toLowerCase().includes('insufficient balance')) {
                 msg = 'Deepseek account balance is low. Please top up at platform.deepseek.com';
             } else if (msg.toLowerCase().includes('timeout') || msg.toLowerCase().includes('timed out') || msg.toLowerCase().includes('504') || msg.toLowerCase().includes('408')) {
