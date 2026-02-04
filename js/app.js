@@ -106,8 +106,6 @@ const app = {
         const sendResetBtn = document.getElementById('account-send-reset-btn');
         const cancelForgotBtn = document.getElementById('account-cancel-forgot-btn');
         const updatePwBtn = document.getElementById('account-update-password-btn');
-        const uploadBtn = document.getElementById('server-upload-btn');
-        const downloadBtn = document.getElementById('server-download-btn');
         if (loginBtn) loginBtn.addEventListener('click', () => this.accountLogin());
         if (registerBtn) registerBtn.addEventListener('click', () => this.accountRegister());
         if (logoutBtn) logoutBtn.addEventListener('click', () => this.accountLogout());
@@ -115,16 +113,12 @@ const app = {
         if (sendResetBtn) sendResetBtn.addEventListener('click', () => this.accountSendResetLink());
         if (cancelForgotBtn) cancelForgotBtn.addEventListener('click', () => this.hideForgotPasswordForm());
         if (updatePwBtn) updatePwBtn.addEventListener('click', () => this.accountUpdatePassword());
-        if (uploadBtn) uploadBtn.addEventListener('click', () => this.serverUpload());
-        if (downloadBtn) downloadBtn.addEventListener('click', () => this.serverDownload());
     },
     
     refreshSettingsAccount() {
         const loggedOut = document.getElementById('account-logged-out');
         const loggedIn = document.getElementById('account-logged-in');
-        const serverSection = document.getElementById('server-data-section');
         const creditsRow = document.getElementById('account-credits-row');
-        const permanentGroup = document.getElementById('upload-permanent-group');
         const statusEl = document.getElementById('account-auth-status');
         if (statusEl) statusEl.textContent = '';
         const forgotBlock = document.getElementById('account-forgot-block');
@@ -137,7 +131,6 @@ const app = {
         if (isRecovery) {
             if (loggedOut) loggedOut.classList.remove('hidden');
             if (loggedIn) loggedIn.classList.add('hidden');
-            if (serverSection) serverSection.classList.add('hidden');
             const statusEl = document.getElementById('account-recovery-status');
             if (statusEl) statusEl.textContent = '';
             return;
@@ -145,7 +138,6 @@ const app = {
         if (typeof auth === 'undefined' || !auth.isLoggedIn()) {
             if (loggedOut) loggedOut.classList.remove('hidden');
             if (loggedIn) loggedIn.classList.add('hidden');
-            if (serverSection) serverSection.classList.add('hidden');
             return;
         }
         if (loggedOut) loggedOut.classList.add('hidden');
@@ -159,8 +151,6 @@ const app = {
         const isUser = role === 'User';
         if (creditsRow) creditsRow.classList.toggle('hidden', !isUser);
         if (creditsEl) creditsEl.textContent = isUser ? auth.getCredits() : '-';
-        if (serverSection) serverSection.classList.remove('hidden');
-        if (permanentGroup) permanentGroup.classList.toggle('hidden', !isUser);
     },
     
     async accountLogin() {
@@ -276,86 +266,6 @@ const app = {
             const msg = e.message || 'Failed to update password';
             if (statusEl) statusEl.textContent = msg;
             this.showToast(msg, 'error');
-        }
-    },
-    
-    async serverUpload() {
-        const baseUrl = (window.DATA_API_URL || (typeof MATCH_REVIEW_API_URL !== 'undefined' && MATCH_REVIEW_API_URL ? MATCH_REVIEW_API_URL.replace(/\/api\/match-review\/?$/, '') : '')).replace(/\/$/, '');
-        if (!baseUrl) {
-            this.showToast('Server URL not configured. Set DATA_API_URL in js/config.js.', 'error');
-            return;
-        }
-        let token = null;
-        if (typeof auth !== 'undefined' && auth.getToken) token = await auth.getToken();
-        if (!token) {
-            this.showToast('Please log in first', 'error');
-            return;
-        }
-        const permanent = document.getElementById('upload-permanent')?.checked === true;
-        const statusEl = document.getElementById('server-data-status');
-        if (statusEl) statusEl.textContent = 'Uploading...';
-        try {
-            const data = await storage.exportData();
-            const res = await fetch(`${baseUrl}/api/data/upload`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ players: data.players, matches: data.matches, permanent })
-            });
-            const text = await res.text();
-            if (!res.ok) {
-                const err = JSON.parse(text || '{}').error || text || `HTTP ${res.status}`;
-                throw new Error(err);
-            }
-            if (statusEl) statusEl.textContent = permanent ? 'Saved permanently.' : 'Saved for 7 days. Download to keep or save permanently (1 credit) next time.';
-            this.showToast('Uploaded to server', 'success');
-            if (auth && auth.fetchProfile) await auth.fetchProfile();
-            this.refreshSettingsAccount();
-        } catch (e) {
-            if (statusEl) statusEl.textContent = '';
-            this.showToast(e.message || 'Upload failed', 'error');
-        }
-    },
-    
-    async serverDownload() {
-        const baseUrl = (window.DATA_API_URL || (typeof MATCH_REVIEW_API_URL !== 'undefined' && MATCH_REVIEW_API_URL ? MATCH_REVIEW_API_URL.replace(/\/api\/match-review\/?$/, '') : '')).replace(/\/$/, '');
-        if (!baseUrl) {
-            this.showToast('Server URL not configured. Set DATA_API_URL in js/config.js.', 'error');
-            return;
-        }
-        let token = null;
-        if (typeof auth !== 'undefined' && auth.getToken) token = await auth.getToken();
-        if (!token) {
-            this.showToast('Please log in first', 'error');
-            return;
-        }
-        const statusEl = document.getElementById('server-data-status');
-        if (statusEl) statusEl.textContent = 'Downloading...';
-        try {
-            const res = await fetch(`${baseUrl}/api/data/download`, {
-                method: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const text = await res.text();
-            if (!res.ok) {
-                const err = JSON.parse(text || '{}').error || text || `HTTP ${res.status}`;
-                throw new Error(err);
-            }
-            const data = JSON.parse(text || '{}');
-            if (data.players && data.matches) {
-                await storage.importData(data);
-                await this.loadMatches();
-                await playerManager.loadPlayers();
-                if (statusEl) statusEl.textContent = 'Data loaded.';
-                this.showToast('Downloaded from server', 'success');
-            } else {
-                if (statusEl) statusEl.textContent = 'No data on server.';
-                this.showToast('No data on server', 'info');
-            }
-            if (auth && auth.fetchProfile) await auth.fetchProfile();
-            this.refreshSettingsAccount();
-        } catch (e) {
-            if (statusEl) statusEl.textContent = '';
-            this.showToast(e.message || 'Download failed', 'error');
         }
     },
     
