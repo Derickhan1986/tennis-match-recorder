@@ -113,23 +113,11 @@ const app = {
         if (sendResetBtn) sendResetBtn.addEventListener('click', () => this.accountSendResetLink());
         if (cancelForgotBtn) cancelForgotBtn.addEventListener('click', () => this.hideForgotPasswordForm());
         if (updatePwBtn) updatePwBtn.addEventListener('click', () => this.accountUpdatePassword());
-        const commentAfterMatchEl = document.getElementById('setting-comment-after-match');
-        if (commentAfterMatchEl) {
-            try {
-                commentAfterMatchEl.checked = localStorage.getItem('setting_commentAfterMatchFinish') === 'true';
-            } catch (e) {}
-            commentAfterMatchEl.addEventListener('change', () => {
-                try {
-                    localStorage.setItem('setting_commentAfterMatchFinish', commentAfterMatchEl.checked ? 'true' : 'false');
-                } catch (e) {}
-            });
-        }
     },
     
     refreshSettingsAccount() {
         const loggedOut = document.getElementById('account-logged-out');
         const loggedIn = document.getElementById('account-logged-in');
-        const appSettingsSection = document.getElementById('app-settings-section');
         const creditsRow = document.getElementById('account-credits-row');
         const statusEl = document.getElementById('account-auth-status');
         if (statusEl) statusEl.textContent = '';
@@ -143,7 +131,6 @@ const app = {
         if (isRecovery) {
             if (loggedOut) loggedOut.classList.remove('hidden');
             if (loggedIn) loggedIn.classList.add('hidden');
-            if (appSettingsSection) appSettingsSection.classList.add('hidden');
             const statusEl = document.getElementById('account-recovery-status');
             if (statusEl) statusEl.textContent = '';
             return;
@@ -151,12 +138,10 @@ const app = {
         if (typeof auth === 'undefined' || !auth.isLoggedIn()) {
             if (loggedOut) loggedOut.classList.remove('hidden');
             if (loggedIn) loggedIn.classList.add('hidden');
-            if (appSettingsSection) appSettingsSection.classList.add('hidden');
             return;
         }
         if (loggedOut) loggedOut.classList.add('hidden');
         if (loggedIn) loggedIn.classList.remove('hidden');
-        if (appSettingsSection) appSettingsSection.classList.remove('hidden');
         const emailEl = document.getElementById('account-display-email');
         const roleEl = document.getElementById('account-display-role');
         const creditsEl = document.getElementById('account-display-credits');
@@ -2609,9 +2594,8 @@ const app = {
                 // 如果出错，继续不包含统计
             }
             
-            // Comment (only when logged in, setting on, and comment exists)
+            // Comment (when logged in and match has comment)
             const includeCommentInPdf = typeof auth !== 'undefined' && auth.isLoggedIn() &&
-                (typeof localStorage !== 'undefined' && localStorage.getItem('setting_commentAfterMatchFinish') === 'true') &&
                 (match.comment && String(match.comment).trim());
             if (includeCommentInPdf) {
                 if (yPos > 250) {
