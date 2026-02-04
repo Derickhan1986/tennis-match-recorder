@@ -228,6 +228,7 @@ function createMatch(data = {}) {
         currentServer: data.currentServer || null, // 'player1' | 'player2' - who is serving in current game
         currentServeNumber: data.currentServeNumber || 1, // 1 or 2 - first or second serve
         winner: data.winner || null, // 'player1' | 'player2' | null
+        comment: data.comment ?? null, // optional user comment for match review / PDF
         createdAt: data.createdAt || new Date().toISOString(),
         updatedAt: data.updatedAt || new Date().toISOString()
     };

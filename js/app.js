@@ -113,11 +113,23 @@ const app = {
         if (sendResetBtn) sendResetBtn.addEventListener('click', () => this.accountSendResetLink());
         if (cancelForgotBtn) cancelForgotBtn.addEventListener('click', () => this.hideForgotPasswordForm());
         if (updatePwBtn) updatePwBtn.addEventListener('click', () => this.accountUpdatePassword());
+        const commentAfterMatchEl = document.getElementById('setting-comment-after-match');
+        if (commentAfterMatchEl) {
+            try {
+                commentAfterMatchEl.checked = localStorage.getItem('setting_commentAfterMatchFinish') === 'true';
+            } catch (e) {}
+            commentAfterMatchEl.addEventListener('change', () => {
+                try {
+                    localStorage.setItem('setting_commentAfterMatchFinish', commentAfterMatchEl.checked ? 'true' : 'false');
+                } catch (e) {}
+            });
+        }
     },
     
     refreshSettingsAccount() {
         const loggedOut = document.getElementById('account-logged-out');
         const loggedIn = document.getElementById('account-logged-in');
+        const appSettingsSection = document.getElementById('app-settings-section');
         const creditsRow = document.getElementById('account-credits-row');
         const statusEl = document.getElementById('account-auth-status');
         if (statusEl) statusEl.textContent = '';
@@ -131,6 +143,7 @@ const app = {
         if (isRecovery) {
             if (loggedOut) loggedOut.classList.remove('hidden');
             if (loggedIn) loggedIn.classList.add('hidden');
+            if (appSettingsSection) appSettingsSection.classList.add('hidden');
             const statusEl = document.getElementById('account-recovery-status');
             if (statusEl) statusEl.textContent = '';
             return;
@@ -138,10 +151,12 @@ const app = {
         if (typeof auth === 'undefined' || !auth.isLoggedIn()) {
             if (loggedOut) loggedOut.classList.remove('hidden');
             if (loggedIn) loggedIn.classList.add('hidden');
+            if (appSettingsSection) appSettingsSection.classList.add('hidden');
             return;
         }
         if (loggedOut) loggedOut.classList.add('hidden');
         if (loggedIn) loggedIn.classList.remove('hidden');
+        if (appSettingsSection) appSettingsSection.classList.remove('hidden');
         const emailEl = document.getElementById('account-display-email');
         const roleEl = document.getElementById('account-display-role');
         const creditsEl = document.getElementById('account-display-credits');
@@ -694,10 +709,10 @@ const app = {
                 statsHtml = `<div class="detail-section"><p>Statistics unavailable</p><p style="font-size: 12px; color: #888;">Error: ${error.message}</p></div>`;
             }
             const matchReviewLoggedIn = typeof auth !== 'undefined' && auth.isLoggedIn();
-            const matchReviewBtnText = !matchReviewLoggedIn ? 'Match Review (log in to use)' : 'Match Review';
-            // Allow click when logged in (even if credit low); insufficient credit shows modal instead of generating
-            const matchReviewCanUse = matchReviewLoggedIn;
-            console.log('[MatchReview Debug] button state: loggedIn=', matchReviewLoggedIn, ', canUse=', matchReviewCanUse, ', text=', matchReviewBtnText, ', auth.user=', !!auth?.user, ', auth.accessToken=', !!auth?.accessToken);
+            const matchReviewBtnText = 'Match Review';
+            const commentBtnText = 'Comment';
+            // Both buttons always clickable; when not logged in, click shows "Log in to use". Comment needs only login; Match Review needs login + credit.
+            console.log('[MatchReview Debug] button state: loggedIn=', matchReviewLoggedIn, ', text=', matchReviewBtnText, ', auth.user=', !!auth?.user, ', auth.accessToken=', !!auth?.accessToken);
             
             container.innerHTML = `
                 <div class="detail-section">
@@ -737,8 +752,11 @@ const app = {
                 </div>
                 
                 <div class="form-actions">
+                    <button class="btn-secondary" onclick="app.requestMatchReview('${match.id}')">${matchReviewBtnText}</button>
+                    <button class="btn-secondary comment-btn" onclick="app.openCommentModal('${match.id}')">${commentBtnText}</button>
+                </div>
+                <div class="form-actions">
                     <button class="btn-primary" onclick="app.exportMatchToPDF('${match.id}')">Export to PDF</button>
-                    <button class="btn-secondary" ${!matchReviewCanUse ? 'disabled' : ''} onclick="app.requestMatchReview('${match.id}')">${matchReviewBtnText}</button>
                     <button class="btn-danger" onclick="app.deleteMatch('${match.id}')">Delete Match</button>
                 </div>
             `;
@@ -1771,6 +1789,11 @@ const app = {
             lines.push(`  Return 1st Serve Won %: ${p1.returnFirstServePointsWonPercentage || '0.0'}% / ${p2.returnFirstServePointsWonPercentage || '0.0'}%`);
             lines.push(`  Return 2nd Serve Won %: ${p1.returnSecondServePointsWonPercentage || '0.0'}% / ${p2.returnSecondServePointsWonPercentage || '0.0'}%`);
         }
+        if (match.comment && String(match.comment).trim()) {
+            lines.push('');
+            lines.push('=== User Comment ===');
+            lines.push(String(match.comment).trim());
+        }
         return lines.join('\n');
     },
     
@@ -1778,12 +1801,16 @@ const app = {
     // 通过后端代理请求 AI 比赛战报（须登录；积分由 API 校验）
     async requestMatchReview(matchId) {
         console.log('[MatchReview] start, matchId=', matchId, ', SUPABASE_URL=', typeof window !== 'undefined' && window.SUPABASE_URL ? '(set)' : '(not set)');
+        if (typeof auth === 'undefined' || !auth.isLoggedIn()) {
+            this.showToast('Log in to use', 'error', 5000);
+            return;
+        }
         if (!MATCH_REVIEW_API_URL || MATCH_REVIEW_API_URL.trim() === '') {
             console.log('[MatchReview] abort: MATCH_REVIEW_API_URL not configured');
             this.showToast('Match Review is not configured. Set MATCH_REVIEW_API_URL in app.js and deploy the backend.', 'error', 5000);
             return;
         }
-        // Button is only enabled when logged in; get token from Supabase localStorage first, then getSession()
+        // Get token from Supabase localStorage first, then getSession()
         // 按钮仅在登录后可用；优先从 Supabase localStorage 取 token，再尝试 getSession()
         const projectRef = (window.SUPABASE_URL && window.SUPABASE_URL.match(/https?:\/\/([^.]+)\.supabase\.co/)) ? window.SUPABASE_URL.match(/https?:\/\/([^.]+)\.supabase\.co/)[1] : null;
         const SUPABASE_AUTH_KEY = projectRef ? `sb-${projectRef}-auth-token` : 'sb-aefxxgffuuduvzkgjttu-auth-token';
@@ -1860,7 +1887,7 @@ const app = {
         }
         if (!token) {
             console.log('[MatchReview] no token from any source, abort');
-            this.showToast('Please log in to use Match Review.', 'error', 5000);
+            this.showToast('Log in to use', 'error', 5000);
             return;
         }
         console.log('[MatchReview] token from', tokenSource, ', token length=', token.length);
@@ -1940,8 +1967,8 @@ const app = {
             console.log('[MatchReview] catch:', error.message);
             console.error('Error requesting match review:', error);
             let msg = error.message || 'Error generating match review';
-            if (msg.toLowerCase().includes('please log in')) {
-                msg = 'Please log in to use Match Review.';
+            if (msg.toLowerCase().includes('please log in') || msg.toLowerCase().includes('log in')) {
+                msg = 'Log in to use';
             } else if (msg.toLowerCase().includes('insufficient credits')) {
                 msg = 'Insufficient credits. Go to Log in to see your credits.';
             } else if (msg.toLowerCase().includes('insufficient balance')) {
@@ -1960,6 +1987,68 @@ const app = {
             return;
         }
         this.showToast('Insufficient credits. Contact donghan1986@icloud.com for top-up.', 'error', 6000);
+    },
+    
+    // Open comment modal for a match: show tip or existing comment, 1000-char textarea, Save. No credit required; login only.
+    async openCommentModal(matchId) {
+        if (typeof auth === 'undefined' || !auth.isLoggedIn()) {
+            this.showToast('Log in to use', 'error', 5000);
+            return;
+        }
+        const match = await storage.getMatch(matchId);
+        if (!match) {
+            this.showToast('Match not found', 'error');
+            return;
+        }
+        const existingComment = (match.comment && String(match.comment).trim()) || '';
+        const tipText = 'Tips: Note player names to help match review analysis.';
+        const overlay = document.createElement('div');
+        overlay.className = 'modal';
+        overlay.setAttribute('aria-label', 'Match comment');
+        const content = document.createElement('div');
+        content.className = 'modal-content';
+        content.innerHTML = `
+            <div class="modal-header">
+                <h3>Match comment</h3>
+                <button type="button" class="modal-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                ${!existingComment ? `<p class="setting-hint" style="margin-bottom: 12px;">${this.escapeHtml(tipText)}</p>` : ''}
+                <div class="form-group">
+                    <textarea id="comment-modal-textarea" maxlength="1000" rows="6" placeholder="Add a comment (max 1000 characters)..." style="width: 100%; min-height: 100px; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; resize: vertical;">${this.escapeHtml(existingComment)}</textarea>
+                    <span id="comment-char-count" class="setting-hint">${existingComment.length} / 1000</span>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-primary" id="comment-save-btn">Save</button>
+                    <button type="button" class="btn-secondary modal-close-btn">Close</button>
+                </div>
+            </div>
+        `;
+        overlay.appendChild(content);
+        const close = () => {
+            overlay.classList.add('hidden');
+            setTimeout(() => overlay.remove(), 300);
+        };
+        content.querySelector('.modal-close').addEventListener('click', close);
+        content.querySelector('.modal-close-btn').addEventListener('click', close);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+        const textarea = content.querySelector('#comment-modal-textarea');
+        const charCount = content.querySelector('#comment-char-count');
+        const updateCount = () => {
+            if (charCount) charCount.textContent = (textarea.value || '').length + ' / 1000';
+        };
+        textarea.addEventListener('input', updateCount);
+        content.querySelector('#comment-save-btn').addEventListener('click', async () => {
+            const value = (textarea.value || '').trim();
+            match.comment = value || null;
+            match.updatedAt = new Date().toISOString();
+            await storage.saveMatch(match);
+            this.showToast('Comment saved', 'success');
+            close();
+            if (this.currentPage === 'match-detail') this.showMatchDetail(matchId);
+        });
+        document.body.appendChild(overlay);
+        updateCount();
     },
     
     // Show match review in modal with Download and Close
@@ -2518,6 +2607,35 @@ const app = {
                 console.error('Error adding technical statistics to PDF:', error);
                 // Continue without statistics if there's an error
                 // 如果出错，继续不包含统计
+            }
+            
+            // Comment (only when logged in, setting on, and comment exists)
+            const includeCommentInPdf = typeof auth !== 'undefined' && auth.isLoggedIn() &&
+                (typeof localStorage !== 'undefined' && localStorage.getItem('setting_commentAfterMatchFinish') === 'true') &&
+                (match.comment && String(match.comment).trim());
+            if (includeCommentInPdf) {
+                if (yPos > 250) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                doc.setFontSize(14);
+                doc.text('Comment', 14, yPos);
+                yPos += 8;
+                doc.setFontSize(10);
+                const commentText = String(match.comment).trim();
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const margin = 14;
+                const maxWidth = pageWidth - margin * 2;
+                const lines = doc.splitTextToSize(commentText, maxWidth);
+                lines.forEach((line) => {
+                    if (yPos > 280) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    doc.text(line, 14, yPos);
+                    yPos += 6;
+                });
+                yPos += 6;
             }
             
             // Match Log
