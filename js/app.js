@@ -113,6 +113,34 @@ const app = {
         if (sendResetBtn) sendResetBtn.addEventListener('click', () => this.accountSendResetLink());
         if (cancelForgotBtn) cancelForgotBtn.addEventListener('click', () => this.hideForgotPasswordForm());
         if (updatePwBtn) updatePwBtn.addEventListener('click', () => this.accountUpdatePassword());
+        // Pro Tracking switches (persist in localStorage)
+        const proKeys = [
+            { id: 'pro-tracking-serve', key: 'setting_proTrackingServe' },
+            { id: 'pro-tracking-return', key: 'setting_proTrackingReturn' },
+            { id: 'pro-tracking-rally', key: 'setting_proTrackingRally' }
+        ];
+        proKeys.forEach(({ id, key }) => {
+            const el = document.getElementById(id);
+            if (el) {
+                try {
+                    el.checked = localStorage.getItem(key) === 'true';
+                } catch (e) {}
+                el.addEventListener('change', () => {
+                    try {
+                        localStorage.setItem(key, el.checked ? 'true' : 'false');
+                    } catch (e) {}
+                });
+            }
+        });
+        const courtZonePreviewBtn = document.getElementById('court-zone-preview-btn');
+        if (courtZonePreviewBtn && typeof window.showCourtZonePicker === 'function') {
+            courtZonePreviewBtn.addEventListener('click', () => {
+                window.showCourtZonePicker({
+                    title: 'Court zone',
+                    onZoneClick: (zoneId) => this.showToast('Selected: ' + zoneId, 'success')
+                });
+            });
+        }
     },
     
     refreshSettingsAccount() {

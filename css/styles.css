@@ -1287,6 +1287,33 @@ body {
     padding: 20px;
 }
 
+/* Court zone picker modal */
+.court-zone-picker-content {
+    max-width: 95vw;
+}
+.court-zone-picker-body {
+    padding: 12px 0;
+    display: flex;
+    justify-content: center;
+}
+.court-zone-svg {
+    width: 100%;
+    max-width: 280px;
+    height: auto;
+    display: block;
+}
+.court-zone {
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+.court-zone:hover {
+    opacity: 0.85;
+}
+.court-zone:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
+}
+
 /* Match Menu Modal */
 .match-menu-modal {
     position: fixed;
