@@ -737,8 +737,8 @@ const app = {
                 </div>
                 
                 <div class="form-actions">
-                    <button class="btn-secondary" onclick="app.requestMatchReview('${match.id}')">${matchReviewBtnText}</button>
                     <button class="btn-secondary comment-btn" onclick="app.openCommentModal('${match.id}')">${commentBtnText}</button>
+                    <button class="btn-secondary" onclick="app.requestMatchReview('${match.id}')">${matchReviewBtnText}</button>
                 </div>
                 <div class="form-actions">
                     <button class="btn-primary" onclick="app.exportMatchToPDF('${match.id}')">Export to PDF</button>
