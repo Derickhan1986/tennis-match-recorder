@@ -132,13 +132,23 @@ const app = {
                 });
             }
         });
-        const courtZonePreviewBtn = document.getElementById('court-zone-preview-btn');
-        if (courtZonePreviewBtn && typeof window.showCourtZonePicker === 'function') {
-            courtZonePreviewBtn.addEventListener('click', () => {
-                window.showCourtZonePicker({
-                    title: 'Court zone',
-                    onZoneClick: (zoneId) => this.showToast('Selected: ' + zoneId, 'success')
-                });
+        const handleServeZoneResult = (zoneId) => {
+            if (zoneId != null) {
+                this.showToast('Returned zone: ' + zoneId, 'success');
+            } else {
+                this.showToast('Closed without selection', 'info');
+            }
+        };
+        const deuceBtn = document.getElementById('serve-picker-deuce-btn');
+        if (deuceBtn && typeof window.showServeZonePickerBySide === 'function') {
+            deuceBtn.addEventListener('click', () => {
+                window.showServeZonePickerBySide('deuce').then(handleServeZoneResult);
+            });
+        }
+        const adBtn = document.getElementById('serve-picker-ad-btn');
+        if (adBtn && typeof window.showServeZonePickerBySide === 'function') {
+            adBtn.addEventListener('click', () => {
+                window.showServeZonePickerBySide('ad').then(handleServeZoneResult);
             });
         }
     },

@@ -77,7 +77,14 @@
         return path.join(' ');
     }
 
-    function buildCourtSvg() {
+    function mirrorRectX(z) {
+        return { id: z.id, x: COURT_W - z.x - z.w, y: z.y, w: z.w, h: z.h };
+    }
+    function mirrorPointX(p) {
+        return [COURT_W - p[0], p[1]];
+    }
+
+    function buildCourtSvg(mirrorZones) {
         var ns = 'http://www.w3.org/2000/svg';
         var svg = document.createElementNS(ns, 'svg');
         svg.setAttribute('viewBox', '0 0 ' + CANVAS_W + ' ' + CANVAS_H);
@@ -171,14 +178,14 @@
         centerLine.setAttribute('style', lineStyle);
         svg.appendChild(centerLine);
 
-        // Brown/orange zones (court coords; draw at +ox, +oy)
+        // Brown/orange zones (court coords; mirror if Ad side)
         var brownZones = [
-            { id: 'baseline', x: 0, y: COURT_H / 2 - SIDELINE_W, w: COURT_W / 2 + SIDELINE_W, h: SIDELINE_W },
-            { id: 'left_alley', x: 0, y: COURT_H / 2, w: SIDELINE_W, h: COURT_H / 2 },
-            { id: 'right_alley', x: COURT_W/2, y: COURT_H / 2, w: SIDELINE_W, h: COURT_H / 2 },
-            { id: 'service_top', x: SIDELINE_W, y: serviceLineY - 12, w: 100, h: 12 },
+            { id: 'serve_long', x: 0, y: COURT_H / 2 - SIDELINE_W, w: COURT_W / 2 + SIDELINE_W, h: SIDELINE_W },
+            { id: 'alley_wide', x: 0, y: COURT_H / 2, w: SIDELINE_W, h: COURT_H / 2 },
+            { id: 'T_wide', x: COURT_W/2, y: COURT_H / 2, w: SIDELINE_W, h: COURT_H / 2 },
             { id: 'net_strip', x: SIDELINE_W, y: COURT_H, w: COURT_W - 2 * SIDELINE_W, h: SIDELINE_W }
         ];
+        if (mirrorZones) brownZones = brownZones.map(mirrorRectX);
         var brownFill = '#c47532';
         brownZones.forEach(function(z) {
             var r = document.createElementNS(ns, 'rect');
@@ -217,7 +224,7 @@
         netLabel.textContent = 'NET';
         svg.appendChild(netLabel);
 
-        // Green zones (clickable) – reuse shared dimensions
+        // Green zones – reuse shared dimensions; mirror if Ad side
         var boxThirdW = (COURT_W / 2 - SIDELINE_W) / 3;
         var boxUnitH = COURT_H / 8;
         var greenZones = [
@@ -225,6 +232,7 @@
             { id: 'box_corner', x: SIDELINE_W, y: serviceLineY, w: boxThirdW, h: boxUnitH * 3 },
             { id: 'box_T', x: centerX - boxThirdW, y: serviceLineY, w: boxThirdW, h: boxUnitH * 2 }
         ];
+        if (mirrorZones) greenZones = greenZones.map(mirrorRectX);
         var greenFill = '#2d5a3d';
         greenZones.forEach(function(z) {
             var r = document.createElementNS(ns, 'rect');
@@ -247,7 +255,7 @@
             svg.appendChild(r);
         });
 
-        // box_rest: convex 8-point polygon (court coords), inset and rounded, then shift to canvas
+        // box_rest: convex 8-point polygon (court coords), mirror if Ad side, then inset and rounded
         var boxRestPoints = [
             [SIDELINE_W, COURT_H],
             [SIDELINE_W, COURT_H - boxUnitH],
@@ -258,6 +266,9 @@
             [COURT_W / 2, COURT_H / 2 + 2 * boxUnitH],
             [COURT_W / 2, COURT_H]
         ];
+        if (mirrorZones) {
+            boxRestPoints = boxRestPoints.map(mirrorPointX).reverse();
+        }
         var boxRestInset = polygonInset(boxRestPoints, ZONE_INSET);
         var boxRestInsetCanvas = boxRestInset.map(function(p) { return [p[0] + ox, p[1] + oy]; });
         var boxRestPath = roundedPolygonPath(boxRestInsetCanvas, ZONE_RX);
@@ -276,15 +287,26 @@
     /**
      * Show the court zone picker modal.
      * @param {object} [options]
-     * @param {function(string)} [options.onZoneClick] - Called with zoneId when a zone is clicked (e.g. 'baseline', 'left_alley', 'box_center').
+     * @param {function(string)} [options.onZoneClick] - Called with zoneId when a zone is clicked.
      * @param {string} [options.title] - Modal title (default: 'Court zone').
      * @param {boolean} [options.closeOnClick] - If true, close modal when a zone is clicked (default: true).
+     * @param {boolean} [options.mirrorZones] - If true, mirror brown/green zones horizontally (for Ad side serve).
+     * @returns {Promise<string|null>} Resolves with the clicked zoneId when user clicks a zone, or null when closed without selecting.
      */
     function showCourtZonePicker(options) {
         options = options || {};
         var onZoneClick = options.onZoneClick || function() {};
         var title = options.title != null ? options.title : 'Court zone';
         var closeOnClick = options.closeOnClick !== false;
+
+        var resolvePromise;
+        var promise = new Promise(function(resolve) { resolvePromise = resolve; });
+        var settled = false;
+        function settle(zoneId) {
+            if (settled) return;
+            settled = true;
+            resolvePromise(zoneId);
+        }
 
         var overlay = document.createElement('div');
         overlay.className = 'modal';
@@ -301,19 +323,22 @@
             '<div class="modal-body court-zone-picker-body"></div>';
 
         var body = content.querySelector('.court-zone-picker-body');
-        var svg = buildCourtSvg();
+        var mirrorZones = options.mirrorZones === true;
+        var svg = buildCourtSvg(mirrorZones);
         body.appendChild(svg);
 
-        function close() {
+        function close(zoneId) {
             overlay.classList.add('hidden');
             setTimeout(function() {
                 if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
             }, 300);
+            if (zoneId === undefined) settle(null);
         }
 
         function handleZoneClick(zoneId) {
             onZoneClick(zoneId);
-            if (closeOnClick) close();
+            settle(zoneId);
+            if (closeOnClick) close(zoneId);
         }
 
         svg.addEventListener('click', function(e) {
@@ -333,16 +358,63 @@
         });
 
         var closeBtn = content.querySelector('.modal-close');
-        if (closeBtn) closeBtn.addEventListener('click', close);
+        if (closeBtn) closeBtn.addEventListener('click', function() { close(); });
         overlay.addEventListener('click', function(e) {
             if (e.target === overlay) close();
         });
 
         overlay.appendChild(content);
         document.body.appendChild(overlay);
+
+        return promise;
+    }
+
+    /**
+     * Serve tracking (deuce side serve): open court zone picker for selecting serve landing zone.
+     * @param {function(string)} [onZoneClick] - Called with zoneId when a zone is clicked.
+     * @param {object} [options] - Optional overrides: { title, closeOnClick } (same as showCourtZonePicker).
+     * @returns {Promise<string|null>} Resolves with the clicked zoneId, or null when closed without selecting.
+     */
+    function showServeTrackingPicker(onZoneClick, options) {
+        options = options || {};
+        if (typeof onZoneClick === 'function') options.onZoneClick = onZoneClick;
+        if (options.title == null) options.title = 'Deuce side serve';
+        return showCourtZonePicker(options);
+    }
+
+    /**
+     * Ad side serve: same as Deuce side but with mirrored brown/green zones.
+     * @param {function(string)} [onZoneClick] - Called with zoneId when a zone is clicked.
+     * @param {object} [options] - Optional overrides: { title, closeOnClick }.
+     * @returns {Promise<string|null>} Resolves with the clicked zoneId, or null when closed without selecting.
+     */
+    function showAdSideServePicker(onZoneClick, options) {
+        options = options || {};
+        if (typeof onZoneClick === 'function') options.onZoneClick = onZoneClick;
+        if (options.title == null) options.title = 'Ad side serve';
+        options.mirrorZones = true;
+        return showCourtZonePicker(options);
+    }
+
+    /**
+     * Open serve zone picker by serve side (deuce or ad). Use this when you have a variable for the current serve.
+     * @param {string} serveSide - 'deuce' or 'ad' (case-insensitive).
+     * @param {function(string)} [onZoneClick] - Called with zoneId when a zone is clicked.
+     * @param {object} [options] - Optional overrides: { title, closeOnClick }.
+     * @returns {Promise<string|null>} Resolves with the clicked zoneId, or null when closed without selecting.
+     */
+    function showServeZonePickerBySide(serveSide, onZoneClick, options) {
+        var side = (serveSide || '').toLowerCase();
+        if (side === 'ad') {
+            return showAdSideServePicker(onZoneClick, options);
+        }
+        return showServeTrackingPicker(onZoneClick, options);
     }
 
     if (typeof window !== 'undefined') {
         window.showCourtZonePicker = showCourtZonePicker;
+        window.showServeTrackingPicker = showServeTrackingPicker;
+        window.showAdSideServePicker = showAdSideServePicker;
+        window.showServeZonePickerBySide = showServeZonePickerBySide;
     }
 })();
