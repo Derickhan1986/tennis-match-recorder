@@ -151,6 +151,12 @@ const app = {
                 window.showServeZonePickerBySide('ad').then(handleServeZoneResult);
             });
         }
+        const returnPickerBtn = document.getElementById('return-picker-btn');
+        if (returnPickerBtn && typeof window.showReturnZonePicker === 'function') {
+            returnPickerBtn.addEventListener('click', () => {
+                window.showReturnZonePicker().then(handleServeZoneResult);
+            });
+        }
     },
     
     refreshSettingsAccount() {

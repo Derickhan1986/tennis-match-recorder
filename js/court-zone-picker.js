@@ -84,7 +84,9 @@
         return [COURT_W - p[0], p[1]];
     }
 
-    function buildCourtSvg(mirrorZones) {
+    function buildCourtSvg(mirrorZones, mode) {
+        mode = mode || 'serve';
+        var isReturn = mode === 'return';
         var ns = 'http://www.w3.org/2000/svg';
         var svg = document.createElementNS(ns, 'svg');
         svg.setAttribute('viewBox', '0 0 ' + CANVAS_W + ' ' + CANVAS_H);
@@ -178,14 +180,26 @@
         centerLine.setAttribute('style', lineStyle);
         svg.appendChild(centerLine);
 
-        // Brown/orange zones (court coords; mirror if Ad side)
-        var brownZones = [
-            { id: 'serve_long', x: 0, y: COURT_H / 2 - SIDELINE_W, w: COURT_W / 2 + SIDELINE_W, h: SIDELINE_W },
-            { id: 'alley_wide', x: 0, y: COURT_H / 2, w: SIDELINE_W, h: COURT_H / 2 },
-            { id: 'T_wide', x: COURT_W/2, y: COURT_H / 2, w: SIDELINE_W, h: COURT_H / 2 },
-            { id: 'net_strip', x: SIDELINE_W, y: COURT_H, w: COURT_W - 2 * SIDELINE_W, h: SIDELINE_W }
-        ];
-        if (mirrorZones) brownZones = brownZones.map(mirrorRectX);
+        // Brown/orange zones (court coords; mirror if Ad side for serve only)
+        var brownZones;
+        if (isReturn) {
+            // Return: 5 brown – edit x,y,w,h to match your layout
+            brownZones = [
+                { id: 'long_deuce', x: 0, y: -SIDELINE_W, w: COURT_W/2, h: SIDELINE_W },
+                { id: 'long_ad', x: COURT_W/2, y: -SIDELINE_W, w: COURT_W/2, h: SIDELINE_W },
+                { id: 'wide_deuce', x: 0, y: 0, w: SIDELINE_W, h: COURT_H},
+                { id: 'wide_ad', x: COURT_W-SIDELINE_W, y: 0, w: SIDELINE_W, h: COURT_H},
+                { id: 'net_down', x: SIDELINE_W, y: COURT_H, w: COURT_W - 2 * SIDELINE_W, h: SIDELINE_W }
+            ];
+        } else {
+            brownZones = [
+                { id: 'serve_long', x: 0, y: COURT_H / 2 - SIDELINE_W, w: COURT_W / 2 + SIDELINE_W, h: SIDELINE_W },
+                { id: 'alley_wide', x: 0, y: COURT_H / 2, w: SIDELINE_W, h: COURT_H / 2 },
+                { id: 'T_wide', x: COURT_W/2, y: COURT_H / 2, w: SIDELINE_W, h: COURT_H / 2 },
+                { id: 'net_down', x: SIDELINE_W, y: COURT_H, w: COURT_W - 2 * SIDELINE_W, h: SIDELINE_W }
+            ];
+            if (mirrorZones) brownZones = brownZones.map(mirrorRectX);
+        }
         var brownFill = '#c47532';
         brownZones.forEach(function(z) {
             var r = document.createElementNS(ns, 'rect');
@@ -208,7 +222,7 @@
             svg.appendChild(r);
         });
 
-        // "NET" label in net_strip (court: SIDELINE_W, COURT_H, w: COURT_W-2*SIDELINE_W, h: SIDELINE_W)
+        // "NET" label in net_down (court: SIDELINE_W, COURT_H, w: COURT_W-2*SIDELINE_W, h: SIDELINE_W)
         var netStripCenterX = ox + SIDELINE_W + (COURT_W - 2 * SIDELINE_W) / 2;
         var netStripCenterY = oy + COURT_H + SIDELINE_W / 2;
         var netLabel = document.createElementNS(ns, 'text');
@@ -224,15 +238,29 @@
         netLabel.textContent = 'NET';
         svg.appendChild(netLabel);
 
-        // Green zones – reuse shared dimensions; mirror if Ad side
+        // Green zones – return: 7 rects (edit x,y,w,h); serve: 3 rects + box_rest polygon
         var boxThirdW = (COURT_W / 2 - SIDELINE_W) / 3;
         var boxUnitH = COURT_H / 8;
-        var greenZones = [
-            { id: 'box_center', x: SIDELINE_W + boxThirdW, y: serviceLineY, w: boxThirdW, h: boxUnitH },
-            { id: 'box_corner', x: SIDELINE_W, y: serviceLineY, w: boxThirdW, h: boxUnitH * 3 },
-            { id: 'box_T', x: centerX - boxThirdW, y: serviceLineY, w: boxThirdW, h: boxUnitH * 2 }
-        ];
-        if (mirrorZones) greenZones = greenZones.map(mirrorRectX);
+        var greenZones;
+        if (isReturn) {
+            // Return: 7 green – edit x,y,w,h to match your layout
+            greenZones = [
+                { id: 'deep_deuce', x: SIDELINE_W, y: 0, w: COURT_W / 2 - SIDELINE_W, h: 1.5*boxUnitH },
+                { id: 'deep_ad', x: COURT_W/2, y: 0, w: COURT_W / 2 - SIDELINE_W, h: 1.5*boxUnitH },
+                { id: 'short_deuce', x: SIDELINE_W, y: 1.5*boxUnitH, w: boxThirdW*2, h: 5*boxUnitH },
+                { id: 'short_center', x: centerX - boxThirdW, y: 1.5*boxUnitH, w: boxThirdW*2, h: 5*boxUnitH },
+                { id: 'short_ad', x: centerX + boxThirdW, y: 1.5*boxUnitH, w: boxThirdW*2, h: 5*boxUnitH },
+                { id: 'drop_deuce', x: SIDELINE_W, y: 1.5*boxUnitH + 5*boxUnitH, w: boxThirdW*3, h: 1.5*boxUnitH },
+                { id: 'drop_ad', x: COURT_W / 2, y: 1.5*boxUnitH + 5*boxUnitH, w: boxThirdW*3, h: 1.5*boxUnitH }
+            ];
+        } else {
+            greenZones = [
+                { id: 'box_center', x: SIDELINE_W + boxThirdW, y: serviceLineY, w: boxThirdW, h: boxUnitH },
+                { id: 'box_corner', x: SIDELINE_W, y: serviceLineY, w: boxThirdW, h: boxUnitH * 3 },
+                { id: 'box_T', x: centerX - boxThirdW, y: serviceLineY, w: boxThirdW, h: boxUnitH * 2 }
+            ];
+            if (mirrorZones) greenZones = greenZones.map(mirrorRectX);
+        }
         var greenFill = '#2d5a3d';
         greenZones.forEach(function(z) {
             var r = document.createElementNS(ns, 'rect');
@@ -255,7 +283,11 @@
             svg.appendChild(r);
         });
 
-        // box_rest: convex 8-point polygon (court coords), mirror if Ad side, then inset and rounded
+        if (isReturn) {
+            return svg;
+        }
+
+        // box_rest: convex 8-point polygon (serve only), mirror if Ad side, then inset and rounded
         var boxRestPoints = [
             [SIDELINE_W, COURT_H],
             [SIDELINE_W, COURT_H - boxUnitH],
@@ -324,7 +356,8 @@
 
         var body = content.querySelector('.court-zone-picker-body');
         var mirrorZones = options.mirrorZones === true;
-        var svg = buildCourtSvg(mirrorZones);
+        var mode = options.mode === 'return' ? 'return' : 'serve';
+        var svg = buildCourtSvg(mirrorZones, mode);
         body.appendChild(svg);
 
         function close(zoneId) {
@@ -397,6 +430,20 @@
     }
 
     /**
+     * Return zone picker: same court, 5 brown (long_deuce, long_ad, wide_deuce, wide_ad, net_down) + 7 green (deep_deuce, deep_ad, short_deuce, short_center, short_ad, drop_deuce, drop_ad). Edit coords in buildCourtSvg return branch.
+     * @param {function(string)} [onZoneClick] - Called with zoneId when a zone is clicked.
+     * @param {object} [options] - Optional overrides: { title, closeOnClick }.
+     * @returns {Promise<string|null>} Resolves with the clicked zoneId, or null when closed without selecting.
+     */
+    function showReturnZonePicker(onZoneClick, options) {
+        options = options || {};
+        if (typeof onZoneClick === 'function') options.onZoneClick = onZoneClick;
+        if (options.title == null) options.title = 'Return';
+        options.mode = 'return';
+        return showCourtZonePicker(options);
+    }
+
+    /**
      * Open serve zone picker by serve side (deuce or ad). Use this when you have a variable for the current serve.
      * @param {string} serveSide - 'deuce' or 'ad' (case-insensitive).
      * @param {function(string)} [onZoneClick] - Called with zoneId when a zone is clicked.
@@ -415,6 +462,7 @@
         window.showCourtZonePicker = showCourtZonePicker;
         window.showServeTrackingPicker = showServeTrackingPicker;
         window.showAdSideServePicker = showAdSideServePicker;
+        window.showReturnZonePicker = showReturnZonePicker;
         window.showServeZonePickerBySide = showServeZonePickerBySide;
     }
 })();
