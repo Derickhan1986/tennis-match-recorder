@@ -9,9 +9,12 @@
 // Match Review API: backend proxy URL. Set to your Vercel/Netlify endpoint after deployment.
 // 比赛战报 API：后端代理地址。部署后在 Vercel/Netlify 中设置你的端点。
 const MATCH_REVIEW_API_URL = 'https://tennis-match-recorder.vercel.app/api/match-review'; // e.g. 'https://your-app.vercel.app/api/match-review'
+// Canonical app URL for "Add to Home Screen" / bookmark
+const APP_CANONICAL_URL = 'https://tennis-match-recorder.vercel.app';
 
 const app = {
     currentPage: 'matches',
+    deferredInstallPrompt: null,
     
     // Initialize app
     // 初始化应用
@@ -28,7 +31,12 @@ const app = {
                 console.error('Service Worker registration failed:', error);
             }
         }
-        
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            this.deferredInstallPrompt = e;
+        });
+
         // Setup event listeners
         // 设置事件监听器
         this.setupNavigation();
@@ -113,6 +121,37 @@ const app = {
         if (sendResetBtn) sendResetBtn.addEventListener('click', () => this.accountSendResetLink());
         if (cancelForgotBtn) cancelForgotBtn.addEventListener('click', () => this.hideForgotPasswordForm());
         if (updatePwBtn) updatePwBtn.addEventListener('click', () => this.accountUpdatePassword());
+    },
+
+    // Add to Home Screen / Bookmark: copy URL, trigger PWA install if available, or show instructions
+    async handleAddToHomeClick() {
+        const url = APP_CANONICAL_URL;
+        try {
+            await navigator.clipboard.writeText(url);
+            this.showToast('URL copied to clipboard.', 'success');
+        } catch (e) {
+            this.showToast('Could not copy URL. Please bookmark: ' + url, 'info', 4000);
+        }
+        if (this.deferredInstallPrompt) {
+            try {
+                this.deferredInstallPrompt.prompt();
+                const { outcome } = await this.deferredInstallPrompt.userChoice;
+                if (outcome === 'accepted') this.showToast('Added to home screen.', 'success');
+                this.deferredInstallPrompt = null;
+            } catch (err) {
+                console.error('Install prompt error:', err);
+            }
+            return;
+        }
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isAndroid = /Android/.test(navigator.userAgent);
+        if (isIOS) {
+            this.showToast('To add to Home Screen: tap Share, then "Add to Home Screen".', 'info', 5000);
+        } else if (isAndroid) {
+            this.showToast('To add to Home Screen: open menu (⋮) → "Add to Home screen" or "Install app".', 'info', 5000);
+        } else {
+            this.showToast('Bookmark this page with Ctrl+D (Windows) or Cmd+D (Mac).', 'info', 4000);
+        }
     },
 
     refreshNewMatchTrackingServeDropdown() {
