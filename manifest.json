@@ -1,6 +1,6 @@
 {
   "name": "Tennis Match Recorder",
-  "short_name": "Tennis",
+  "short_name": "Tennis Match Recorder",
   "description": "Record and manage tennis matches and training sessions",
   "start_url": "/tennis-match-recorder/",
   "scope": "/tennis-match-recorder/",
