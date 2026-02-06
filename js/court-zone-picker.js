@@ -360,6 +360,7 @@
         var onZoneClick = options.onZoneClick || function() {};
         var title = options.title != null ? options.title : 'Court zone';
         var closeOnClick = options.closeOnClick !== false;
+        var requireZoneSelection = options.requireZoneSelection === true;
 
         var resolvePromise;
         var promise = new Promise(function(resolve) { resolvePromise = resolve; });
@@ -370,8 +371,14 @@
             resolvePromise(zoneId);
         }
 
+        // Remove any existing picker modal so only one is visible (avoids second serve picker not closing)
+        var existing = document.querySelectorAll('.modal.court-zone-picker-modal');
+        for (var i = 0; i < existing.length; i++) {
+            if (existing[i].parentNode) existing[i].parentNode.removeChild(existing[i]);
+        }
+
         var overlay = document.createElement('div');
-        overlay.className = 'modal';
+        overlay.className = 'modal court-zone-picker-modal';
         overlay.setAttribute('aria-label', title);
 
         var content = document.createElement('div');
@@ -380,7 +387,7 @@
         content.innerHTML =
             '<div class="modal-header">' +
             '<h3>' + title.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</h3>' +
-            '<button type="button" class="modal-close" aria-label="Close">&times;</button>' +
+            (requireZoneSelection ? '' : '<button type="button" class="modal-close" aria-label="Close">&times;</button>') +
             '</div>' +
             '<div class="modal-body court-zone-picker-body"></div>';
 
@@ -399,9 +406,15 @@
         }
 
         function handleZoneClick(zoneId) {
+            close(zoneId);
             onZoneClick(zoneId);
             settle(zoneId);
-            if (closeOnClick) close(zoneId);
+        }
+
+        function askSelectZone() {
+            if (typeof window.app !== 'undefined' && window.app.showToast) {
+                window.app.showToast('Please select a zone (brown or green)', 'info');
+            }
         }
 
         svg.addEventListener('click', function(e) {
@@ -421,9 +434,11 @@
         });
 
         var closeBtn = content.querySelector('.modal-close');
-        if (closeBtn) closeBtn.addEventListener('click', function() { close(); });
+        if (closeBtn) closeBtn.addEventListener('click', function() { requireZoneSelection ? askSelectZone() : close(); });
         overlay.addEventListener('click', function(e) {
-            if (e.target === overlay) close();
+            if (e.target === overlay) {
+                if (requireZoneSelection) askSelectZone(); else close();
+            }
         });
 
         overlay.appendChild(content);
@@ -435,26 +450,32 @@
     /**
      * Serve tracking (deuce side serve): open court zone picker for selecting serve landing zone.
      * @param {function(string)} [onZoneClick] - Called with zoneId when a zone is clicked.
-     * @param {object} [options] - Optional overrides: { title, closeOnClick } (same as showCourtZonePicker).
+     * @param {object} [options] - Optional overrides: { title, closeOnClick, serveNumber }. serveNumber: 1 = First Serve, 2 = Second Serve.
      * @returns {Promise<string|null>} Resolves with the clicked zoneId, or null when closed without selecting.
      */
     function showServeTrackingPicker(onZoneClick, options) {
         options = options || {};
         if (typeof onZoneClick === 'function') options.onZoneClick = onZoneClick;
-        if (options.title == null) options.title = 'Deuce side serve';
+        if (options.title == null) {
+            var serveLabel = (options.serveNumber === 2) ? 'Second Serve' : 'First Serve';
+            options.title = 'Deuce side – ' + serveLabel;
+        }
         return showCourtZonePicker(options);
     }
 
     /**
      * Ad side serve: same as Deuce side but with mirrored brown/green zones.
      * @param {function(string)} [onZoneClick] - Called with zoneId when a zone is clicked.
-     * @param {object} [options] - Optional overrides: { title, closeOnClick }.
+     * @param {object} [options] - Optional overrides: { title, closeOnClick, serveNumber }.
      * @returns {Promise<string|null>} Resolves with the clicked zoneId, or null when closed without selecting.
      */
     function showAdSideServePicker(onZoneClick, options) {
         options = options || {};
         if (typeof onZoneClick === 'function') options.onZoneClick = onZoneClick;
-        if (options.title == null) options.title = 'Ad side serve';
+        if (options.title == null) {
+            var serveLabel = (options.serveNumber === 2) ? 'Second Serve' : 'First Serve';
+            options.title = 'Ad side – ' + serveLabel;
+        }
         options.mirrorZones = true;
         return showCourtZonePicker(options);
     }
@@ -491,11 +512,13 @@
      * Open serve zone picker by serve side (deuce or ad). Use this when you have a variable for the current serve.
      * @param {string} serveSide - 'deuce' or 'ad' (case-insensitive).
      * @param {function(string)} [onZoneClick] - Called with zoneId when a zone is clicked.
-     * @param {object} [options] - Optional overrides: { title, closeOnClick }.
+     * @param {object} [options] - Optional overrides: { title, closeOnClick, requireZoneSelection, serveNumber }.
+     *   serveNumber: 1 = First Serve, 2 = Second Serve (used for title when title not provided).
      * @returns {Promise<string|null>} Resolves with the clicked zoneId, or null when closed without selecting.
      */
     function showServeZonePickerBySide(serveSide, onZoneClick, options) {
         var side = (serveSide || '').toLowerCase();
+        options = options || {};
         if (side === 'ad') {
             return showAdSideServePicker(onZoneClick, options);
         }

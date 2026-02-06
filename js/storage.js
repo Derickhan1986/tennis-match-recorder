@@ -275,6 +275,7 @@ class StorageService {
                 const request = store.delete(id);
 
                 request.onsuccess = () => {
+                    try { localStorage.removeItem('pro_tracking_serve_' + id); } catch (e) {}
                     console.log('Match and log deleted:', id);
                     resolve();
                 };
@@ -293,6 +294,7 @@ class StorageService {
                 const request = store.delete(id);
 
                 request.onsuccess = () => {
+                    try { localStorage.removeItem('pro_tracking_serve_' + id); } catch (e) {}
                     console.log('Match deleted:', id);
                     resolve();
                 };
@@ -446,6 +448,43 @@ class StorageService {
         } catch (error) {
             console.error('Error importing data:', error);
             throw error;
+        }
+    }
+
+    // Pro Tracking Serve log (localStorage, per match)
+    // Pro Tracking 发球落点日志（localStorage，按比赛）
+    getProTrackingServeLog(matchId) {
+        if (!matchId) return [];
+        try {
+            const raw = localStorage.getItem('pro_tracking_serve_' + matchId);
+            if (!raw) return [];
+            const arr = JSON.parse(raw);
+            return Array.isArray(arr) ? arr : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    appendProTrackingServeEntry(matchId, entry) {
+        if (!matchId) return;
+        const log = this.getProTrackingServeLog(matchId);
+        log.push(entry);
+        try {
+            localStorage.setItem('pro_tracking_serve_' + matchId, JSON.stringify(log));
+        } catch (e) {
+            console.error('Failed to append pro tracking serve entry:', e);
+        }
+    }
+
+    removeLastProTrackingServeEntry(matchId) {
+        if (!matchId) return;
+        const log = this.getProTrackingServeLog(matchId);
+        if (log.length === 0) return;
+        log.pop();
+        try {
+            localStorage.setItem('pro_tracking_serve_' + matchId, JSON.stringify(log));
+        } catch (e) {
+            console.error('Failed to remove last pro tracking serve entry:', e);
         }
     }
 }

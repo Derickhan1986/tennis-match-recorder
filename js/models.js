@@ -172,7 +172,8 @@ function createLogEntry(data = {}) {
         setsScore: data.setsScore || null, // Current sets score in match (e.g., "0-1")
         currentServer: data.currentServer || null, // Current server at this point ('player1' | 'player2')
         currentServeNumber: data.currentServeNumber !== undefined ? data.currentServeNumber : 1, // Current serve number (1 or 2) for undo tracking
-        isBreakPoint: data.isBreakPoint || false // Whether this point is a break point (接发球方有机会破发)
+        isBreakPoint: data.isBreakPoint || false, // Whether this point is a break point (接发球方有机会破发)
+        afterProTrackingGreen: data.afterProTrackingGreen || false // True if this point was recorded after user selected green zone in Pro Tracking Serve
     };
 }
 

@@ -163,8 +163,34 @@ const app = {
                 window.showRallyZonePicker().then(handleServeZoneResult);
             });
         }
+        const trackingPlayerSelect = document.getElementById('pro-tracking-player');
+        if (trackingPlayerSelect) {
+            trackingPlayerSelect.addEventListener('change', () => {
+                try {
+                    localStorage.setItem('setting_proTrackingPlayerId', trackingPlayerSelect.value || '');
+                } catch (e) {}
+            });
+        }
     },
-    
+
+    async refreshProTrackingPlayerSelect() {
+        const select = document.getElementById('pro-tracking-player');
+        if (!select) return;
+        try {
+            const players = await storage.getAllPlayers();
+            const savedId = localStorage.getItem('setting_proTrackingPlayerId') || '';
+            select.innerHTML = '<option value="">Select player</option>' +
+                players.map(p => '<option value="' + this.escapeHtml(p.id) + '">' + this.escapeHtml(p.name) + '</option>').join('');
+            if (savedId && players.some(p => p.id === savedId)) {
+                select.value = savedId;
+            } else {
+                select.value = '';
+            }
+        } catch (e) {
+            console.warn('Could not load players for Tracking Player:', e);
+        }
+    },
+
     refreshSettingsAccount() {
         const loggedOut = document.getElementById('account-logged-out');
         const loggedIn = document.getElementById('account-logged-in');
@@ -357,8 +383,8 @@ const app = {
             // 打开新比赛页面时刷新玩家列表
             matchRecorder.loadPlayersForMatch();
         } else if (pageName === 'settings') {
+            this.refreshProTrackingPlayerSelect();
             // Fetch latest profile (including credits) from Supabase so Settings shows current data
-            // 从 Supabase 拉取最新 profile（含 credits），使设置页显示当前数据
             if (typeof auth !== 'undefined' && auth.isLoggedIn() && auth.fetchProfile) {
                 auth.fetchProfile().then(() => this.refreshSettingsAccount());
             } else {
@@ -746,6 +772,8 @@ const app = {
             const matchReviewLoggedIn = typeof auth !== 'undefined' && auth.isLoggedIn();
             const matchReviewBtnText = 'Match Review';
             const commentBtnText = 'Comment';
+            const proTrackingLog = storage.getProTrackingServeLog ? storage.getProTrackingServeLog(match.id) : [];
+            const hasProTrackingServe = Array.isArray(proTrackingLog) && proTrackingLog.length > 0;
             // Both buttons always clickable; when not logged in, click shows "Log in to use". Comment needs only login; Match Review needs login + credit.
             console.log('[MatchReview Debug] button state: loggedIn=', matchReviewLoggedIn, ', text=', matchReviewBtnText, ', auth.user=', !!auth?.user, ', auth.accessToken=', !!auth?.accessToken);
             
@@ -789,6 +817,7 @@ const app = {
                 <div class="form-actions">
                     <button class="btn-secondary comment-btn" onclick="app.openCommentModal('${match.id}')">${commentBtnText}</button>
                     <button class="btn-secondary" onclick="app.requestMatchReview('${match.id}')">${matchReviewBtnText}</button>
+                    ${hasProTrackingServe ? `<button class="btn-secondary" onclick="app.showProTrackingServeAnalysisModal('${match.id}')">Serve zone analysis</button>` : ''}
                 </div>
                 <div class="form-actions">
                     <button class="btn-primary" onclick="app.exportMatchToPDF('${match.id}')">Export to PDF</button>
@@ -2084,6 +2113,74 @@ const app = {
         });
         document.body.appendChild(overlay);
         updateCount();
+    },
+
+    // Pro Tracking Serve: show analysis modal (by serveSide and zone_id, count and % per side)
+    showProTrackingServeAnalysisModal(matchId) {
+        const log = storage.getProTrackingServeLog ? storage.getProTrackingServeLog(matchId) : [];
+        if (!Array.isArray(log) || log.length === 0) {
+            this.showToast('No serve zone data for this match', 'info');
+            return;
+        }
+        const bySide = { deuce: {}, ad: {} };
+        const totals = { deuce: 0, ad: 0 };
+        log.forEach(entry => {
+            const side = (entry.serveSide || 'deuce').toLowerCase();
+            if (side !== 'deuce' && side !== 'ad') return;
+            const z = entry.zone_id || '(unknown)';
+            bySide[side][z] = (bySide[side][z] || 0) + 1;
+            totals[side]++;
+        });
+        const rows = (side) => {
+            const total = totals[side] || 0;
+            if (total === 0) return '<tr><td colspan="3">No serves</td></tr>';
+            const zones = Object.keys(bySide[side]).sort();
+            return zones.map(z => {
+                const count = bySide[side][z];
+                const pct = total ? ((count / total) * 100).toFixed(1) : '0';
+                return `<tr><td>${this.escapeHtml(z)}</td><td>${count}</td><td>${pct}%</td></tr>`;
+            }).join('');
+        };
+        const overlay = document.createElement('div');
+        overlay.className = 'modal';
+        overlay.setAttribute('aria-label', 'Serve zone analysis');
+        const content = document.createElement('div');
+        content.className = 'modal-content';
+        content.innerHTML = `
+            <div class="modal-header">
+                <h3>Serve zone analysis</h3>
+                <button type="button" class="modal-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="setting-hint" style="margin-bottom: 12px;">By side (Deuce / Ad) and zone. Percentage = count / total serves for that side.</p>
+                <div class="detail-section">
+                    <h4>Deuce side (total ${totals.deuce || 0} serves)</h4>
+                    <table class="detail-table" style="width:100%; border-collapse: collapse;">
+                        <thead><tr><th>Zone</th><th>Count</th><th>%</th></tr></thead>
+                        <tbody>${rows('deuce')}</tbody>
+                    </table>
+                </div>
+                <div class="detail-section">
+                    <h4>Ad side (total ${totals.ad || 0} serves)</h4>
+                    <table class="detail-table" style="width:100%; border-collapse: collapse;">
+                        <thead><tr><th>Zone</th><th>Count</th><th>%</th></tr></thead>
+                        <tbody>${rows('ad')}</tbody>
+                    </table>
+                </div>
+                <div class="form-actions" style="margin-top: 16px;">
+                    <button type="button" class="btn-secondary modal-close-btn">Close</button>
+                </div>
+            </div>
+        `;
+        overlay.appendChild(content);
+        const close = () => {
+            overlay.classList.add('hidden');
+            setTimeout(() => overlay.remove(), 300);
+        };
+        content.querySelector('.modal-close').addEventListener('click', close);
+        content.querySelector('.modal-close-btn').addEventListener('click', close);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+        document.body.appendChild(overlay);
     },
     
     // Show match review in modal with Download and Close

@@ -20,7 +20,8 @@ class MatchEngine {
 
     // Record a point with point type and shot type
     // 记录一分（带类型和击球类型）
-    recordPoint(winner, pointType = null, shotType = null) {
+    // extraPointInfo: optional { afterProTrackingGreen, ... } merged into log entry
+    recordPoint(winner, pointType = null, shotType = null, extraPointInfo = null) {
         // Restore match state from last log entry before recording new point
         // 在记录新point之前从最后一条日志条目恢复比赛状态
         this.restoreStateFromLastLog();
@@ -30,7 +31,7 @@ class MatchEngine {
         // Check if we're in a tie-break
         // 检查是否在抢七
         if (this.isInTieBreak(currentSet)) {
-            return this.recordTieBreakPoint(currentSet, winner, pointType, shotType);
+            return this.recordTieBreakPoint(currentSet, winner, pointType, shotType, extraPointInfo);
         }
         
         const currentGame = this.getCurrentGame(currentSet);
@@ -141,14 +142,18 @@ class MatchEngine {
         // 添加point信息到日志
         // Use saved serve number for logging (before it was reset)
         // 使用保存的发球次数进行日志记录（在重置之前）
-        this.addToLog(logPlayer, logAction, shotType, gameForLog, {
+        const pointInfo = {
             pointNumber: pointNumber,
             winner: actualWinner,
             pointType: pointType,
             server: server,
             serveNumber: isDoubleFault ? 2 : (pointType === 'Serve Fault' ? 1 : currentServeNumberForLog),
             isBreakPoint: isBreakPoint
-        });
+        };
+        if (extraPointInfo && typeof extraPointInfo === 'object') {
+            Object.assign(pointInfo, extraPointInfo);
+        }
+        this.addToLog(logPlayer, logAction, shotType, gameForLog, pointInfo);
         
         // Auto-save match
         // 自动保存比赛
@@ -443,7 +448,7 @@ class MatchEngine {
 
     // Record tie-break point
     // 记录抢七分
-    recordTieBreakPoint(set, winner, pointType, shotType = null) {
+    recordTieBreakPoint(set, winner, pointType, shotType = null, extraPointInfo = null) {
         // Restore match state from last log entry before recording new point
         // 在记录新point之前从最后一条日志条目恢复比赛状态
         this.restoreStateFromLastLog();
@@ -590,15 +595,17 @@ class MatchEngine {
         
         // Add to log with point information
         // 添加point信息到日志
-        // Use saved serve number for logging (before it was reset)
-        // 使用保存的发球次数进行日志记录（在重置之前）
-        this.addToLog(logPlayer, logAction, shotType, lastGame, {
+        const tbPointInfo = {
             pointNumber: pointNumber,
             winner: actualWinner,
             pointType: pointType,
             server: tieBreakServer,
             serveNumber: isDoubleFault ? 2 : (pointType === 'Serve Fault' ? 1 : currentServeNumberForLog)
-        });
+        };
+        if (extraPointInfo && typeof extraPointInfo === 'object') {
+            Object.assign(tbPointInfo, extraPointInfo);
+        }
+        this.addToLog(logPlayer, logAction, shotType, lastGame, tbPointInfo);
         
         storage.saveMatch(this.match);
         
@@ -1915,6 +1922,7 @@ class MatchEngine {
             server: pointInfo ? pointInfo.server : null,
             serveNumber: pointInfo ? pointInfo.serveNumber : null,
             isBreakPoint: pointInfo ? pointInfo.isBreakPoint : false, // Whether this point is a break point
+            afterProTrackingGreen: pointInfo && pointInfo.afterProTrackingGreen === true,
             // Log information
             // 日志信息
             player: player,

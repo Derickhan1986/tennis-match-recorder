@@ -6,6 +6,9 @@
 //  处理比赛记录界面和逻辑
 //
 
+// Pro Tracking Serve: brown zone IDs = serve fault
+const PRO_TRACKING_SERVE_BROWN_ZONES = ['serve_long', 'alley_wide', 'T_wide', 'net_down'];
+
 class MatchRecorder {
     constructor() {
         this.currentMatch = null;
@@ -15,6 +18,7 @@ class MatchRecorder {
         this.pendingAction = null; // Store action waiting for shot type selection
         this.pendingPlayer = null; // Store player for pending action
         this.isUndoing = false; // Flag to prevent multiple undo operations
+        this.pendingAfterGreenZone = false; // Pro Tracking: user selected green zone, waiting for point outcome button
         this.setupEventListeners();
     }
 
@@ -648,6 +652,128 @@ class MatchRecorder {
         }
     }
 
+    // Pro Tracking Serve: get whether serve tracking is on (from localStorage)
+    getProTrackingServeOn() {
+        try {
+            return localStorage.getItem('setting_proTrackingServe') === 'true';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // Pro Tracking: get tracking player as 'player1'|'player2' or null
+    getTrackingPlayerSide() {
+        if (!this.currentMatch) return null;
+        try {
+            const id = localStorage.getItem('setting_proTrackingPlayerId') || '';
+            if (!id) return null;
+            if (this.currentMatch.player1Id === id) return 'player1';
+            if (this.currentMatch.player2Id === id) return 'player2';
+            return null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // Points in current game from game score (0-0 -> 0, 15-0 -> 1, 30-15 -> 3, 40-40 -> 6, etc.)
+    gameScoreToPointCount(gameScore) {
+        if (!gameScore) return 0;
+        const tb = gameScore.match(/TB:\s*(\d+)-(\d+)/i);
+        if (tb) return parseInt(tb[1], 10) + parseInt(tb[2], 10);
+        const parts = String(gameScore).split('-');
+        if (parts.length !== 2) return 0;
+        const toPoints = (s) => {
+            const t = (s || '').trim();
+            if (t === '0') return 0;
+            if (t === '15') return 1;
+            if (t === '30') return 2;
+            if (t === '40') return 3;
+            if (t.toUpperCase() === 'AD') return 4;
+            return 0;
+        };
+        return toPoints(parts[0]) + toPoints(parts[1]);
+    }
+
+    // Deuce/Ad: serveSide from current game state (points in game: even -> deuce, odd -> ad)
+    getServeSideFromLog() {
+        if (!this.currentMatch || !this.currentMatch.log || this.currentMatch.log.length === 0) {
+            return 'deuce'; // first point of match
+        }
+        const last = this.currentMatch.log[this.currentMatch.log.length - 1];
+        const pointsInGame = this.gameScoreToPointCount(last.gameScore);
+        return (pointsInGame % 2 === 0) ? 'deuce' : 'ad';
+    }
+
+    getScoreSnapshotForProTracking() {
+        if (!this.currentMatch) return { gameScore: '0-0', gamesScore: '0-0', setsScore: '0-0' };
+        if (!this.currentMatch.log || this.currentMatch.log.length === 0) {
+            return { gameScore: '0-0', gamesScore: '0-0', setsScore: '0-0' };
+        }
+        const last = this.currentMatch.log[this.currentMatch.log.length - 1];
+        return {
+            gameScore: last.gameScore || '0-0',
+            gamesScore: last.gamesScore || '0-0',
+            setsScore: last.setsScore || '0-0'
+        };
+    }
+
+    async maybeShowServeZonePicker() {
+        if (!this.currentMatch || !this.matchEngine || this.currentMatch.status === 'completed') return;
+        if (this.pendingAfterGreenZone || this.isUndoing) return;
+        if (!this.getProTrackingServeOn()) return;
+        const trackingSide = this.getTrackingPlayerSide();
+        if (!trackingSide) return;
+        let server = this.matchEngine.match.currentServer || this.currentMatch.settings.firstServer;
+        if (this.currentMatch.log && this.currentMatch.log.length > 0) {
+            const lastLogEntry = this.currentMatch.log[this.currentMatch.log.length - 1];
+            if (lastLogEntry.currentServer) server = lastLogEntry.currentServer;
+        }
+        if (server !== trackingSide) return;
+
+        const serveSide = this.getServeSideFromLog();
+        const snapshot = this.getScoreSnapshotForProTracking();
+        let currentServeNumber = 1;
+        if (this.currentMatch.log && this.currentMatch.log.length > 0) {
+            const last = this.currentMatch.log[this.currentMatch.log.length - 1];
+            if (last.currentServeNumber !== undefined && last.currentServeNumber !== null) {
+                currentServeNumber = last.currentServeNumber;
+            }
+        } else if (this.matchEngine) {
+            currentServeNumber = this.matchEngine.match.currentServeNumber || 1;
+        }
+        if (typeof window.showServeZonePickerBySide !== 'function') return;
+
+        try {
+            const zoneId = await window.showServeZonePickerBySide(serveSide, undefined, {
+                requireZoneSelection: true,
+                serveNumber: currentServeNumber
+            });
+            if (zoneId == null) return; // closed without selection
+
+            const entry = {
+                serveSide: serveSide,
+                zone_id: zoneId,
+                gameScore: snapshot.gameScore,
+                gamesScore: snapshot.gamesScore,
+                setsScore: snapshot.setsScore
+            };
+
+            if (PRO_TRACKING_SERVE_BROWN_ZONES.indexOf(zoneId) >= 0) {
+                storage.appendProTrackingServeEntry(this.currentMatch.id, entry);
+                this.matchEngine.recordPoint(server, 'Serve Fault', null);
+                this.currentMatch = await storage.getMatch(this.currentMatch.id);
+                this.matchEngine = new MatchEngine(this.currentMatch);
+                this.updateDisplay();
+                setTimeout(() => this.maybeShowServeZonePicker(), 150);
+            } else {
+                storage.appendProTrackingServeEntry(this.currentMatch.id, entry);
+                this.pendingAfterGreenZone = true;
+            }
+        } catch (e) {
+            console.error('Pro Tracking serve zone picker error:', e);
+        }
+    }
+
     // Handle action button click
     // 处理操作按钮点击
     handleActionButton(action, player) {
@@ -732,16 +858,17 @@ class MatchRecorder {
         }
         
         if (winner) {
+            const extraPointInfo = this.pendingAfterGreenZone ? { afterProTrackingGreen: true } : null;
             if (needsShotType) {
                 // Show shot type selection modal
                 // 显示击球类型选择模态框
-                this.pendingAction = { winner, pointType };
+                this.pendingAction = { winner, pointType, extraPointInfo };
                 this.pendingPlayer = player;
                 this.showShotTypeModal(pointType);
             } else {
                 // Record point directly
                 // 直接记录分
-                this.recordPoint(winner, pointType, null);
+                this.recordPoint(winner, pointType, null, extraPointInfo);
             }
         }
     }
@@ -812,8 +939,8 @@ class MatchRecorder {
         }
         
         if (this.pendingAction) {
-            const { winner, pointType } = this.pendingAction;
-            this.recordPoint(winner, pointType, shotType);
+            const { winner, pointType, extraPointInfo } = this.pendingAction;
+            this.recordPoint(winner, pointType, shotType, extraPointInfo || null);
             this.pendingAction = null;
             this.pendingPlayer = null;
         }
@@ -821,14 +948,19 @@ class MatchRecorder {
 
     // Record a point
     // 记录一分
-    async recordPoint(winner, pointType = null, shotType = null) {
+    // extraPointInfo: optional { afterProTrackingGreen } passed to match engine log
+    async recordPoint(winner, pointType = null, shotType = null, extraPointInfo = null) {
         if (!this.matchEngine) {
             app.showToast('Match not initialized', 'error');
             return;
         }
         
         try {
-            this.matchEngine.recordPoint(winner, pointType, shotType);
+            this.matchEngine.recordPoint(winner, pointType, shotType, extraPointInfo);
+            
+            if (extraPointInfo && extraPointInfo.afterProTrackingGreen) {
+                this.pendingAfterGreenZone = false;
+            }
             
             // Reload match to get updated log
             // 重新加载比赛以获取更新的日志
@@ -892,30 +1024,45 @@ class MatchRecorder {
             // 添加短暂延迟以防止快速点击
             await new Promise(resolve => setTimeout(resolve, 300));
             
+            if (this.pendingAfterGreenZone) {
+                storage.removeLastProTrackingServeEntry(this.currentMatch.id);
+                this.pendingAfterGreenZone = false;
+            }
+            
+            const log = this.currentMatch.log || [];
+            const lastEntry = log.length > 0 ? log[log.length - 1] : null;
+            const trackingSide = this.getTrackingPlayerSide();
+            const shouldRemoveProTracking = lastEntry && trackingSide && (
+                (lastEntry.action === 'Serve Fault' && lastEntry.server === trackingSide) ||
+                (lastEntry.afterProTrackingGreen === true)
+            );
+            
             this.matchEngine.undoLastPoint();
+            
+            if (shouldRemoveProTracking) {
+                storage.removeLastProTrackingServeEntry(this.currentMatch.id);
+            }
             
             // Reload match to get updated log
             // 重新加载比赛以获取更新的日志
             this.currentMatch = await storage.getMatch(this.currentMatch.id);
             this.matchEngine = new MatchEngine(this.currentMatch);
             
-            // Update display from log only
-            // 仅从日志更新显示
-            this.updateDisplay();
+            // Update display from log only (skip built-in picker check; we run it explicitly after undo is fully done)
+            this.updateDisplay(null, true);
         } catch (error) {
             console.error('Error undoing point:', error);
             app.showToast('Error undoing point', 'error');
         } finally {
-            // Re-enable undo button after a delay
-            // 延迟后重新启用撤销按钮
+            this.isUndoing = false;
+            // After undo is fully done (record + pro tracking + display reverted), run same "start of point" check to show picker if server is tracking player
+            setTimeout(() => this.maybeShowServeZonePicker(), 100);
             await new Promise(resolve => setTimeout(resolve, 200));
-            
             if (undoBtn) {
                 undoBtn.disabled = false;
                 undoBtn.style.opacity = '1';
                 undoBtn.style.cursor = 'pointer';
             }
-            this.isUndoing = false;
         }
     }
 
@@ -1397,7 +1544,8 @@ class MatchRecorder {
 
     // Update display
     // 更新显示
-    async updateDisplay(state = null) {
+    // skipServeZonePickerCheck: when true (e.g. from undo), do not schedule maybeShowServeZonePicker here; caller will run it after undo is fully done
+    async updateDisplay(state = null, skipServeZonePickerCheck = false) {
         if (!this.currentMatch || !this.player1 || !this.player2) return;
         
         // Get scores from log (last entry) for robustness
@@ -1501,7 +1649,8 @@ class MatchRecorder {
         // 更新按钮可见性 - 使用setTimeout确保DOM已准备好
         setTimeout(() => {
             this.updateButtonVisibility(currentServer);
-        }, 100);
+            if (!skipServeZonePickerCheck) this.maybeShowServeZonePicker();
+        }, 150);
     }
 
         // Update set scores from log
@@ -1674,6 +1823,7 @@ class MatchRecorder {
             
             this.currentMatch = match;
             this.matchEngine = new MatchEngine(match);
+            this.pendingAfterGreenZone = false;
             
             this.updateDisplay();
             app.showPage('match-recording');
