@@ -113,82 +113,38 @@ const app = {
         if (sendResetBtn) sendResetBtn.addEventListener('click', () => this.accountSendResetLink());
         if (cancelForgotBtn) cancelForgotBtn.addEventListener('click', () => this.hideForgotPasswordForm());
         if (updatePwBtn) updatePwBtn.addEventListener('click', () => this.accountUpdatePassword());
-        // Pro Tracking switches (persist in localStorage)
-        const proKeys = [
-            { id: 'pro-tracking-serve', key: 'setting_proTrackingServe' },
-            { id: 'pro-tracking-return', key: 'setting_proTrackingReturn' },
-            { id: 'pro-tracking-rally', key: 'setting_proTrackingRally' }
-        ];
-        proKeys.forEach(({ id, key }) => {
-            const el = document.getElementById(id);
-            if (el) {
-                try {
-                    el.checked = localStorage.getItem(key) === 'true';
-                } catch (e) {}
-                el.addEventListener('change', () => {
-                    try {
-                        localStorage.setItem(key, el.checked ? 'true' : 'false');
-                    } catch (e) {}
-                });
-            }
-        });
-        const handleServeZoneResult = (zoneId) => {
-            if (zoneId != null) {
-                this.showToast('Returned zone: ' + zoneId, 'success');
-            } else {
-                this.showToast('Closed without selection', 'info');
-            }
-        };
-        const deuceBtn = document.getElementById('serve-picker-deuce-btn');
-        if (deuceBtn && typeof window.showServeZonePickerBySide === 'function') {
-            deuceBtn.addEventListener('click', () => {
-                window.showServeZonePickerBySide('deuce').then(handleServeZoneResult);
-            });
-        }
-        const adBtn = document.getElementById('serve-picker-ad-btn');
-        if (adBtn && typeof window.showServeZonePickerBySide === 'function') {
-            adBtn.addEventListener('click', () => {
-                window.showServeZonePickerBySide('ad').then(handleServeZoneResult);
-            });
-        }
-        const returnPickerBtn = document.getElementById('return-picker-btn');
-        if (returnPickerBtn && typeof window.showReturnZonePicker === 'function') {
-            returnPickerBtn.addEventListener('click', () => {
-                window.showReturnZonePicker().then(handleServeZoneResult);
-            });
-        }
-        const rallyPickerBtn = document.getElementById('rally-picker-btn');
-        if (rallyPickerBtn && typeof window.showRallyZonePicker === 'function') {
-            rallyPickerBtn.addEventListener('click', () => {
-                window.showRallyZonePicker().then(handleServeZoneResult);
-            });
-        }
-        const trackingPlayerSelect = document.getElementById('pro-tracking-player');
-        if (trackingPlayerSelect) {
-            trackingPlayerSelect.addEventListener('change', () => {
-                try {
-                    localStorage.setItem('setting_proTrackingPlayerId', trackingPlayerSelect.value || '');
-                } catch (e) {}
-            });
-        }
     },
 
-    async refreshProTrackingPlayerSelect() {
-        const select = document.getElementById('pro-tracking-player');
-        if (!select) return;
-        try {
-            const players = await storage.getAllPlayers();
-            const savedId = localStorage.getItem('setting_proTrackingPlayerId') || '';
-            select.innerHTML = '<option value="">Select player</option>' +
-                players.map(p => '<option value="' + this.escapeHtml(p.id) + '">' + this.escapeHtml(p.name) + '</option>').join('');
-            if (savedId && players.some(p => p.id === savedId)) {
-                select.value = savedId;
-            } else {
-                select.value = '';
-            }
-        } catch (e) {
-            console.warn('Could not load players for Tracking Player:', e);
+    refreshNewMatchTrackingServeDropdown() {
+        const dropdownRow = document.getElementById('match-tracking-serve-dropdown-row');
+        const tipRow = document.getElementById('match-tracking-serve-tip');
+        const select = document.getElementById('match-tracking-serve');
+        const isLoggedIn = typeof auth !== 'undefined' && auth.isLoggedIn();
+        if (dropdownRow) dropdownRow.classList.toggle('hidden', !isLoggedIn);
+        if (tipRow) tipRow.classList.toggle('hidden', isLoggedIn);
+        if (!select || !isLoggedIn) return;
+        const player1Select = document.getElementById('match-player1');
+        const player2Select = document.getElementById('match-player2');
+        const player1Id = player1Select ? player1Select.value : '';
+        const player2Id = player2Select ? player2Select.value : '';
+        const opt1 = player1Id && player1Select ? Array.from(player1Select.options).find(o => o.value === player1Id) : null;
+        const opt2 = player2Id && player2Select ? Array.from(player2Select.options).find(o => o.value === player2Id) : null;
+        const name1 = opt1 ? opt1.textContent : (player1Id ? 'Player 1' : '');
+        const name2 = opt2 ? opt2.textContent : (player2Id ? 'Player 2' : '');
+        select.innerHTML = '<option value="">Do not track</option>';
+        if (player1Id && name1) {
+            const opt = document.createElement('option');
+            opt.value = player1Id;
+            opt.textContent = name1;
+            select.appendChild(opt);
         }
+        if (player2Id && name2) {
+            const opt = document.createElement('option');
+            opt.value = player2Id;
+            opt.textContent = name2;
+            select.appendChild(opt);
+        }
+        select.value = '';
     },
 
     refreshSettingsAccount() {
@@ -379,11 +335,9 @@ const app = {
         } else if (pageName === 'players') {
             playerManager.loadPlayers();
         } else if (pageName === 'new-match') {
-            // Refresh player list when opening new match page
-            // 打开新比赛页面时刷新玩家列表
             matchRecorder.loadPlayersForMatch();
+            this.refreshNewMatchTrackingServeDropdown();
         } else if (pageName === 'settings') {
-            this.refreshProTrackingPlayerSelect();
             // Fetch latest profile (including credits) from Supabase so Settings shows current data
             if (typeof auth !== 'undefined' && auth.isLoggedIn() && auth.fetchProfile) {
                 auth.fetchProfile().then(() => this.refreshSettingsAccount());
@@ -817,7 +771,7 @@ const app = {
                 <div class="form-actions">
                     <button class="btn-secondary comment-btn" onclick="app.openCommentModal('${match.id}')">${commentBtnText}</button>
                     <button class="btn-secondary" onclick="app.requestMatchReview('${match.id}')">${matchReviewBtnText}</button>
-                    ${hasProTrackingServe ? `<button class="btn-secondary" onclick="app.showProTrackingServeAnalysisModal('${match.id}')">Serve zone analysis</button>` : ''}
+                    ${hasProTrackingServe ? `<button class="btn-secondary" onclick="app.showProTrackingServeAnalysisModal('${match.id}')">Serve Zone Statistics</button>` : ''}
                 </div>
                 <div class="form-actions">
                     <button class="btn-primary" onclick="app.exportMatchToPDF('${match.id}')">Export to PDF</button>
@@ -2115,72 +2069,229 @@ const app = {
         updateCount();
     },
 
-    // Pro Tracking Serve: show analysis modal (by serveSide and zone_id, count and % per side)
-    showProTrackingServeAnalysisModal(matchId) {
+    // Pro Tracking Serve: show statistics modal with Deuce/Ad court diagrams and PDF export
+    async showProTrackingServeAnalysisModal(matchId) {
         const log = storage.getProTrackingServeLog ? storage.getProTrackingServeLog(matchId) : [];
         if (!Array.isArray(log) || log.length === 0) {
             this.showToast('No serve zone data for this match', 'info');
             return;
         }
-        const bySide = { deuce: {}, ad: {} };
-        const totals = { deuce: 0, ad: 0 };
+        const match = await storage.getMatch(matchId);
+        if (!match) {
+            this.showToast('Match not found', 'error');
+            return;
+        }
+        let trackingPlayerName = 'Serve Zone Statistics';
+        const tid = match.settings && match.settings.trackingServePlayerId;
+        if (tid && (tid === match.player1Id || tid === match.player2Id)) {
+            const player = await storage.getPlayer(tid);
+            if (player && player.name) trackingPlayerName = player.name;
+        }
+
+        // Aggregate by serveNumber (1=first, 2=second) and serveSide (deuce/ad). Missing serveNumber treated as 1.
+        const firstServe = { deuce: {}, ad: {} };
+        const secondServe = { deuce: {}, ad: {} };
+        const totals = {
+            firstDeuce: 0, firstAd: 0,
+            secondDeuce: 0, secondAd: 0
+        };
         log.forEach(entry => {
             const side = (entry.serveSide || 'deuce').toLowerCase();
             if (side !== 'deuce' && side !== 'ad') return;
+            const serveNum = entry.serveNumber === 2 ? 2 : 1;
             const z = entry.zone_id || '(unknown)';
-            bySide[side][z] = (bySide[side][z] || 0) + 1;
-            totals[side]++;
+            const bucket = serveNum === 2 ? secondServe : firstServe;
+            bucket[side][z] = (bucket[side][z] || 0) + 1;
+            if (serveNum === 2) {
+                if (side === 'deuce') totals.secondDeuce++; else totals.secondAd++;
+            } else {
+                if (side === 'deuce') totals.firstDeuce++; else totals.firstAd++;
+            }
         });
-        const rows = (side) => {
-            const total = totals[side] || 0;
-            if (total === 0) return '<tr><td colspan="3">No serves</td></tr>';
-            const zones = Object.keys(bySide[side]).sort();
-            return zones.map(z => {
-                const count = bySide[side][z];
-                const pct = total ? ((count / total) * 100).toFixed(1) : '0';
-                return `<tr><td>${this.escapeHtml(z)}</td><td>${count}</td><td>${pct}%</td></tr>`;
-            }).join('');
+
+        const toPctMap = (sideObj, total) => {
+            const map = {};
+            Object.keys(sideObj).forEach(z => {
+                const count = sideObj[z];
+                map[z] = total ? ((count / total) * 100).toFixed(1) + '%' : '0%';
+            });
+            return map;
         };
+        const firstDeucePctMap = toPctMap(firstServe.deuce, totals.firstDeuce);
+        const firstAdPctMap = toPctMap(firstServe.ad, totals.firstAd);
+        const secondDeucePctMap = toPctMap(secondServe.deuce, totals.secondDeuce);
+        const secondAdPctMap = toPctMap(secondServe.ad, totals.secondAd);
+
         const overlay = document.createElement('div');
         overlay.className = 'modal';
-        overlay.setAttribute('aria-label', 'Serve zone analysis');
+        overlay.setAttribute('aria-label', 'Serve Zone Statistics');
         const content = document.createElement('div');
         content.className = 'modal-content';
         content.innerHTML = `
             <div class="modal-header">
-                <h3>Serve zone analysis</h3>
+                <h3>Serve Zone Statistics – ${this.escapeHtml(trackingPlayerName)}</h3>
                 <button type="button" class="modal-close" aria-label="Close">&times;</button>
             </div>
-            <div class="modal-body">
-                <p class="setting-hint" style="margin-bottom: 12px;">By side (Deuce / Ad) and zone. Percentage = count / total serves for that side.</p>
-                <div class="detail-section">
-                    <h4>Deuce side (total ${totals.deuce || 0} serves)</h4>
-                    <table class="detail-table" style="width:100%; border-collapse: collapse;">
-                        <thead><tr><th>Zone</th><th>Count</th><th>%</th></tr></thead>
-                        <tbody>${rows('deuce')}</tbody>
-                    </table>
+            <div class="modal-body serve-zone-stats-body">
+                <div class="detail-section serve-stats-section">
+                    <h4>First serve – Deuce side (total ${totals.firstDeuce} serves)</h4>
+                    <div class="serve-stats-court-container" data-key="first-deuce"></div>
                 </div>
-                <div class="detail-section">
-                    <h4>Ad side (total ${totals.ad || 0} serves)</h4>
-                    <table class="detail-table" style="width:100%; border-collapse: collapse;">
-                        <thead><tr><th>Zone</th><th>Count</th><th>%</th></tr></thead>
-                        <tbody>${rows('ad')}</tbody>
-                    </table>
+                <div class="detail-section serve-stats-section">
+                    <h4>First serve – Ad side (total ${totals.firstAd} serves)</h4>
+                    <div class="serve-stats-court-container" data-key="first-ad"></div>
+                </div>
+                <div class="detail-section serve-stats-section">
+                    <h4>Second serve – Deuce side (total ${totals.secondDeuce} serves)</h4>
+                    <div class="serve-stats-court-container" data-key="second-deuce"></div>
+                </div>
+                <div class="detail-section serve-stats-section">
+                    <h4>Second serve – Ad side (total ${totals.secondAd} serves)</h4>
+                    <div class="serve-stats-court-container" data-key="second-ad"></div>
                 </div>
                 <div class="form-actions" style="margin-top: 16px;">
-                    <button type="button" class="btn-secondary modal-close-btn">Close</button>
+                    <button type="button" class="btn-primary serve-zone-export-pdf-btn">Export</button>
                 </div>
             </div>
         `;
         overlay.appendChild(content);
+
+        const containers = [
+            { key: 'first-deuce', mirror: false, pctMap: firstDeucePctMap },
+            { key: 'first-ad', mirror: true, pctMap: firstAdPctMap },
+            { key: 'second-deuce', mirror: false, pctMap: secondDeucePctMap },
+            { key: 'second-ad', mirror: true, pctMap: secondAdPctMap }
+        ];
+        if (typeof window.buildServeCourtSvgForStats === 'function') {
+            containers.forEach(({ key, mirror, pctMap }) => {
+                const container = content.querySelector('.serve-stats-court-container[data-key="' + key + '"]');
+                const svg = window.buildServeCourtSvgForStats(mirror, pctMap);
+                svg.classList.add('court-zone-svg');
+                container.appendChild(svg);
+            });
+        }
+
         const close = () => {
             overlay.classList.add('hidden');
             setTimeout(() => overlay.remove(), 300);
         };
         content.querySelector('.modal-close').addEventListener('click', close);
-        content.querySelector('.modal-close-btn').addEventListener('click', close);
         overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+        content.querySelector('.serve-zone-export-pdf-btn').addEventListener('click', () => {
+            this.exportServeZoneStatsToPDF(matchId, trackingPlayerName, {
+                firstDeuceTotal: totals.firstDeuce, firstAdTotal: totals.firstAd,
+                secondDeuceTotal: totals.secondDeuce, secondAdTotal: totals.secondAd
+            }, {
+                firstDeucePctMap, firstAdPctMap, secondDeucePctMap, secondAdPctMap
+            });
+        });
+
         document.body.appendChild(overlay);
+    },
+
+    // Convert SVG element to PNG data URL for PDF embedding (viewBox dimensions).
+    async svgToPngDataUrl(svgEl) {
+        let w = 270, h = 260;
+        const vb = svgEl.getAttribute('viewBox');
+        if (vb) {
+            const parts = vb.trim().split(/\s+/);
+            if (parts.length >= 4) {
+                w = parseFloat(parts[2], 10) || w;
+                h = parseFloat(parts[3], 10) || h;
+            }
+        } else if (svgEl.viewBox && svgEl.viewBox.baseVal) {
+            w = svgEl.viewBox.baseVal.width || w;
+            h = svgEl.viewBox.baseVal.height || h;
+        }
+        const svgString = new XMLSerializer().serializeToString(svgEl);
+        const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    resolve(canvas.toDataURL('image/png'));
+                } finally {
+                    URL.revokeObjectURL(url);
+                }
+            };
+            img.onerror = () => {
+                URL.revokeObjectURL(url);
+                reject(new Error('Failed to load SVG as image'));
+            };
+            img.src = url;
+        });
+    },
+
+    async exportServeZoneStatsToPDF(matchId, trackingPlayerName, totals, pctMaps) {
+        try {
+            if (typeof window.jspdf === 'undefined') {
+                this.showToast('Loading PDF library...', 'info');
+                await this.loadJsPDF();
+            }
+            if (typeof window.jspdf === 'undefined') {
+                this.showToast('PDF library failed to load. Please check your internet connection.', 'error');
+                return;
+            }
+            if (typeof window.buildServeCourtSvgForStats !== 'function') {
+                this.showToast('Court diagram helper not available', 'error');
+                return;
+            }
+
+            const items = [
+                { label: 'First serve – Deuce side', total: totals.firstDeuceTotal, mirror: false, pctMap: pctMaps.firstDeucePctMap },
+                { label: 'First serve – Ad side', total: totals.firstAdTotal, mirror: true, pctMap: pctMaps.firstAdPctMap },
+                { label: 'Second serve – Deuce side', total: totals.secondDeuceTotal, mirror: false, pctMap: pctMaps.secondDeucePctMap },
+                { label: 'Second serve – Ad side', total: totals.secondAdTotal, mirror: true, pctMap: pctMaps.secondAdPctMap }
+            ];
+            const svgs = items.map(it => window.buildServeCourtSvgForStats(it.mirror, it.pctMap));
+            const dataUrls = await Promise.all(svgs.map(svg => this.svgToPngDataUrl(svg)));
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFont('helvetica');
+
+            const pageW = doc.internal.pageSize.getWidth();
+            const margin = 14;
+            const gap = 10;
+            const imgW = (pageW - 2 * margin - gap) / 2;
+            const imgH = (260 / 270) * imgW;
+            let y = 20;
+
+            doc.setFontSize(18);
+            doc.text('Serve Zone Statistics – ' + trackingPlayerName, pageW / 2, y, { align: 'center' });
+            y += 10;
+            doc.setFontSize(10);
+            doc.text(`1st: Deuce ${totals.firstDeuceTotal} / Ad ${totals.firstAdTotal}  |  2nd: Deuce ${totals.secondDeuceTotal} / Ad ${totals.secondAdTotal}`, pageW / 2, y, { align: 'center' });
+            y += 14;
+
+            doc.setFontSize(11);
+            for (let row = 0; row < 2; row++) {
+                const left = items[row * 2];
+                const right = items[row * 2 + 1];
+                doc.text(left.label + ' (total ' + left.total + ')', margin + imgW / 2, y, { align: 'center' });
+                doc.text(right.label + ' (total ' + right.total + ')', margin + imgW + gap + imgW / 2, y, { align: 'center' });
+                y += 6;
+                const yImg = y;
+                doc.addImage(dataUrls[row * 2], 'PNG', margin, yImg, imgW, imgH);
+                doc.addImage(dataUrls[row * 2 + 1], 'PNG', margin + imgW + gap, yImg, imgW, imgH);
+                y = yImg + imgH + 10;
+            }
+
+            const dateStr = formatDate(Date.now()).replace(/\//g, '-').replace(/\s/g, '_').replace(/:/g, '-');
+            const safeName = (trackingPlayerName || 'ServeZoneStatistics').replace(/[^a-zA-Z0-9\s-]/g, '').trim() || 'ServeZoneStatistics';
+            doc.save(`ServeZoneStatistics_${safeName}_${dateStr}.pdf`);
+            this.showToast('PDF downloaded', 'success');
+        } catch (err) {
+            console.error(err);
+            this.showToast('Export failed', 'error');
+        }
     },
     
     // Show match review in modal with Download and Close

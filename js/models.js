@@ -78,7 +78,8 @@ function createMatchSettings(data = {}) {
         tieBreakGames: data.tieBreakGames || 7, // For Normal Final Set: 5, 7, 10
         tieBreakWinBy2: data.tieBreakWinBy2 !== undefined ? data.tieBreakWinBy2 : true,
         superTieBreakPoints: data.superTieBreakPoints || 10, // For Super Tie Break: 5, 7, 10, 12
-        superTieBreakWinBy2: data.superTieBreakWinBy2 !== undefined ? data.superTieBreakWinBy2 : true
+        superTieBreakWinBy2: data.superTieBreakWinBy2 !== undefined ? data.superTieBreakWinBy2 : true,
+        trackingServePlayerId: data.trackingServePlayerId || null // null = do not track; else player id for Player 1 or Player 2
     };
 }
 

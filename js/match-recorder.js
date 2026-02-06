@@ -373,10 +373,9 @@ class MatchRecorder {
                     select1.appendChild(option);
                 });
                 
-                // Update player2 options when player1 changes
-                // 当player1改变时更新player2选项
                 select1.addEventListener('change', () => {
                     this.updatePlayer2Options();
+                    if (typeof app !== 'undefined' && app.refreshNewMatchTrackingServeDropdown) app.refreshNewMatchTrackingServeDropdown();
                 });
             }
             
@@ -389,10 +388,9 @@ class MatchRecorder {
                     select2.appendChild(option);
                 });
                 
-                // Update player1 options when player2 changes
-                // 当player2改变时更新player1选项
                 select2.addEventListener('change', () => {
                     this.updatePlayer1Options();
+                    if (typeof app !== 'undefined' && app.refreshNewMatchTrackingServeDropdown) app.refreshNewMatchTrackingServeDropdown();
                 });
             }
         } catch (error) {
@@ -571,6 +569,8 @@ class MatchRecorder {
             const finalSetType = document.getElementById('match-final-set').value;
             const courtType = document.getElementById('match-court-type').value;
             const indoor = document.getElementById('match-indoor').checked;
+            const trackingServeEl = document.getElementById('match-tracking-serve');
+            const trackingServePlayerId = (trackingServeEl && trackingServeEl.value && String(trackingServeEl.value).trim()) ? trackingServeEl.value : null;
             
             // Always read both Normal Tie Break and Super Tie Break settings
             // 始终读取Normal Tie Break和Super Tie Break设置
@@ -611,6 +611,7 @@ class MatchRecorder {
                 finalSetType: finalSetType,
                 courtType: courtType,
                 indoor: indoor,
+                trackingServePlayerId: trackingServePlayerId,
                 tieBreakGames: tieBreakGames,
                 tieBreakWinBy2: tieBreakWinBy2,
                 superTieBreakPoints: superTieBreakPoints,
@@ -652,27 +653,21 @@ class MatchRecorder {
         }
     }
 
-    // Pro Tracking Serve: get whether serve tracking is on (from localStorage)
+    // Pro Tracking Serve: get whether serve tracking is on (from match settings)
     getProTrackingServeOn() {
-        try {
-            return localStorage.getItem('setting_proTrackingServe') === 'true';
-        } catch (e) {
-            return false;
-        }
+        if (!this.currentMatch || !this.currentMatch.settings) return false;
+        const id = this.currentMatch.settings.trackingServePlayerId;
+        return !!(id && String(id).trim());
     }
 
-    // Pro Tracking: get tracking player as 'player1'|'player2' or null
+    // Pro Tracking: get tracking player as 'player1'|'player2' or null (from match settings)
     getTrackingPlayerSide() {
-        if (!this.currentMatch) return null;
-        try {
-            const id = localStorage.getItem('setting_proTrackingPlayerId') || '';
-            if (!id) return null;
-            if (this.currentMatch.player1Id === id) return 'player1';
-            if (this.currentMatch.player2Id === id) return 'player2';
-            return null;
-        } catch (e) {
-            return null;
-        }
+        if (!this.currentMatch || !this.currentMatch.settings) return null;
+        const id = this.currentMatch.settings.trackingServePlayerId;
+        if (!id) return null;
+        if (this.currentMatch.player1Id === id) return 'player1';
+        if (this.currentMatch.player2Id === id) return 'player2';
+        return null;
     }
 
     // Points in current game from game score (0-0 -> 0, 15-0 -> 1, 30-15 -> 3, 40-40 -> 6, etc.)
@@ -753,6 +748,7 @@ class MatchRecorder {
             const entry = {
                 serveSide: serveSide,
                 zone_id: zoneId,
+                serveNumber: currentServeNumber,
                 gameScore: snapshot.gameScore,
                 gamesScore: snapshot.gamesScore,
                 setsScore: snapshot.setsScore

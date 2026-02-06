@@ -347,6 +347,110 @@
     }
 
     /**
+     * Get canvas coordinates (x, y) of the center of each serve zone for stats overlay.
+     * @param {boolean} mirrorZones - Same as buildCourtSvg (false = Deuce, true = Ad).
+     * @returns {Object.<string, [number, number]>} zoneId -> [canvasX, canvasY]
+     */
+    function getServeZoneCenters(mirrorZones) {
+        var serviceLineY = COURT_H / 2;
+        var centerX = COURT_W / 2;
+        var boxThirdW = (COURT_W / 2 - SIDELINE_W) / 3;
+        var boxUnitH = COURT_H / 8;
+        var ox = ORIGIN_X;
+        var oy = ORIGIN_Y;
+
+        var brownZones = [
+            { id: 'serve_long', x: 0, y: COURT_H / 2 - SIDELINE_W, w: COURT_W / 2 + SIDELINE_W, h: SIDELINE_W },
+            { id: 'alley_wide', x: 0, y: COURT_H / 2, w: SIDELINE_W, h: COURT_H / 2 },
+            { id: 'T_wide', x: COURT_W / 2, y: COURT_H / 2, w: SIDELINE_W, h: COURT_H / 2 },
+            { id: 'net_down', x: SIDELINE_W, y: COURT_H, w: COURT_W - 2 * SIDELINE_W, h: SIDELINE_W }
+        ];
+        if (mirrorZones) brownZones = brownZones.map(mirrorRectX);
+
+        var greenZones = [
+            { id: 'box_center', x: SIDELINE_W + boxThirdW, y: serviceLineY, w: boxThirdW, h: boxUnitH },
+            { id: 'box_corner', x: SIDELINE_W, y: serviceLineY, w: boxThirdW, h: boxUnitH * 3 },
+            { id: 'box_T', x: centerX - boxThirdW, y: serviceLineY, w: boxThirdW, h: boxUnitH * 2 }
+        ];
+        if (mirrorZones) greenZones = greenZones.map(mirrorRectX);
+
+        var boxRestPoints = [
+            [SIDELINE_W, COURT_H],
+            [SIDELINE_W, COURT_H - boxUnitH],
+            [SIDELINE_W + boxThirdW, COURT_H - boxUnitH],
+            [SIDELINE_W + boxThirdW, serviceLineY + boxUnitH],
+            [COURT_W / 2 - boxThirdW, COURT_H / 2 + boxUnitH],
+            [COURT_W / 2 - boxThirdW, COURT_H / 2 + 2 * boxUnitH],
+            [COURT_W / 2, COURT_H / 2 + 2 * boxUnitH],
+            [COURT_W / 2, COURT_H]
+        ];
+        if (mirrorZones) {
+            boxRestPoints = boxRestPoints.map(mirrorPointX).reverse();
+        }
+
+        var centers = {};
+        brownZones.forEach(function(z) {
+            centers[z.id] = [ox + z.x + z.w / 2, oy + z.y + z.h / 2];
+        });
+        greenZones.forEach(function(z) {
+            centers[z.id] = [ox + z.x + z.w / 2, oy + z.y + z.h / 2];
+        });
+        var n = boxRestPoints.length;
+        var cx = 0;
+        var cy = 0;
+        for (var i = 0; i < n; i++) {
+            cx += boxRestPoints[i][0];
+            cy += boxRestPoints[i][1];
+        }
+        centers.box_rest = [ox + cx / n, oy + cy / n];
+
+        return centers;
+    }
+
+    /**
+     * Build serve court SVG for statistics display: same layout as picker, with optional percentage text in each zone.
+     * @param {boolean} mirrorZones - false = Deuce side, true = Ad side.
+     * @param {Object.<string, string>} zonePercentMap - zoneId -> percentage string (e.g. "12.5%"). Only zones with an entry get a label.
+     * @returns {SVGSVGElement}
+     */
+    function buildServeCourtSvgForStats(mirrorZones, zonePercentMap) {
+        var svg = buildCourtSvg(mirrorZones, 'serve');
+        svg.setAttribute('aria-label', 'Serve zone statistics court');
+        // Remove the standalone "NET" label; net_down will show "NET x%" when it has data
+        var texts = svg.querySelectorAll('text');
+        for (var i = 0; i < texts.length; i++) {
+            if (texts[i].textContent === 'NET') {
+                svg.removeChild(texts[i]);
+                break;
+            }
+        }
+        zonePercentMap = zonePercentMap || {};
+        var centers = getServeZoneCenters(mirrorZones);
+        var ns = 'http://www.w3.org/2000/svg';
+
+        Object.keys(centers).forEach(function(zoneId) {
+            var label = zonePercentMap[zoneId];
+            if (label == null || label === '') return;
+            var displayText = zoneId === 'net_down' ? 'NET ' + label : label;
+            var xy = centers[zoneId];
+            var text = document.createElementNS(ns, 'text');
+            text.setAttribute('x', xy[0]);
+            text.setAttribute('y', xy[1]);
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('dominant-baseline', 'middle');
+            text.setAttribute('fill', '#fff');
+            text.setAttribute('font-size', 8);
+            text.setAttribute('font-weight', 'bold');
+            text.setAttribute('font-family', 'sans-serif');
+            text.setAttribute('pointer-events', 'none');
+            text.textContent = displayText;
+            svg.appendChild(text);
+        });
+
+        return svg;
+    }
+
+    /**
      * Show the court zone picker modal.
      * @param {object} [options]
      * @param {function(string)} [options.onZoneClick] - Called with zoneId when a zone is clicked.
@@ -532,5 +636,6 @@
         window.showReturnZonePicker = showReturnZonePicker;
         window.showRallyZonePicker = showRallyZonePicker;
         window.showServeZonePickerBySide = showServeZonePickerBySide;
+        window.buildServeCourtSvgForStats = buildServeCourtSvgForStats;
     }
 })();

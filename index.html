@@ -108,42 +108,6 @@
                         <button type="button" class="btn-secondary" id="account-logout-btn">Logout</button>
                     </div>
                 </section>
-                <section class="settings-section" id="pro-tracking-section">
-                    <h2>Pro Tracking</h2>
-                    <div class="setting-row">
-                        <span class="setting-label">Tracking Player</span>
-                        <select id="pro-tracking-player" aria-label="Tracking Player">
-                            <option value="">Select player</option>
-                        </select>
-                    </div>
-                    <div class="setting-row">
-                        <span class="setting-label">Serve</span>
-                        <label class="switch">
-                            <input type="checkbox" id="pro-tracking-serve" aria-label="Pro Tracking Serve">
-                            <span class="switch-slider"></span>
-                        </label>
-                    </div>
-                    <div class="setting-row">
-                        <span class="setting-label">Return</span>
-                        <label class="switch">
-                            <input type="checkbox" id="pro-tracking-return" aria-label="Pro Tracking Return">
-                            <span class="switch-slider"></span>
-                        </label>
-                    </div>
-                    <div class="setting-row">
-                        <span class="setting-label">Rally</span>
-                        <label class="switch">
-                            <input type="checkbox" id="pro-tracking-rally" aria-label="Pro Tracking Rally">
-                            <span class="switch-slider"></span>
-                        </label>
-                    </div>
-                    <div class="form-actions" style="margin-top: 12px;">
-                        <button type="button" class="btn-secondary" id="serve-picker-deuce-btn">Deuce</button>
-                        <button type="button" class="btn-secondary" id="serve-picker-ad-btn">Ad</button>
-                        <button type="button" class="btn-secondary" id="return-picker-btn">Return</button>
-                        <button type="button" class="btn-secondary" id="rally-picker-btn">Rally</button>
-                    </div>
-                </section>
             </div>
         </div>
 
@@ -294,6 +258,15 @@
                             <input type="checkbox" id="match-indoor">
                             Indoor
                         </label>
+                    </div>
+                    <div class="form-group hidden" id="match-tracking-serve-dropdown-row">
+                        <label>Tracking Player Serve</label>
+                        <select id="match-tracking-serve" aria-label="Tracking Player Serve">
+                            <option value="">Do not track</option>
+                        </select>
+                    </div>
+                    <div class="form-group hidden" id="match-tracking-serve-tip">
+                        <p class="setting-hint">Tips: You can track player's serve after log in.</p>
                     </div>
                     <div class="form-actions">
                         <button type="button" class="btn-secondary" onclick="app.showPage('matches')">Cancel</button>

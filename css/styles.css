@@ -1303,6 +1303,16 @@ body {
     height: auto;
     display: block;
 }
+.serve-zone-stats-body .serve-stats-section {
+    text-align: center;
+}
+.serve-zone-stats-body .serve-stats-section h4 {
+    text-align: center;
+}
+.serve-zone-stats-body .serve-stats-court-container .court-zone-svg {
+    margin-left: auto;
+    margin-right: auto;
+}
 .court-zone {
     cursor: pointer;
     opacity: 0.9;
