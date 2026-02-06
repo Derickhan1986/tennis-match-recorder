@@ -157,6 +157,12 @@ const app = {
                 window.showReturnZonePicker().then(handleServeZoneResult);
             });
         }
+        const rallyPickerBtn = document.getElementById('rally-picker-btn');
+        if (rallyPickerBtn && typeof window.showRallyZonePicker === 'function') {
+            rallyPickerBtn.addEventListener('click', () => {
+                window.showRallyZonePicker().then(handleServeZoneResult);
+            });
+        }
     },
     
     refreshSettingsAccount() {
