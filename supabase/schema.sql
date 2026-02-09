@@ -93,6 +93,19 @@ CREATE TRIGGER on_auth_user_deleted
     AFTER DELETE ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_user_deleted();
 
+-- Referral claims: one row per (referrer, referred) to grant 1 credit to referrer when referred user signs up.
+-- 推荐记录：每对 (referrer, referred) 一条，被邀请人注册后给分享人加 1 credit；仅后端 service role 访问。
+CREATE TABLE IF NOT EXISTS public.referral_claims (
+    referrer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    referred_user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (referrer_id, referred_user_id),
+    CHECK (referrer_id <> referred_user_id)
+);
+
+ALTER TABLE public.referral_claims ENABLE ROW LEVEL SECURITY;
+-- No policy: anon/authenticated cannot access; only service role used by API can insert/select.
+
 -- Optional: seed one Admin (replace with your email and run once)
 -- 可选：手动创建一个 Admin（将邮箱改为你的邮箱后执行一次）
 -- INSERT INTO public.profiles (id, email, role, credits)

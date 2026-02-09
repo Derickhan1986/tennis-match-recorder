@@ -9,6 +9,10 @@
 // Match Review API: backend proxy URL. Set to your Vercel/Netlify endpoint after deployment.
 // 比赛战报 API：后端代理地址。部署后在 Vercel/Netlify 中设置你的端点。
 const MATCH_REVIEW_API_URL = 'https://tennis-match-recorder.vercel.app/api/match-review'; // e.g. 'https://your-app.vercel.app/api/match-review'
+const REFERRAL_CLAIM_API_URL = 'https://tennis-match-recorder.vercel.app/api/referral-claim';
+const REFERRAL_APP_URL = 'https://derickhan1986.github.io/tennis-match-recorder/';
+const REFERRAL_PENDING_KEY = 'referral_pending';
+
 const app = {
     currentPage: 'matches',
 
@@ -35,6 +39,7 @@ const app = {
         this.setupAccountEvents();
         if (typeof auth !== 'undefined' && auth.init) {
             await auth.init().catch(() => {});
+            this.storeReferralParamIfNeeded();
             this.refreshSettingsAccount();
             if (auth.pendingPasswordRecovery) {
                 this.showPage('settings');
@@ -112,6 +117,69 @@ const app = {
         if (sendResetBtn) sendResetBtn.addEventListener('click', () => this.accountSendResetLink());
         if (cancelForgotBtn) cancelForgotBtn.addEventListener('click', () => this.hideForgotPasswordForm());
         if (updatePwBtn) updatePwBtn.addEventListener('click', () => this.accountUpdatePassword());
+        const feedbackBtn = document.getElementById('feedback-btn');
+        const shareAppBtn = document.getElementById('share-app-btn');
+        if (feedbackBtn) feedbackBtn.addEventListener('click', () => { window.location.href = 'mailto:donghan1986@icloud.com?subject=Tennis%20Match%20Recorder%20feedback'; });
+        if (shareAppBtn) shareAppBtn.addEventListener('click', () => this.handleShareAppClick());
+    },
+
+    storeReferralParamIfNeeded() {
+        try {
+            const params = new URLSearchParams(typeof window !== 'undefined' && window.location ? window.location.search : '');
+            const ref = params.get('ref');
+            if (!ref || (typeof auth !== 'undefined' && auth.isLoggedIn() && auth.user && auth.user.id === ref)) return;
+            if (typeof auth !== 'undefined' && auth.isLoggedIn()) return;
+            window.localStorage.setItem(REFERRAL_PENDING_KEY, ref);
+            if (window.history && window.history.replaceState) {
+                const u = new URL(window.location.href);
+                u.searchParams.delete('ref');
+                window.history.replaceState({}, '', u.pathname + (u.search || '') + (u.hash || ''));
+            }
+        } catch (e) {}
+    },
+
+    async tryClaimReferral() {
+        if (typeof auth === 'undefined' || !auth.isLoggedIn() || !auth.user) return;
+        let referrerId;
+        try {
+            referrerId = window.localStorage.getItem(REFERRAL_PENDING_KEY);
+        } catch (e) { return; }
+        if (!referrerId || referrerId === auth.user.id) return;
+        const token = await auth.getToken();
+        if (!token || !REFERRAL_CLAIM_API_URL) return;
+        try {
+            const res = await fetch(REFERRAL_CLAIM_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                body: JSON.stringify({ referrerId })
+            });
+            const data = res.ok ? (await res.json().catch(() => ({}))) : {};
+            window.localStorage.removeItem(REFERRAL_PENDING_KEY);
+            if (res.ok && data.ok) {
+                if (data.alreadyClaimed) return;
+                this.showToast('Thanks for signing up via a referral. Your referrer earned 1 credit.', 'success', 5000);
+                if (typeof auth !== 'undefined' && auth.fetchProfile) await auth.fetchProfile();
+            }
+        } catch (e) {
+            console.warn('Referral claim failed:', e);
+        }
+    },
+
+    handleShareAppClick() {
+        if (typeof auth === 'undefined' || !auth.isLoggedIn() || !auth.user) {
+            this.showToast('Log in to get your referral link', 'info');
+            return;
+        }
+        const url = REFERRAL_APP_URL + (REFERRAL_APP_URL.indexOf('?') >= 0 ? '&' : '?') + 'ref=' + encodeURIComponent(auth.user.id);
+        const subject = encodeURIComponent('Tennis Match Recorder – try this app');
+        const body = encodeURIComponent('Try Tennis Match Recorder (record matches and track serve zones):\n\n' + url + '\n\nIf you sign up via this link, I\'ll get 1 credit.');
+        const mailto = 'mailto:?subject=' + subject + '&body=' + body;
+        try {
+            navigator.clipboard.writeText(url).then(() => {
+                this.showToast('Link copied. Opening email – you\'ll get 1 credit when they sign up via the link.', 'success', 5000);
+            }).catch(() => {});
+        } catch (e) {}
+        window.location.href = mailto;
     },
 
     refreshNewMatchTrackingServeDropdown() {
@@ -182,8 +250,11 @@ const app = {
         const isUser = role === 'User';
         if (creditsRow) creditsRow.classList.toggle('hidden', !isUser);
         if (creditsEl) creditsEl.textContent = isUser ? auth.getCredits() : '-';
+        const shareAppBtn = document.getElementById('share-app-btn');
+        if (shareAppBtn) shareAppBtn.disabled = !auth.isLoggedIn();
+        this.tryClaimReferral();
     },
-    
+
     async accountLogin() {
         const email = document.getElementById('account-email')?.value?.trim();
         const password = document.getElementById('account-password')?.value;
