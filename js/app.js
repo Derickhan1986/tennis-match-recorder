@@ -233,9 +233,11 @@ const app = {
         if (forgotBlock) forgotBlock.classList.add('hidden');
         if (recoveryBlock) recoveryBlock.classList.toggle('hidden', !isRecovery);
         if (loginRow) loginRow.classList.toggle('hidden', isRecovery);
+        const achievementsSection = document.getElementById('achievements-section');
         if (isRecovery) {
             if (loggedOut) loggedOut.classList.remove('hidden');
             if (loggedIn) loggedIn.classList.add('hidden');
+            if (achievementsSection) achievementsSection.classList.add('hidden');
             const statusEl = document.getElementById('account-recovery-status');
             if (statusEl) statusEl.textContent = '';
             return;
@@ -243,10 +245,12 @@ const app = {
         if (typeof auth === 'undefined' || !auth.isLoggedIn()) {
             if (loggedOut) loggedOut.classList.remove('hidden');
             if (loggedIn) loggedIn.classList.add('hidden');
+            if (achievementsSection) achievementsSection.classList.add('hidden');
             return;
         }
         if (loggedOut) loggedOut.classList.add('hidden');
         if (loggedIn) loggedIn.classList.remove('hidden');
+        if (achievementsSection) achievementsSection.classList.remove('hidden');
         const emailEl = document.getElementById('account-display-email');
         const roleEl = document.getElementById('account-display-role');
         const creditsEl = document.getElementById('account-display-credits');
