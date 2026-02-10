@@ -169,6 +169,14 @@ const handler = async function (req, res) {
             } else {
                 console.log('[MatchReview API] skip deduct: not User role or no profile');
             }
+            try {
+                const reviewUsageRes = await fetch(`${supabaseUrl}/rest/v1/review_usage`, {
+                    method: 'POST',
+                    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                    body: JSON.stringify({ user_id: userAgain.id })
+                });
+                if (!reviewUsageRes.ok) console.warn('[MatchReview API] review_usage insert failed:', reviewUsageRes.status);
+            } catch (e) { console.warn('[MatchReview API] review_usage insert error:', e.message); }
         }
         console.log('[MatchReview API] success, returning review length=', content.length);
         res.status(200).json({ review: content });

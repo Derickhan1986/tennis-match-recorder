@@ -106,6 +106,28 @@ CREATE TABLE IF NOT EXISTS public.referral_claims (
 ALTER TABLE public.referral_claims ENABLE ROW LEVEL SECURITY;
 -- No policy: anon/authenticated cannot access; only service role used by API can insert/select.
 
+-- Achievement unlocks: one row per (user, achievement); only backend inserts.
+CREATE TABLE IF NOT EXISTS public.user_achievement_unlocks (
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    achievement_id TEXT NOT NULL,
+    unlocked_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, achievement_id)
+);
+ALTER TABLE public.user_achievement_unlocks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can read own achievement unlocks"
+    ON public.user_achievement_unlocks FOR SELECT
+    USING (auth.uid() = user_id);
+
+-- Review usage: record when user uses Match Review (for post_game achievement).
+CREATE TABLE IF NOT EXISTS public.review_usage (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_review_usage_user ON public.review_usage(user_id);
+ALTER TABLE public.review_usage ENABLE ROW LEVEL SECURITY;
+-- No INSERT policy for anon/authenticated; only service role writes.
+
 -- Optional: seed one Admin (replace with your email and run once)
 -- 可选：手动创建一个 Admin（将邮箱改为你的邮箱后执行一次）
 -- INSERT INTO public.profiles (id, email, role, credits)

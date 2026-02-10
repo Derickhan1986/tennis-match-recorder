@@ -12,9 +12,15 @@ const MATCH_REVIEW_API_URL = 'https://tennis-match-recorder.vercel.app/api/match
 const REFERRAL_CLAIM_API_URL = 'https://tennis-match-recorder.vercel.app/api/referral-claim';
 const REFERRAL_APP_URL = 'https://derickhan1986.github.io/tennis-match-recorder/';
 const REFERRAL_PENDING_KEY = 'referral_pending';
+const ACHIEVEMENTS_API_URL = 'https://tennis-match-recorder.vercel.app/api/achievements';
+const ACHIEVEMENT_CLAIM_API_URL = 'https://tennis-match-recorder.vercel.app/api/achievement-claim';
+const ACHIEVEMENT_STAR_EMPTY = 'icons/star-empty.svg';
+const ACHIEVEMENT_STAR_FILLED = 'icons/star-filled.svg';
+const ACHIEVEMENT_IDS = ['call_to_arm', 'first_show', 'being_supportive', 'post_game', 'big_server', 'big_target', 'friendship', 'long_term_run', 'grand_slam'];
 
 const app = {
     currentPage: 'matches',
+    unlockedAchievementIds: [],
 
     // Initialize app
     // 初始化应用
@@ -253,6 +259,120 @@ const app = {
         const shareAppBtn = document.getElementById('share-app-btn');
         if (shareAppBtn) shareAppBtn.disabled = !auth.isLoggedIn();
         this.tryClaimReferral();
+        const starsRow = document.getElementById('account-stars-row');
+        if (starsRow) starsRow.classList.remove('hidden');
+        this.getUnlockedAchievements().then(() => {
+            this.refreshAchievementsUI();
+            this.runAchievementClaimChecks();
+        });
+    },
+
+    async getUnlockedAchievements() {
+        if (typeof auth === 'undefined' || !auth.isLoggedIn() || !ACHIEVEMENTS_API_URL) return;
+        const accessToken = auth.getToken ? await auth.getToken() : null;
+        if (!accessToken) return;
+        try {
+            const res = await fetch(ACHIEVEMENTS_API_URL, { headers: { Authorization: 'Bearer ' + accessToken } });
+            if (res.ok) {
+                const data = await res.json();
+                this.unlockedAchievementIds = Array.isArray(data.unlockedIds) ? data.unlockedIds : [];
+            }
+        } catch (e) { console.warn('[Achievements] fetch failed', e); }
+    },
+
+    refreshAchievementsUI() {
+        const starsEl = document.getElementById('account-display-stars');
+        const list = document.getElementById('achievements-list');
+        if (starsEl) starsEl.textContent = this.unlockedAchievementIds.length + ' / 9';
+        if (!list) return;
+        list.querySelectorAll('[data-achievement-id]').forEach(li => {
+            const id = li.getAttribute('data-achievement-id');
+            const img = li.querySelector('.achievement-star');
+            const unlocked = this.unlockedAchievementIds.includes(id);
+            if (img) { img.src = unlocked ? ACHIEVEMENT_STAR_FILLED : ACHIEVEMENT_STAR_EMPTY; img.alt = unlocked ? 'unlocked' : 'locked'; }
+        });
+    },
+
+    async runAchievementClaimChecks() {
+        if (typeof auth === 'undefined' || !auth.isLoggedIn()) return;
+        const unlocked = this.unlockedAchievementIds;
+        const tryClaim = (id) => { if (!unlocked.includes(id)) this.tryClaimAchievement(id); };
+        tryClaim('call_to_arm');
+        tryClaim('first_show');
+        tryClaim('long_term_run');
+        tryClaim('grand_slam');
+        tryClaim('big_server');
+        tryClaim('friendship');
+        tryClaim('post_game');
+    },
+
+    async tryClaimAchievement(achievementId) {
+        if (!ACHIEVEMENT_IDS.includes(achievementId)) return;
+        if (this.unlockedAchievementIds.includes(achievementId)) return;
+        const accessToken = typeof auth !== 'undefined' && auth.getToken ? await auth.getToken() : null;
+        if (!accessToken || !ACHIEVEMENT_CLAIM_API_URL) return;
+
+        const checkLocal = async () => {
+            switch (achievementId) {
+                case 'call_to_arm': {
+                    const players = await storage.getAllPlayers();
+                    return Array.isArray(players) && players.length >= 2;
+                }
+                case 'first_show': {
+                    const matches = await storage.getAllMatches();
+                    const completed = matches.filter(m => m.status === 'completed');
+                    return completed.length >= 1;
+                }
+                case 'being_supportive':
+                    return true;
+                case 'post_game':
+                case 'friendship':
+                    return true;
+                case 'big_server': {
+                    const matches = await storage.getAllMatches();
+                    const completed = matches.filter(m => m.status === 'completed');
+                    for (const m of completed) {
+                        const log = storage.getProTrackingServeLog ? storage.getProTrackingServeLog(m.id) : [];
+                        if (Array.isArray(log) && log.length > 0) return true;
+                    }
+                    return false;
+                }
+                case 'big_target':
+                    return true;
+                case 'long_term_run': {
+                    const matches = await storage.getAllMatches();
+                    const completed = matches.filter(m => m.status === 'completed');
+                    return completed.length >= 10;
+                }
+                case 'grand_slam': {
+                    const matches = await storage.getAllMatches();
+                    const completed = matches.filter(m => m.status === 'completed');
+                    return completed.length >= 32;
+                }
+                default:
+                    return false;
+            }
+        };
+
+        const ok = await checkLocal();
+        if (!ok) return;
+
+        try {
+            const res = await fetch(ACHIEVEMENT_CLAIM_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + accessToken },
+                body: JSON.stringify({ achievementId })
+            });
+            const data = res.ok ? await res.json().catch(() => ({})) : null;
+            if (res.ok && data && data.ok !== false) {
+                await this.getUnlockedAchievements();
+                this.refreshAchievementsUI();
+                if (typeof auth !== 'undefined' && auth.fetchProfile) await auth.fetchProfile();
+                this.showToast('Achievement unlocked!', 'success');
+            }
+        } catch (e) {
+            console.warn('[Achievements] claim failed', achievementId, e);
+        }
     },
 
     async accountLogin() {
@@ -881,6 +1001,8 @@ const app = {
                 this.showToast('Player not found', 'error');
                 return;
             }
+            const playerMatches = await storage.getMatchesByPlayer(playerId);
+            if (playerMatches.length >= 1) this.tryClaimAchievement('big_target');
             
             // Calculate statistics (real-time calculation)
             // 计算统计（实时计算）
@@ -2051,6 +2173,7 @@ const app = {
             if (typeof auth !== 'undefined' && auth.fetchProfile) await auth.fetchProfile();
             this.showMatchReviewModal(reviewText, player1Name, player2Name, match.startTime);
             this.showToast('Review ready', 'success');
+            this.tryClaimAchievement('post_game');
         } catch (error) {
             console.log('[MatchReview] catch:', error.message);
             console.error('Error requesting match review:', error);
@@ -2132,6 +2255,7 @@ const app = {
             match.updatedAt = new Date().toISOString();
             await storage.saveMatch(match);
             this.showToast('Comment saved', 'success');
+            if (value) this.tryClaimAchievement('being_supportive');
             close();
             if (this.currentPage === 'match-detail') this.showMatchDetail(matchId);
         });

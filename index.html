@@ -105,6 +105,7 @@
                         <div class="detail-row"><span>Email</span><span id="account-display-email"></span></div>
                         <div class="detail-row"><span>Role</span><span id="account-display-role"></span></div>
                         <div class="detail-row" id="account-credits-row"><span>Credits</span><span id="account-display-credits"></span></div>
+                        <div class="detail-row" id="account-stars-row"><span>Achievement stars</span><span id="account-display-stars">0 / 9</span></div>
                         <button type="button" class="btn-secondary" id="account-logout-btn">Logout</button>
                     </div>
                 </section>
@@ -115,6 +116,21 @@
                         <button type="button" class="btn-secondary" id="feedback-btn">Feedback</button>
                         <button type="button" class="btn-secondary" id="share-app-btn">Share this APP</button>
                     </div>
+                </section>
+                <section class="settings-section" id="achievements-section">
+                    <h2>Achievements</h2>
+                    <p class="setting-hint">Unlock achievements by using the app. Each gives one star.</p>
+                    <ul id="achievements-list" class="achievements-list">
+                        <li data-achievement-id="call_to_arm"><span class="achievement-name">Call to arm</span><span class="achievement-desc">Add at least 2 players</span><img class="achievement-star" src="icons/star-empty.svg" alt="locked" width="20" height="20"></li>
+                        <li data-achievement-id="first_show"><span class="achievement-name">First Show</span><span class="achievement-desc">Record 1 completed match</span><img class="achievement-star" src="icons/star-empty.svg" alt="locked" width="20" height="20"></li>
+                        <li data-achievement-id="being_supportive"><span class="achievement-name">Being Supportive</span><span class="achievement-desc">Save a comment on a match</span><img class="achievement-star" src="icons/star-empty.svg" alt="locked" width="20" height="20"></li>
+                        <li data-achievement-id="post_game"><span class="achievement-name">Post game</span><span class="achievement-desc">Use Match Review once</span><img class="achievement-star" src="icons/star-empty.svg" alt="locked" width="20" height="20"></li>
+                        <li data-achievement-id="big_server"><span class="achievement-name">Big server</span><span class="achievement-desc">Complete a match with serve tracking</span><img class="achievement-star" src="icons/star-empty.svg" alt="locked" width="20" height="20"></li>
+                        <li data-achievement-id="big_target"><span class="achievement-name">Big Target</span><span class="achievement-desc">View a player's match list</span><img class="achievement-star" src="icons/star-empty.svg" alt="locked" width="20" height="20"></li>
+                        <li data-achievement-id="friendship"><span class="achievement-name">Friendship</span><span class="achievement-desc">Share app and have someone sign up</span><img class="achievement-star" src="icons/star-empty.svg" alt="locked" width="20" height="20"></li>
+                        <li data-achievement-id="long_term_run"><span class="achievement-name">Long term run</span><span class="achievement-desc">Record 10 completed matches</span><img class="achievement-star" src="icons/star-empty.svg" alt="locked" width="20" height="20"></li>
+                        <li data-achievement-id="grand_slam"><span class="achievement-name">Grand Slam</span><span class="achievement-desc">Record 32 completed matches</span><img class="achievement-star" src="icons/star-empty.svg" alt="locked" width="20" height="20"></li>
+                    </ul>
                 </section>
             </div>
         </div>

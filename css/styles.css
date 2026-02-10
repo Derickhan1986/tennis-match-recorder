@@ -913,6 +913,34 @@ body {
     font-size: 20px;
 }
 
+.achievements-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.achievements-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+.achievements-list li:last-child {
+    border-bottom: none;
+}
+.achievement-name {
+    font-weight: 600;
+    min-width: 120px;
+}
+.achievement-desc {
+    flex: 1;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+.achievement-star {
+    flex-shrink: 0;
+}
+
 .setting-item {
     margin-bottom: 16px;
 }
