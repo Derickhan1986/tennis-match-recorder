@@ -714,6 +714,9 @@ class MatchRecorder {
 
     async maybeShowServeZonePicker() {
         if (!this.currentMatch || !this.matchEngine || this.currentMatch.status === 'completed') return;
+        // Match already won, waiting for user to confirm end – do not show serve zone picker
+        // 比赛已分出胜负、等待用户确认结束时不弹出发球落点选择
+        if (this.currentMatch.winner && this.currentMatch.status !== 'completed') return;
         if (this.pendingAfterGreenZone || this.isUndoing) return;
         if (!this.getProTrackingServeOn()) return;
         const trackingSide = this.getTrackingPlayerSide();
