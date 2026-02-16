@@ -43,6 +43,7 @@ const app = {
         this.setupNavigation();
         this.setupEventListeners();
         this.setupAccountEvents();
+        this.setupAddToHomeScreen();
         if (typeof auth !== 'undefined' && auth.init) {
             await auth.init().catch(() => {});
             this.storeReferralParamIfNeeded();
@@ -139,6 +140,27 @@ const app = {
         const shareAppBtn = document.getElementById('share-app-btn');
         if (feedbackBtn) feedbackBtn.addEventListener('click', () => { window.location.href = 'mailto:donghan1986@icloud.com?subject=Tennis%20Match%20Recorder%20feedback'; });
         if (shareAppBtn) shareAppBtn.addEventListener('click', () => this.handleShareAppClick());
+    },
+
+    // Add to Home Screen: show button only when browser supports beforeinstallprompt (e.g. Android Chrome)
+    setupAddToHomeScreen() {
+        const wrap = document.getElementById('add-to-home-button-wrap');
+        const btn = document.getElementById('add-to-home-btn');
+        if (!wrap || !btn) return;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            window._deferredInstallPrompt = e;
+            wrap.classList.remove('hidden');
+        });
+        btn.addEventListener('click', async () => {
+            const prompt = window._deferredInstallPrompt;
+            if (!prompt) return;
+            prompt.prompt();
+            const result = await prompt.userChoice;
+            if (result && result.outcome === 'accepted') this.showToast('Added to home screen', 'success');
+            window._deferredInstallPrompt = null;
+            if (wrap) wrap.classList.add('hidden');
+        });
     },
 
     storeReferralParamIfNeeded() {
