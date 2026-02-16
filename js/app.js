@@ -60,7 +60,19 @@ const app = {
         
         // Show initial page: if user landed from reset-password email link, show Log in with set-new-password form
         // 显示初始页面：若从重置密码邮件链接进入，则显示 Log in 并展示设置新密码表单
-        const initialPage = (typeof auth !== 'undefined' && auth.pendingPasswordRecovery) ? 'settings' : 'matches';
+        let initialPage = (typeof auth !== 'undefined' && auth.pendingPasswordRecovery) ? 'settings' : 'matches';
+        const params = new URLSearchParams(typeof window !== 'undefined' && window.location ? window.location.search : '');
+        const prefillEmail = params.get('email');
+        if (prefillEmail && typeof prefillEmail === 'string' && prefillEmail.trim()) {
+            initialPage = 'settings';
+            const emailEl = document.getElementById('account-email');
+            if (emailEl) emailEl.value = prefillEmail.trim();
+            if (window.history && window.history.replaceState) {
+                const u = new URL(window.location.href);
+                u.searchParams.delete('email');
+                window.history.replaceState({}, '', u.pathname + (u.search || '') + (u.hash || ''));
+            }
+        }
         this.showPage(initialPage);
     },
     

@@ -52,7 +52,32 @@
     <div class="card">
         <h1>Thank you</h1>
         <p>Your email has been confirmed. You can now log in to Tennis Match Recorder and use all features.</p>
-        <a href="index.html">Go to App</a>
+        <a id="go-to-app" href="index.html">Go to App</a>
     </div>
+    <script>
+        (function() {
+            // Supabase redirects here with hash: access_token=...&type=signup. Decode JWT to get email and pass it so the app can pre-fill the login field.
+            var hash = (window.location.hash || '').replace(/^#/, '');
+            if (!hash) return;
+            var params = {};
+            hash.split('&').forEach(function(pair) {
+                var i = pair.indexOf('=');
+                if (i !== -1) params[decodeURIComponent(pair.slice(0, i))] = decodeURIComponent((pair.slice(i + 1) || '').replace(/\+/g, ' '));
+            });
+            var accessToken = params.access_token;
+            if (!accessToken) return;
+            try {
+                var parts = accessToken.split('.');
+                if (parts.length !== 3) return;
+                var base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+                var payload = JSON.parse(atob(base64));
+                var email = payload && (payload.email || payload.email_address);
+                if (email && typeof email === 'string') {
+                    var link = document.getElementById('go-to-app');
+                    if (link) link.href = 'index.html?email=' + encodeURIComponent(email.trim());
+                }
+            } catch (e) {}
+        })();
+    </script>
 </body>
 </html>
