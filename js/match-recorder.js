@@ -801,10 +801,24 @@ class MatchRecorder {
         switch (action) {
             case 'serve-fault':
                 // Serve fault - only valid if clicked by server
-                // 发球失误 - 只有发球方点击才有效
+                // 发球失误 - 只有发球方点击才有效（双误时对手得分，match engine 会更新 match.winner）
                 if (player === server) {
                     this.matchEngine.recordPoint(server, 'Serve Fault', null);
                     this.updateDisplay();
+                    // Same as recordPoint: show match end confirmation if this point ended the match (e.g. double fault)
+                    // 与 recordPoint 一致：若此分结束比赛（如双误）则显示结束确认框
+                    if (this.currentMatch.winner && this.currentMatch.status !== 'completed') {
+                        this.showMatchEndConfirmation();
+                    } else if (this.currentMatch.status === 'completed') {
+                        app.showToast('Match completed!', 'success');
+                        setTimeout(() => {
+                            app.showPage('matches');
+                            this.currentMatch = null;
+                            this.matchEngine = null;
+                            this.player1 = null;
+                            this.player2 = null;
+                        }, 2000);
+                    }
                     return;
                 }
                 break;
