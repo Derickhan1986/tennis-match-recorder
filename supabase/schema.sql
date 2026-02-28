@@ -128,6 +128,27 @@ CREATE INDEX IF NOT EXISTS idx_review_usage_user ON public.review_usage(user_id)
 ALTER TABLE public.review_usage ENABLE ROW LEVEL SECURITY;
 -- No INSERT policy for anon/authenticated; only service role writes.
 
+-- Match shares: sender shares matches to recipient; never deleted; marked imported_at/refused_at when acted on.
+CREATE TABLE IF NOT EXISTS public.match_shares (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    sender_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    recipient_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    players_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+    matches_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+    message TEXT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at TIMESTAMPTZ NULL,
+    imported_at TIMESTAMPTZ NULL,
+    refused_at TIMESTAMPTZ NULL
+);
+CREATE INDEX IF NOT EXISTS idx_match_shares_recipient ON public.match_shares(recipient_id);
+CREATE INDEX IF NOT EXISTS idx_match_shares_sender_created ON public.match_shares(sender_id, created_at);
+ALTER TABLE public.match_shares ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Recipients can read own match shares"
+    ON public.match_shares FOR SELECT
+    USING (auth.uid() = recipient_id);
+-- INSERT/UPDATE only via backend service role.
+
 -- Optional: seed one Admin (replace with your email and run once)
 -- 可选：手动创建一个 Admin（将邮箱改为你的邮箱后执行一次）
 -- INSERT INTO public.profiles (id, email, role, credits)

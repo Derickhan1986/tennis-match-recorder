@@ -280,6 +280,10 @@ const app = {
             if (loggedOut) loggedOut.classList.remove('hidden');
             if (loggedIn) loggedIn.classList.add('hidden');
             if (achievementsSection) achievementsSection.classList.add('hidden');
+            const badge = document.getElementById('shared-inbox-badge');
+            const inboxRow = document.getElementById('account-inbox-row');
+            if (badge) { badge.classList.add('hidden'); badge.textContent = ''; }
+            if (inboxRow) inboxRow.classList.add('hidden');
             return;
         }
         if (loggedOut) loggedOut.classList.add('hidden');
@@ -299,10 +303,41 @@ const app = {
         this.tryClaimReferral();
         const starsRow = document.getElementById('account-stars-row');
         if (starsRow) starsRow.classList.remove('hidden');
+        this.fetchSharedInboxCount().then((count) => {
+            const badge = document.getElementById('shared-inbox-badge');
+            const inboxRow = document.getElementById('account-inbox-row');
+            const countEl = document.getElementById('account-inbox-count');
+            if (badge) {
+                badge.textContent = count > 0 ? (count > 99 ? '99+' : String(count)) : '';
+                badge.classList.toggle('hidden', count === 0);
+            }
+            if (inboxRow) inboxRow.classList.toggle('hidden', count === 0);
+            if (countEl) countEl.textContent = count;
+        });
+        const inboxOpenBtn = document.getElementById('account-inbox-open-btn');
+        if (inboxOpenBtn && !inboxOpenBtn.dataset.bound) {
+            inboxOpenBtn.dataset.bound = '1';
+            inboxOpenBtn.addEventListener('click', () => this.openSharedInboxModal());
+        }
         this.getUnlockedAchievements().then(() => {
             this.refreshAchievementsUI();
             this.runAchievementClaimChecks();
         });
+    },
+
+    async fetchSharedInboxCount() {
+        if (typeof auth === 'undefined' || !auth.isLoggedIn()) return 0;
+        const apiUrl = this.getDataApiUrl();
+        if (!apiUrl) return 0;
+        const token = auth.getToken ? await auth.getToken() : auth.accessToken;
+        if (!token) return 0;
+        try {
+            const res = await fetch(apiUrl + '/api/data/shared-inbox', { headers: { Authorization: 'Bearer ' + token } });
+            if (!res.ok) return 0;
+            const data = await res.json();
+            const items = data.items;
+            return Array.isArray(items) ? items.length : 0;
+        } catch (e) { return 0; }
     },
 
     async getUnlockedAchievements() {
@@ -986,6 +1021,8 @@ const app = {
             const commentBtnText = 'Comment';
             const proTrackingLog = storage.getProTrackingServeLog ? storage.getProTrackingServeLog(match.id) : [];
             const hasProTrackingServe = Array.isArray(proTrackingLog) && proTrackingLog.length > 0;
+            // Share button only when logged in
+            const shareBtnHtml = matchReviewLoggedIn ? `<button class="btn-secondary" onclick="app.openShareModal('${match.id}')">Share</button>` : '';
             // Both buttons always clickable; when not logged in, click shows "Log in to use". Comment needs only login; Match Review needs login + credit.
             console.log('[MatchReview Debug] button state: loggedIn=', matchReviewLoggedIn, ', text=', matchReviewBtnText, ', auth.user=', !!auth?.user, ', auth.accessToken=', !!auth?.accessToken);
             
@@ -1028,6 +1065,7 @@ const app = {
                 
                 <div class="form-actions">
                     <button class="btn-secondary comment-btn" onclick="app.openCommentModal('${match.id}')">${commentBtnText}</button>
+                    ${shareBtnHtml}
                     <button class="btn-secondary" onclick="app.requestMatchReview('${match.id}')">${matchReviewBtnText}</button>
                     ${hasProTrackingServe ? `<button class="btn-secondary" onclick="app.showProTrackingServeAnalysisModal('${match.id}')">Serve Zone Statistics</button>` : ''}
                 </div>
@@ -2329,6 +2367,266 @@ const app = {
         });
         document.body.appendChild(overlay);
         updateCount();
+    },
+
+    getDataApiUrl() {
+        const base = (typeof window !== 'undefined' && window.DATA_API_URL) ? window.DATA_API_URL : '';
+        if (base) return base.replace(/\/$/, '');
+        if (typeof MATCH_REVIEW_API_URL !== 'undefined' && MATCH_REVIEW_API_URL) {
+            return MATCH_REVIEW_API_URL.replace(/\/api\/match-review\/?$/, '');
+        }
+        return '';
+    },
+
+    async openShareModal(matchId) {
+        if (typeof auth === 'undefined' || !auth.isLoggedIn()) {
+            this.showToast('Log in to share', 'error', 5000);
+            return;
+        }
+        const match = await storage.getMatch(matchId);
+        if (!match) {
+            this.showToast('Match not found', 'error');
+            return;
+        }
+        const player1 = await storage.getPlayer(match.player1Id);
+        const player2 = await storage.getPlayer(match.player2Id);
+        const player1Name = player1 ? player1.name : 'Unknown Player 1';
+        const player2Name = player2 ? player2.name : 'Unknown Player 2';
+        const matchPayload = { ...match, player1Name, player2Name };
+        const overlay = document.createElement('div');
+        overlay.className = 'modal';
+        overlay.setAttribute('aria-label', 'Share match');
+        const content = document.createElement('div');
+        content.className = 'modal-content';
+        content.innerHTML = `
+            <div class="modal-header">
+                <h3>Share match</h3>
+                <button type="button" class="modal-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="setting-hint">Share this match via email. The recipient must have an account. Cost: 1 credit.</p>
+                <div class="form-group">
+                    <label>Recipient email *</label>
+                    <input type="email" id="share-recipient-email" placeholder="email@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Message (optional)</label>
+                    <textarea id="share-message" rows="2" placeholder="Add a message..." style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px;"></textarea>
+                </div>
+                <div id="share-modal-status" class="setting-hint"></div>
+                <div class="form-actions">
+                    <button type="button" class="btn-primary" id="share-submit-btn">Send</button>
+                    <button type="button" class="btn-secondary modal-close-btn">Close</button>
+                </div>
+            </div>
+        `;
+        overlay.appendChild(content);
+        const close = () => {
+            overlay.classList.add('hidden');
+            setTimeout(() => overlay.remove(), 300);
+        };
+        content.querySelector('.modal-close').addEventListener('click', close);
+        content.querySelector('.modal-close-btn').addEventListener('click', close);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+        const statusEl = content.querySelector('#share-modal-status');
+        const submitBtn = content.querySelector('#share-submit-btn');
+        submitBtn.addEventListener('click', async () => {
+            const email = (content.querySelector('#share-recipient-email').value || '').trim();
+            const message = (content.querySelector('#share-message').value || '').trim();
+            if (!email) {
+                if (statusEl) statusEl.textContent = 'Please enter recipient email.';
+                return;
+            }
+            const apiUrl = this.getDataApiUrl();
+            if (!apiUrl) {
+                if (statusEl) statusEl.textContent = 'API not configured.';
+                return;
+            }
+            const token = auth.getToken ? await auth.getToken() : auth.accessToken;
+            if (!token) {
+                this.showToast('Session expired. Please log in again.', 'error');
+                close();
+                return;
+            }
+            submitBtn.disabled = true;
+            if (statusEl) statusEl.textContent = 'Sending...';
+            try {
+                const res = await fetch(apiUrl + '/api/data/share', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                    body: JSON.stringify({ recipientEmail: email, matches: [matchPayload], message: message || null })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    this.showToast('Match shared successfully', 'success');
+                    if (auth.fetchProfile) await auth.fetchProfile();
+                    close();
+                    return;
+                }
+                if (statusEl) statusEl.textContent = data.error || 'Failed to share';
+                submitBtn.disabled = false;
+            } catch (e) {
+                if (statusEl) statusEl.textContent = 'Network error. Try again.';
+                submitBtn.disabled = false;
+            }
+        });
+        document.body.appendChild(overlay);
+    },
+
+    async importSharedMatches(matches) {
+        if (!Array.isArray(matches) || matches.length === 0) return;
+        const players = await storage.getAllPlayers();
+        const findOrCreatePlayer = async (name) => {
+            const n = (name && String(name).trim()) || 'Unknown';
+            const existing = players.find((p) => p.name && p.name.trim().toLowerCase() === n.toLowerCase());
+            if (existing) return existing.id;
+            const newPlayer = createPlayer({ name: n });
+            await storage.savePlayer(newPlayer);
+            players.push(newPlayer);
+            return newPlayer.id;
+        };
+        for (const m of matches) {
+            const player1Name = m.player1Name || m.player1;
+            const player2Name = m.player2Name || m.player2;
+            const p1Id = await findOrCreatePlayer(player1Name);
+            const p2Id = await findOrCreatePlayer(player2Name);
+            const matchCopy = { ...m };
+            matchCopy.player1Id = p1Id;
+            matchCopy.player2Id = p2Id;
+            matchCopy.id = typeof generateUUID === 'function' ? generateUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); });
+            delete matchCopy.player1Name;
+            delete matchCopy.player2Name;
+            delete matchCopy.player1;
+            delete matchCopy.player2;
+            await storage.saveMatch(matchCopy);
+        }
+    },
+
+    async openSharedInboxModal() {
+        if (typeof auth === 'undefined' || !auth.isLoggedIn()) {
+            this.showToast('Log in to view inbox', 'error');
+            return;
+        }
+        const apiUrl = this.getDataApiUrl();
+        if (!apiUrl) {
+            this.showToast('API not configured', 'error');
+            return;
+        }
+        const token = auth.getToken ? await auth.getToken() : auth.accessToken;
+        if (!token) {
+            this.showToast('Session expired. Please log in again.', 'error');
+            return;
+        }
+        let items = [];
+        try {
+            const res = await fetch(apiUrl + '/api/data/shared-inbox', { headers: { Authorization: 'Bearer ' + token } });
+            if (!res.ok) throw new Error('Failed to load inbox');
+            const data = await res.json();
+            items = Array.isArray(data.items) ? data.items : [];
+        } catch (e) {
+            this.showToast('Failed to load shared matches', 'error');
+            return;
+        }
+        const overlay = document.createElement('div');
+        overlay.className = 'modal';
+        overlay.setAttribute('aria-label', 'Shared matches inbox');
+        const content = document.createElement('div');
+        content.className = 'modal-content';
+        const listHtml = items.length === 0
+            ? '<p class="setting-hint">No pending shared matches.</p>'
+            : '<ul class="shared-inbox-list">' + items.map((item) => {
+                const senderEmail = (item.sender && item.sender.email) ? item.sender.email : 'Someone';
+                const dateStr = item.created_at ? new Date(item.created_at).toLocaleString() : '';
+                const msg = (item.message && String(item.message).trim()) ? this.escapeHtml(item.message) : '';
+                return `<li class="shared-inbox-item" data-id="${this.escapeHtml(item.id)}">
+                    <div class="shared-inbox-item-head">${this.escapeHtml(senderEmail)} · ${dateStr}</div>
+                    ${msg ? `<div class="shared-inbox-item-msg">${msg}</div>` : ''}
+                    <div class="form-actions form-actions-inline">
+                        <button type="button" class="btn-primary shared-inbox-import-btn">Import</button>
+                        <button type="button" class="btn-secondary shared-inbox-refuse-btn">Refuse</button>
+                    </div>
+                </li>`;
+            }).join('') + '</ul>';
+        content.innerHTML = `
+            <div class="modal-header">
+                <h3>Shared matches</h3>
+                <button type="button" class="modal-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                ${listHtml}
+                <div class="form-actions" style="margin-top: 12px;">
+                    <button type="button" class="btn-secondary modal-close-btn">Close</button>
+                </div>
+            </div>
+        `;
+        overlay.appendChild(content);
+        const close = () => {
+            overlay.classList.add('hidden');
+            setTimeout(() => {
+                overlay.remove();
+                this.fetchSharedInboxCount().then((count) => {
+                    const badge = document.getElementById('shared-inbox-badge');
+                    const inboxRow = document.getElementById('account-inbox-row');
+                    const countEl = document.getElementById('account-inbox-count');
+                    if (badge) { badge.textContent = count > 0 ? (count > 99 ? '99+' : String(count)) : ''; badge.classList.toggle('hidden', count === 0); }
+                    if (inboxRow) inboxRow.classList.toggle('hidden', count === 0);
+                    if (countEl) countEl.textContent = count;
+                });
+            }, 300);
+        };
+        content.querySelector('.modal-close').addEventListener('click', close);
+        content.querySelector('.modal-close-btn').addEventListener('click', close);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+        content.querySelectorAll('.shared-inbox-import-btn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+                const li = btn.closest('.shared-inbox-item');
+                const id = li && li.dataset.id;
+                if (!id) return;
+                btn.disabled = true;
+                try {
+                    const getRes = await fetch(apiUrl + '/api/data/shared-inbox?id=' + encodeURIComponent(id), { headers: { Authorization: 'Bearer ' + token } });
+                    if (!getRes.ok) throw new Error('Failed to load share');
+                    const payload = await getRes.json();
+                    const matches = payload.matches;
+                    if (Array.isArray(matches) && matches.length > 0) {
+                        await this.importSharedMatches(matches);
+                    }
+                    const postRes = await fetch(apiUrl + '/api/data/shared-inbox', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                        body: JSON.stringify({ id, action: 'import' })
+                    });
+                    if (!postRes.ok) throw new Error('Failed to mark as imported');
+                    this.showToast('Matches imported', 'success');
+                    close();
+                } catch (err) {
+                    this.showToast(err.message || 'Import failed', 'error');
+                    btn.disabled = false;
+                }
+            });
+        });
+        content.querySelectorAll('.shared-inbox-refuse-btn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+                const li = btn.closest('.shared-inbox-item');
+                const id = li && li.dataset.id;
+                if (!id) return;
+                btn.disabled = true;
+                try {
+                    const res = await fetch(apiUrl + '/api/data/shared-inbox', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                        body: JSON.stringify({ id, action: 'refuse' })
+                    });
+                    if (!res.ok) throw new Error('Failed to refuse');
+                    this.showToast('Share refused', 'success');
+                    close();
+                } catch (err) {
+                    this.showToast(err.message || 'Failed to refuse', 'error');
+                    btn.disabled = false;
+                }
+            });
+        });
+        document.body.appendChild(overlay);
     },
 
     // Pro Tracking Serve: show statistics modal with Deuce/Ad court diagrams and PDF export

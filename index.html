@@ -106,6 +106,10 @@
                         <div class="detail-row"><span>Role</span><span id="account-display-role"></span></div>
                         <div class="detail-row" id="account-credits-row"><span>Credits</span><span id="account-display-credits"></span></div>
                         <div class="detail-row" id="account-stars-row"><span>Achievement stars</span><span id="account-display-stars">0 / 9</span></div>
+                        <div id="account-inbox-row" class="detail-row hidden">
+                            <span>Shared matches</span>
+                            <span>You have <span id="account-inbox-count">0</span> shared match(es). <button type="button" class="btn-link" id="account-inbox-open-btn">Open inbox</button></span>
+                        </div>
                         <button type="button" class="btn-secondary" id="account-logout-btn">Logout</button>
                     </div>
                 </section>
@@ -573,6 +577,7 @@
         <button class="tab-button" data-page="settings">
             <span class="tab-icon">⚙️</span>
             <span class="tab-label">Log in</span>
+            <span id="shared-inbox-badge" class="shared-inbox-badge hidden">0</span>
         </button>
     </nav>
 
