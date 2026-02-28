@@ -3,7 +3,7 @@
 // Body: { achievementId: 'call_to_arm' }
 //
 
-const VALID_IDS = ['call_to_arm', 'first_show', 'being_supportive', 'post_game', 'big_server', 'big_target', 'friendship', 'long_term_run', 'grand_slam'];
+const VALID_IDS = ['call_to_arm', 'first_show', 'being_supportive', 'post_game', 'big_server', 'big_target', 'friendship', 'team_work', 'long_term_run', 'grand_slam'];
 
 function cors(res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -84,6 +84,21 @@ const handler = async function (req, res) {
         const refRows = await refRes.json();
         if (!Array.isArray(refRows) || refRows.length === 0) {
             res.status(400).json({ error: 'Share the app and have someone sign up via your link to unlock' });
+            return;
+        }
+    }
+
+    if (achievementId === 'team_work') {
+        const shareRes = await fetch(`${supabaseUrl}/rest/v1/match_shares?sender_id=eq.${user.id}&select=id`, {
+            headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
+        });
+        if (!shareRes.ok) {
+            res.status(500).json({ error: 'Failed to verify' });
+            return;
+        }
+        const shareRows = await shareRes.json();
+        if (!Array.isArray(shareRows) || shareRows.length === 0) {
+            res.status(400).json({ error: 'Send a match to others using Share in a completed match to unlock' });
             return;
         }
     }

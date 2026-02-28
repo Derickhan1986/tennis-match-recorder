@@ -16,7 +16,7 @@ const ACHIEVEMENTS_API_URL = 'https://tennis-match-recorder.vercel.app/api/achie
 const ACHIEVEMENT_CLAIM_API_URL = 'https://tennis-match-recorder.vercel.app/api/achievement-claim';
 const ACHIEVEMENT_STAR_EMPTY = 'icons/star-empty.svg';
 const ACHIEVEMENT_STAR_FILLED = 'icons/star-filled.svg';
-const ACHIEVEMENT_IDS = ['call_to_arm', 'first_show', 'being_supportive', 'post_game', 'big_server', 'big_target', 'friendship', 'long_term_run', 'grand_slam'];
+const ACHIEVEMENT_IDS = ['call_to_arm', 'first_show', 'being_supportive', 'post_game', 'big_server', 'big_target', 'friendship', 'team_work', 'long_term_run', 'grand_slam'];
 
 const app = {
     currentPage: 'matches',
@@ -356,7 +356,7 @@ const app = {
     refreshAchievementsUI() {
         const starsEl = document.getElementById('account-display-stars');
         const list = document.getElementById('achievements-list');
-        if (starsEl) starsEl.textContent = this.unlockedAchievementIds.length + ' / 9';
+        if (starsEl) starsEl.textContent = this.unlockedAchievementIds.length + ' / ' + (typeof ACHIEVEMENT_IDS !== 'undefined' ? ACHIEVEMENT_IDS.length : 9);
         if (!list) return;
         list.querySelectorAll('[data-achievement-id]').forEach(li => {
             const id = li.getAttribute('data-achievement-id');
@@ -411,6 +411,8 @@ const app = {
                     return false;
                 }
                 case 'big_target':
+                    return true;
+                case 'team_work':
                     return true;
                 case 'long_term_run': {
                     const matches = await storage.getAllMatches();
@@ -986,8 +988,9 @@ const app = {
             const commentBtnText = 'Comment';
             const proTrackingLog = storage.getProTrackingServeLog ? storage.getProTrackingServeLog(match.id) : [];
             const hasProTrackingServe = Array.isArray(proTrackingLog) && proTrackingLog.length > 0;
-            // Share button only when logged in
-            const shareBtnHtml = matchReviewLoggedIn ? `<button class="btn-secondary" onclick="app.openShareModal('${match.id}')">Share</button>` : '';
+            const shareBtnLabel = matchReviewLoggedIn ? 'Share (1 credit)' : 'Share';
+            const shareBtnClass = matchReviewLoggedIn ? 'btn-secondary' : 'btn-secondary share-btn-disabled';
+            const shareBtnHtml = `<button class="${shareBtnClass}" onclick="app.openShareModal('${match.id}')">${shareBtnLabel}</button>`;
             // Both buttons always clickable; when not logged in, click shows "Log in to use". Comment needs only login; Match Review needs login + credit.
             console.log('[MatchReview Debug] button state: loggedIn=', matchReviewLoggedIn, ', text=', matchReviewBtnText, ', auth.user=', !!auth?.user, ', auth.accessToken=', !!auth?.accessToken);
             
@@ -2345,7 +2348,7 @@ const app = {
 
     async openShareModal(matchId) {
         if (typeof auth === 'undefined' || !auth.isLoggedIn()) {
-            this.showToast('Log in to share', 'error', 5000);
+            this.showToast('Please log in to use', 'error', 5000);
             return;
         }
         const match = await storage.getMatch(matchId);
@@ -2425,6 +2428,7 @@ const app = {
                 if (res.ok) {
                     this.showToast('Match shared successfully', 'success');
                     if (auth.fetchProfile) await auth.fetchProfile();
+                    this.tryClaimAchievement('team_work');
                     close();
                     return;
                 }
