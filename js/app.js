@@ -444,8 +444,8 @@ const app = {
             const result = await auth.register(email, password);
             this.refreshSettingsAccount();
             if (result && result.needsConfirmation) {
-                if (statusEl) statusEl.textContent = 'Please check your email and confirm your account, then log in.';
-                this.showToast('Please confirm your email, then log in.', 'success', 5000);
+                if (statusEl) statusEl.textContent = '';
+                this.showEmailConfirmModal();
             } else {
                 if (statusEl) statusEl.textContent = '';
                 this.showToast('Registered. You can log in now.', 'success');
@@ -456,6 +456,36 @@ const app = {
         }
     },
     
+    showEmailConfirmModal() {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal';
+        overlay.setAttribute('aria-label', 'Confirm your email');
+        const content = document.createElement('div');
+        content.className = 'modal-content';
+        content.innerHTML = `
+            <div class="modal-header">
+                <h3>Check your email</h3>
+                <button type="button" class="modal-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="setting-hint" style="margin-bottom: 12px;">Registration succeeded. We have sent a confirmation email to your inbox. Please open it and click the link to activate your account.</p>
+                <p class="setting-hint" style="margin-bottom: 16px;">If you don't see the email, check your spam or junk folder.</p>
+                <div class="form-actions">
+                    <button type="button" class="btn-primary modal-close-btn">OK</button>
+                </div>
+            </div>
+        `;
+        overlay.appendChild(content);
+        const close = () => {
+            overlay.classList.add('hidden');
+            setTimeout(() => overlay.remove(), 300);
+        };
+        content.querySelector('.modal-close').addEventListener('click', close);
+        content.querySelector('.modal-close-btn').addEventListener('click', close);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+        document.body.appendChild(overlay);
+    },
+
     async accountLogout() {
         try {
             await auth.logout();
