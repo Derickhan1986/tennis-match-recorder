@@ -477,11 +477,29 @@ const app = {
             if (statusEl) statusEl.textContent = 'Enter email and password';
             return;
         }
+        const apiUrl = this.getDataApiUrl();
+        if (apiUrl) {
+            try {
+                const checkRes = await fetch(apiUrl + '/api/check-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const checkData = await checkRes.json().catch(() => ({}));
+                if (checkRes.ok && checkData.exists) {
+                    if (statusEl) statusEl.textContent = '';
+                    this.showToast('This email is already registered. Please log in or use Forgot password.', 'error', 6000);
+                    return;
+                }
+            } catch (e) {
+                console.warn('[Register] check-email failed', e);
+            }
+        }
         try {
             await auth.register(email, password);
             this.refreshSettingsAccount();
             if (statusEl) statusEl.textContent = '';
-            this.showToast('Registered. You can log in now.', 'success');
+            this.showToast('Check your email box for confirmation, if not received try trash bin', 'success', 6000);
         } catch (e) {
             if (statusEl) statusEl.textContent = e.message || 'Register failed';
             this.showToast(e.message || 'Register failed', 'error');

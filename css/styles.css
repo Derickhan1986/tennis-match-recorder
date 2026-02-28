@@ -1021,17 +1021,20 @@ body {
     color: #721c24;
 }
 
-/* Toast */
+/* Toast – centered, larger text */
 .toast {
     position: fixed;
-    bottom: calc(100px + var(--safe-bottom));
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
     background-color: var(--text-primary);
     color: white;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 14px;
+    padding: 20px 32px;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 500;
+    max-width: min(90vw, 420px);
+    text-align: center;
     z-index: 2000;
     opacity: 0;
     transition: opacity 0.3s;
