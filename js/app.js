@@ -1051,13 +1051,13 @@ const app = {
                 
                 <div class="form-actions">
                     <button class="btn-secondary comment-btn" onclick="app.openCommentModal('${match.id}')">${commentBtnText}</button>
-                    ${shareBtnHtml}
                     <button class="btn-secondary" onclick="app.requestMatchReview('${match.id}')">${matchReviewBtnText}</button>
                     ${hasProTrackingServe ? `<button class="btn-secondary" onclick="app.showProTrackingServeAnalysisModal('${match.id}')">Serve Zone Statistics</button>` : ''}
                 </div>
                 <div class="form-actions">
                     <button class="btn-primary" onclick="app.exportMatchToPDF('${match.id}')">Export to PDF</button>
                     <button class="btn-danger" onclick="app.deleteMatch('${match.id}')">Delete Match</button>
+                    ${shareBtnHtml}
                 </div>
             `;
             
