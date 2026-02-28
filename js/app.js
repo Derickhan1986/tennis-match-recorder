@@ -988,7 +988,7 @@ const app = {
             const commentBtnText = 'Comment';
             const proTrackingLog = storage.getProTrackingServeLog ? storage.getProTrackingServeLog(match.id) : [];
             const hasProTrackingServe = Array.isArray(proTrackingLog) && proTrackingLog.length > 0;
-            const shareBtnLabel = matchReviewLoggedIn ? 'Share (1 credit)' : 'Share';
+            const shareBtnLabel = 'Share';
             const shareBtnClass = matchReviewLoggedIn ? 'btn-secondary' : 'btn-secondary share-btn-disabled';
             const shareBtnHtml = `<button class="${shareBtnClass}" onclick="app.openShareModal('${match.id}')">${shareBtnLabel}</button>`;
             // Both buttons always clickable; when not logged in, click shows "Log in to use". Comment needs only login; Match Review needs login + credit.
@@ -2372,7 +2372,7 @@ const app = {
                 <button type="button" class="modal-close" aria-label="Close">&times;</button>
             </div>
             <div class="modal-body">
-                <p class="setting-hint">Share this match via email. The recipient must have an account. Cost: 1 credit.</p>
+                <p class="setting-hint">Share this match to another user, cost 1 credit.</p>
                 <div class="form-group">
                     <label>Recipient email *</label>
                     <input type="email" id="share-recipient-email" placeholder="email@example.com" required>
