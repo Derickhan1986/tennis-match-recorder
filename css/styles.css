@@ -444,16 +444,19 @@ body {
 .performance-full-court-modal {
     padding: 0 !important;
     background-color: #1a237e !important;
-    align-items: stretch;
-    justify-content: stretch;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    min-height: 100vh;
+    min-height: 100dvh;
 }
 .performance-full-court-modal .performance-court-container {
-    flex: 1;
+    flex: 1 1 0;
     min-height: 0;
     display: flex;
     flex-direction: column;
     width: 100%;
-    height: 100%;
+    height: 100vh;
+    height: 100dvh;
     overflow: hidden;
 }
 /* Three parts: top 10% (score), middle 80% (click/court/markers), bottom 10% (Record) */
@@ -478,6 +481,7 @@ body {
 .performance-court-wrap {
     position: relative;
     flex: 0 0 80%;
+    height: 80%;
     min-height: 0;
     display: flex;
     align-items: center;
