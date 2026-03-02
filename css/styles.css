@@ -565,12 +565,12 @@ body {
 .performance-score-block {
     white-space: nowrap;
 }
-/* Court: 80% of wrap, aspect ratio 270×470 */
+/* Court: 50% of wrap, aspect ratio 270×470 */
 .performance-full-court-svg {
-    width: 80%;
-    height: 80%;
-    max-width: 80%;
-    max-height: 80%;
+    width: 50%;
+    height: 50%;
+    max-width: 50%;
+    max-height: 50%;
     aspect-ratio: 270 / 470;
     object-fit: contain;
     display: block;
