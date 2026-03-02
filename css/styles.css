@@ -459,7 +459,7 @@ body {
     height: 100dvh;
     overflow: hidden;
 }
-/* Three parts: top 10% (score), middle 80% (click/court/markers), bottom 10% (Record) */
+/* Three parts: top 10dvh (score), middle 80dvh × 95vw (click area), bottom 10dvh (Record) */
 .performance-court-container {
     display: flex;
     flex-direction: column;
@@ -469,7 +469,10 @@ body {
     background-color: #1a237e;
 }
 .performance-court-header {
-    flex: 0 0 10%;
+    flex: 0 0 10vh;
+    flex: 0 0 10dvh;
+    height: 10vh;
+    height: 10dvh;
     min-height: 0;
     display: flex;
     align-items: center;
@@ -477,11 +480,17 @@ body {
     color: #fff;
     box-sizing: border-box;
 }
-/* Wrap = middle 80%, fills with click layer + court + markers */
+/* Wrap = clickable area: 95% screen width × 80% screen height, centered */
 .performance-court-wrap {
     position: relative;
-    flex: 0 0 80%;
-    height: 80%;
+    flex: 0 0 80vh;
+    flex: 0 0 80dvh;
+    width: 95vw;
+    max-width: 95vw;
+    height: 80vh;
+    height: 80dvh;
+    margin-left: auto;
+    margin-right: auto;
     min-height: 0;
     display: flex;
     align-items: center;
@@ -489,6 +498,8 @@ body {
     padding: 0;
     overflow: hidden;
     cursor: crosshair;
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    border-radius: 4px;
     touch-action: none;
     -webkit-user-select: none;
     user-select: none;
@@ -529,9 +540,12 @@ body {
 .performance-court-marker-symbol.red-x { color: #e53935; }
 .performance-court-marker-symbol.green-triangle { color: #43a047; }
 .performance-court-marker-symbol.green-x { color: #43a047; }
-/* Bottom 10%: Record button only, no extra box */
+/* Bottom 10dvh: Record button only */
 .performance-court-footer {
-    flex: 0 0 10%;
+    flex: 0 0 10vh;
+    flex: 0 0 10dvh;
+    height: 10vh;
+    height: 10dvh;
     min-height: 0;
     display: flex;
     align-items: center;
