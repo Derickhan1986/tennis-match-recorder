@@ -79,7 +79,8 @@ function createMatchSettings(data = {}) {
         tieBreakWinBy2: data.tieBreakWinBy2 !== undefined ? data.tieBreakWinBy2 : true,
         superTieBreakPoints: data.superTieBreakPoints || 10, // For Super Tie Break: 5, 7, 10, 12
         superTieBreakWinBy2: data.superTieBreakWinBy2 !== undefined ? data.superTieBreakWinBy2 : true,
-        trackingServePlayerId: data.trackingServePlayerId || null // null = do not track; else player id for Player 1 or Player 2
+        trackingServePlayerId: data.trackingServePlayerId || null, // null = do not track; else player id for Player 1 or Player 2
+        trackingMode: data.trackingMode || null // null | 'serve' | 'performance' – when 'performance' use full-court recording UI
     };
 }
 
@@ -174,7 +175,8 @@ function createLogEntry(data = {}) {
         currentServer: data.currentServer || null, // Current server at this point ('player1' | 'player2')
         currentServeNumber: data.currentServeNumber !== undefined ? data.currentServeNumber : 1, // Current serve number (1 or 2) for undo tracking
         isBreakPoint: data.isBreakPoint || false, // Whether this point is a break point (接发球方有机会破发)
-        afterProTrackingGreen: data.afterProTrackingGreen || false // True if this point was recorded after user selected green zone in Pro Tracking Serve
+        afterProTrackingGreen: data.afterProTrackingGreen || false, // True if this point was recorded after user selected green zone in Pro Tracking Serve
+        performanceShots: data.performanceShots || null // Full-court mode: [{ x, y, index, symbol? }] per point (viewBox coords)
     };
 }
 
