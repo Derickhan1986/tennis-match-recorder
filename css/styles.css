@@ -1569,6 +1569,138 @@ body {
     transform: scale(0.95);
 }
 
+/* Full court (performance) page: fit within viewport on any device, no overflow */
+#match-recording-performance-page {
+    padding: 0;
+    min-height: 0;
+}
+#match-recording-performance-page.active {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    overflow: hidden;
+    padding-top: env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    padding-left: env(safe-area-inset-left, 0);
+    padding-right: env(safe-area-inset-right, 0);
+}
+.performance-court-container {
+    --performance-top-bar: 48px;
+    --performance-bottom-bar: 48px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    background-color: #1a237e;
+}
+.performance-court-header {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    min-height: var(--performance-top-bar);
+    color: #fff;
+    flex-shrink: 0;
+}
+.performance-court-header-center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.performance-court-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+}
+.performance-court-score {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6em;
+}
+.performance-score-block {
+    white-space: nowrap;
+}
+.performance-court-wrap {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.performance-full-court-svg {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    aspect-ratio: 270 / 470;
+    object-fit: contain;
+}
+.performance-court-markers {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+.performance-court-marker {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.performance-court-marker-num {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 0 2px #000, 0 1px 2px #000;
+    line-height: 1;
+}
+.performance-court-marker-symbol {
+    width: 12px;
+    height: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.performance-court-marker-symbol.red-triangle,
+.performance-court-marker-symbol.red-x { color: #e53935; }
+.performance-court-marker-symbol.green-triangle,
+.performance-court-marker-symbol.green-x { color: #43a047; }
+.performance-court-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    min-height: var(--performance-bottom-bar);
+    flex-shrink: 0;
+    background-color: #1a237e;
+}
+.performance-footer-record-btn {
+    padding: 10px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a237e;
+    background-color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.performance-footer-record-btn:active {
+    opacity: 0.9;
+}
+
 /* Safe area for iPhone notch */
 @supports (padding: max(0px)) {
     .tab-bar {

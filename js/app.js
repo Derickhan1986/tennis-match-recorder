@@ -21,7 +21,7 @@ const ACHIEVEMENT_IDS = ['call_to_arm', 'first_show', 'being_supportive', 'post_
 const app = {
     currentPage: 'matches',
     unlockedAchievementIds: [],
-
+    
     // Initialize app
     // 初始化应用
     async init() {
@@ -37,7 +37,7 @@ const app = {
                 console.error('Service Worker registration failed:', error);
             }
         }
-
+        
         // Setup event listeners
         // 设置事件监听器
         this.setupNavigation();
