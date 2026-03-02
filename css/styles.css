@@ -440,8 +440,17 @@ body {
     flex: 1;
 }
 
-/* Performance recording: full court only; clickable = whole middle (between top and bottom bars) */
-.performance-court-container {
+/* Performance recording: full court only; fixed to viewport so no page scroll */
+#match-recording-performance-page.active {
+    padding: 0;
+    overflow: hidden;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+}
+#match-recording-performance-page.active .performance-court-container {
+    position: fixed;
+    inset: 0;
     --performance-top-bar: 48px;
     --performance-bottom-bar: var(--performance-top-bar);
     display: flex;
@@ -450,6 +459,16 @@ body {
     height: 100dvh;
     max-height: 100vh;
     max-height: 100dvh;
+    overflow: hidden;
+    background-color: #1a237e;
+}
+.performance-court-container {
+    --performance-top-bar: 48px;
+    --performance-bottom-bar: var(--performance-top-bar);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-height: 100%;
     overflow: hidden;
     background-color: #1a237e;
 }
@@ -478,6 +497,8 @@ body {
 .performance-court-wrap {
     position: relative;
     flex: 1;
+    max-height: 60vh;
+    max-height: 60dvh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -485,6 +506,9 @@ body {
     min-height: 0;
     overflow: hidden;
     cursor: crosshair;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
 }
 /* Full-court markers overlay: same size as wrap, does not capture pointer */
 .performance-court-markers {
@@ -559,12 +583,12 @@ body {
 .performance-score-block {
     white-space: nowrap;
 }
-/* Court: 70% of clickable wrap; aspect ratio viewBox 270×470 */
+/* Court: 60% of clickable wrap; aspect ratio viewBox 270×470 */
 .performance-full-court-svg {
-    width: 70%;
-    height: 70%;
-    max-width: 70%;
-    max-height: 70%;
+    width: 60%;
+    height: 60%;
+    max-width: 60%;
+    max-height: 60%;
     aspect-ratio: 270 / 470;
     object-fit: contain;
     display: block;
