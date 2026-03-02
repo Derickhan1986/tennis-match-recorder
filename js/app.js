@@ -21,7 +21,7 @@ const ACHIEVEMENT_IDS = ['call_to_arm', 'first_show', 'being_supportive', 'post_
 const app = {
     currentPage: 'matches',
     unlockedAchievementIds: [],
-    
+
     // Initialize app
     // 初始化应用
     async init() {
@@ -37,7 +37,7 @@ const app = {
                 console.error('Service Worker registration failed:', error);
             }
         }
-        
+
         // Setup event listeners
         // 设置事件监听器
         this.setupNavigation();
@@ -225,13 +225,11 @@ const app = {
     refreshNewMatchTrackingServeDropdown() {
         const dropdownRow = document.getElementById('match-tracking-serve-dropdown-row');
         const tipRow = document.getElementById('match-tracking-serve-tip');
-        const playerWrap = document.getElementById('match-tracking-player-wrap');
         const select = document.getElementById('match-tracking-serve');
         const isLoggedIn = typeof auth !== 'undefined' && auth.isLoggedIn();
         if (dropdownRow) dropdownRow.classList.toggle('hidden', !isLoggedIn);
         if (tipRow) tipRow.classList.toggle('hidden', isLoggedIn);
         if (!select || !isLoggedIn) return;
-        select.innerHTML = '<option value="">Do not track</option><option value="serve">Serve</option><option value="performance">Performance</option>';
         const player1Select = document.getElementById('match-player1');
         const player2Select = document.getElementById('match-player2');
         const player1Id = player1Select ? player1Select.value : '';
@@ -240,27 +238,20 @@ const app = {
         const opt2 = player2Id && player2Select ? Array.from(player2Select.options).find(o => o.value === player2Id) : null;
         const name1 = opt1 ? opt1.textContent : (player1Id ? 'Player 1' : '');
         const name2 = opt2 ? opt2.textContent : (player2Id ? 'Player 2' : '');
-        const radio1 = document.getElementById('match-tracking-player1-radio');
-        const radio2 = document.getElementById('match-tracking-player2-radio');
-        const label1 = document.getElementById('match-tracking-player1-label');
-        const label2 = document.getElementById('match-tracking-player2-label');
-        if (radio1) { radio1.value = player1Id || ''; }
-        if (radio2) { radio2.value = player2Id || ''; }
-        if (label1) label1.textContent = name1 || 'Player 1';
-        if (label2) label2.textContent = name2 || 'Player 2';
-        const syncPlayerWrap = () => {
-            const mode = select.value;
-            const show = mode === 'serve' || mode === 'performance';
-            if (playerWrap) playerWrap.classList.toggle('hidden', !show);
-            if (show) {
-                const checked = document.querySelector('input[name="match-tracking-player"]:checked');
-                if (!checked && radio1 && radio1.value) radio1.checked = true;
-                else if (!checked && radio2 && radio2.value) radio2.checked = true;
-            }
-        };
-        syncPlayerWrap();
-        select.removeEventListener('change', syncPlayerWrap);
-        select.addEventListener('change', syncPlayerWrap);
+        select.innerHTML = '<option value="">Do not track</option>';
+        if (player1Id && name1) {
+            const opt = document.createElement('option');
+            opt.value = player1Id;
+            opt.textContent = name1;
+            select.appendChild(opt);
+        }
+        if (player2Id && name2) {
+            const opt = document.createElement('option');
+            opt.value = player2Id;
+            opt.textContent = name2;
+            select.appendChild(opt);
+        }
+        select.value = '';
     },
 
     refreshSettingsAccount() {
@@ -591,14 +582,6 @@ const app = {
     // Show page
     // 显示页面
     showPage(pageName) {
-        // When leaving performance full-court page, unlock screen orientation
-        if (this.currentPage === 'match-recording-performance' && pageName !== 'match-recording-performance') {
-            try {
-                if (typeof screen !== 'undefined' && screen.orientation && typeof screen.orientation.unlock === 'function') {
-                    screen.orientation.unlock();
-                }
-            } catch (e) { /* ignore */ }
-        }
         // Hide all pages
         // 隐藏所有页面
         const pages = document.querySelectorAll('.page');
@@ -683,7 +666,6 @@ const app = {
             'settings': 'Log in',
             'new-match': 'New Match',
             'match-recording': 'Recording',
-            'match-recording-performance': 'Recording',
             'match-detail': 'Match Details',
             'player-form': 'Player',
             'player-stats': 'Player Statistics'
@@ -715,7 +697,6 @@ const app = {
         const backPages = {
             'new-match': 'matches',
             'match-recording': 'matches',
-            'match-recording-performance': 'matches',
             'match-detail': 'matches',
             'player-form': 'players',
             'player-stats': 'players'

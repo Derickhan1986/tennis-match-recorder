@@ -298,69 +298,19 @@
                         </label>
                     </div>
                     <div class="form-group hidden" id="match-tracking-serve-dropdown-row">
-                        <label>Tracking</label>
-                        <div class="tracking-row" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                            <select id="match-tracking-serve" aria-label="Tracking">
-                                <option value="">Do not track</option>
-                                <option value="serve">Serve</option>
-                                <option value="performance">Performance</option>
-                            </select>
-                            <span class="hidden" id="match-tracking-player-wrap" style="display: flex; align-items: center; gap: 16px;">
-                                <label style="display: flex; align-items: center; gap: 6px;"><input type="radio" name="match-tracking-player" id="match-tracking-player1-radio" value=""> <span id="match-tracking-player1-label">Player 1</span></label>
-                                <label style="display: flex; align-items: center; gap: 6px;"><input type="radio" name="match-tracking-player" id="match-tracking-player2-radio" value=""> <span id="match-tracking-player2-label">Player 2</span></label>
-                            </span>
-                        </div>
+                        <label>Tracking Player Serve</label>
+                        <select id="match-tracking-serve" aria-label="Tracking Player Serve">
+                            <option value="">Do not track</option>
+                        </select>
                     </div>
                     <div class="form-group hidden" id="match-tracking-serve-tip">
-                        <p class="setting-hint">Tips: You can track after log in.</p>
+                        <p class="setting-hint">Tips: You can track player's serve after log in.</p>
                     </div>
                     <div class="form-actions">
                         <button type="button" class="btn-secondary" onclick="app.showPage('matches')">Cancel</button>
                         <button type="submit" class="btn-primary">Start Match</button>
                     </div>
                 </form>
-            </div>
-        </div>
-
-        <!-- Performance recording: full court view (no score/buttons yet) -->
-        <div id="match-recording-performance-page" class="page">
-            <div class="performance-court-container">
-                <div class="performance-court-header">
-                    <button type="button" class="nav-back" id="performance-court-back" aria-label="Back">←</button>
-                    <div class="performance-court-header-center">
-                        <h2 class="performance-court-title">Live Match</h2>
-                        <div class="performance-court-score" id="performance-court-score" aria-label="Score">
-                            <span class="performance-score-block">Set <span id="performance-score-set">1</span></span>
-                            <span class="performance-score-block">Game <span id="performance-score-games">0-0</span></span>
-                            <span class="performance-score-block">Score <span id="performance-score-game">0-0</span></span>
-                        </div>
-                    </div>
-                </div>
-                <div class="performance-court-wrap" id="performance-court-wrap">
-                    <!-- Court (hit area is the wrap) -->
-                    <svg id="performance-full-court-svg" class="performance-full-court-svg" viewBox="0 0 270 470" aria-label="Full tennis court" xmlns="http://www.w3.org/2000/svg">
-                        <!-- Margin background (same as tracking serve) -->
-                        <rect x="0" y="0" width="270" height="470" fill="#1a237e"/>
-                        <!-- Court area blue, white boundary (220×420) -->
-                        <rect x="25" y="25" width="220" height="420" fill="#4a90e2" stroke="#fff" stroke-width="2"/>
-                        <!-- White lines: stroke #fff, stroke-width 2 -->
-                        <line x1="50" y1="25" x2="50" y2="445" stroke="#fff" stroke-width="2"/>
-                        <line x1="220" y1="25" x2="220" y2="445" stroke="#fff" stroke-width="2"/>
-                        <line x1="50" y1="130" x2="220" y2="130" stroke="#fff" stroke-width="2"/>
-                        <line x1="50" y1="340" x2="220" y2="340" stroke="#fff" stroke-width="2"/>
-                        <!-- Center service line: net to service line only in each half (no line from service line to baseline) -->
-                        <line x1="135" y1="130" x2="135" y2="235" stroke="#fff" stroke-width="2"/>
-                        <line x1="135" y1="235" x2="135" y2="340" stroke="#fff" stroke-width="2"/>
-                        <!-- Net line at middle (y=235) with circles at ends, same as tracking serve -->
-                        <line x1="12.5" y1="235" x2="257.5" y2="235" stroke="#fff" stroke-width="2"/>
-                        <circle cx="12.5" cy="235" r="3" fill="none" stroke="#fff" stroke-width="2"/>
-                        <circle cx="257.5" cy="235" r="3" fill="none" stroke="#fff" stroke-width="2"/>
-                    </svg>
-                    <div id="performance-court-markers" class="performance-court-markers" aria-hidden="true"></div>
-                </div>
-                <div class="performance-court-footer" id="performance-court-footer">
-                    <button type="button" class="performance-footer-record-btn" id="performance-footer-record-btn">Record</button>
-                </div>
             </div>
         </div>
 

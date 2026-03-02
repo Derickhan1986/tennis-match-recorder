@@ -19,8 +19,6 @@ class MatchRecorder {
         this.pendingPlayer = null; // Store player for pending action
         this.isUndoing = false; // Flag to prevent multiple undo operations
         this.pendingAfterGreenZone = false; // Pro Tracking: user selected green zone, waiting for point outcome button
-        this.performancePointShots = []; // Full-court: [{ x, y, index, symbol? }] for current point (resets each point)
-        this._performancePending = null; // { x, y, index, startClientX, startClientY, hasDrag, endClientX?, endClientY? }
         this.setupEventListeners();
     }
 
@@ -215,12 +213,7 @@ class MatchRecorder {
             if (e.target.closest('.action-btn')) {
                 const button = e.target.closest('.action-btn');
                 const action = button.dataset.action;
-                let player = button.dataset.player; // 'player1' | 'player2' | 'tracked' | 'other'
-                if (player === 'tracked' || player === 'other') {
-                    const tracking = this.getTrackingPlayerSide();
-                    if (!tracking) return;
-                    player = player === 'tracked' ? tracking : (tracking === 'player1' ? 'player2' : 'player1');
-                }
+                const player = button.dataset.player; // 'player1' or 'player2'
                 this.handleActionButton(action, player);
             }
         });
@@ -577,16 +570,7 @@ class MatchRecorder {
             const courtType = document.getElementById('match-court-type').value;
             const indoor = document.getElementById('match-indoor').checked;
             const trackingServeEl = document.getElementById('match-tracking-serve');
-            const trackingMode = trackingServeEl ? String(trackingServeEl.value || '').trim() : '';
-            let trackingServePlayerId = null;
-            if (trackingMode === 'serve' || trackingMode === 'performance') {
-                const checkedRadio = document.querySelector('input[name="match-tracking-player"]:checked');
-                if (!checkedRadio || !checkedRadio.value) {
-                    if (typeof app !== 'undefined' && app.showToast) app.showToast('Please select Player 1 or Player 2 for tracking', 'error', 5000);
-                    return;
-                }
-                trackingServePlayerId = checkedRadio.value;
-            }
+            const trackingServePlayerId = (trackingServeEl && trackingServeEl.value && String(trackingServeEl.value).trim()) ? trackingServeEl.value : null;
             
             // Always read both Normal Tie Break and Super Tie Break settings
             // 始终读取Normal Tie Break和Super Tie Break设置
@@ -628,7 +612,6 @@ class MatchRecorder {
                 courtType: courtType,
                 indoor: indoor,
                 trackingServePlayerId: trackingServePlayerId,
-                trackingMode: trackingMode === 'serve' || trackingMode === 'performance' ? trackingMode : null,
                 tieBreakGames: tieBreakGames,
                 tieBreakWinBy2: tieBreakWinBy2,
                 superTieBreakPoints: superTieBreakPoints,
@@ -657,208 +640,17 @@ class MatchRecorder {
             this.currentMatch = match;
             this.matchEngine = new MatchEngine(match);
             
-            if (settings.trackingMode === 'performance') {
-                app.showPage('match-recording-performance');
-                setTimeout(() => {
-                    if (typeof this.initPerformanceCourtDisplay === 'function') this.initPerformanceCourtDisplay();
-                    this.updateDisplay();
-                }, 200);
-            } else {
-                app.showPage('match-recording');
-                setTimeout(() => {
-                    this.updateDisplay();
-                }, 200);
-            }
+            app.showPage('match-recording');
+            
+            // Update display after page is shown
+            // 页面显示后更新显示
+            setTimeout(() => {
+                this.updateDisplay();
+            }, 200);
         } catch (error) {
             console.error('Error starting match:', error);
             app.showToast(error.message || 'Error starting match', 'error');
         }
-    }
-
-    // Performance recording: full-court UI init and score update
-    initPerformanceCourtDisplay() {
-        // Lock orientation to portrait so court stays fixed (long side along height, no rotation)
-        try {
-            if (typeof screen !== 'undefined' && screen.orientation && typeof screen.orientation.lock === 'function') {
-                screen.orientation.lock('portrait').catch(() => {});
-            }
-        } catch (e) { /* ignore */ }
-        const backBtn = document.getElementById('performance-court-back');
-        if (backBtn && !backBtn.dataset.bound) {
-            backBtn.dataset.bound = '1';
-            backBtn.addEventListener('click', () => {
-                if (typeof app !== 'undefined' && app.showPage) app.showPage('matches');
-            });
-        }
-        const recordBtn = document.getElementById('performance-footer-record-btn');
-        if (recordBtn && !recordBtn.dataset.bound) {
-            recordBtn.dataset.bound = '1';
-            recordBtn.addEventListener('click', () => {
-                if (typeof app !== 'undefined' && app.showPage) app.showPage('match-recording');
-            });
-        }
-        this.updatePerformanceCourtScore();
-        this.setupPerformanceCourtClick();
-        if (typeof this.renderPerformanceCourtMarkers === 'function') this.renderPerformanceCourtMarkers();
-    }
-
-    // ViewBox size of performance court SVG (must match index.html viewBox="0 0 270 470")
-    getPerformanceCourtViewBox() {
-        return { width: 270, height: 470 };
-    }
-
-    // Convert screen click to court viewBox coordinates (0..270, 0..470). Page orientation is locked so no rotation conversion needed.
-    getPerformanceCourtClickCoords(ev) {
-        const svg = document.getElementById('performance-full-court-svg');
-        if (!svg) return null;
-        const rect = svg.getBoundingClientRect();
-        const vb = this.getPerformanceCourtViewBox();
-        const x = ((ev.clientX - rect.left) / rect.width) * vb.width;
-        const y = ((ev.clientY - rect.top) / rect.height) * vb.height;
-        return {
-            x: Math.max(0, Math.min(vb.width, x)),
-            y: Math.max(0, Math.min(vb.height, y))
-        };
-    }
-
-    // Drag threshold (px) to distinguish tap from drag
-    static get PERFORMANCE_DRAG_THRESHOLD() { return 10; }
-
-    // Map drag angle to one of 4 symbols. Angle from atan2(dy,dx) in radians; 4 quadrants.
-    getPerformanceSymbolFromAngle(angleRad) {
-        let a = angleRad;
-        if (a < 0) a += 2 * Math.PI;
-        const sector = Math.floor(a / (Math.PI / 2)) % 4;
-        const symbols = ['green-x', 'green-triangle', 'red-x', 'red-triangle'];
-        return symbols[sector];
-    }
-
-    renderPerformanceCourtMarkers() {
-        const overlay = document.getElementById('performance-court-markers');
-        const wrap = document.getElementById('performance-court-wrap');
-        const svg = document.getElementById('performance-full-court-svg');
-        if (!overlay || !wrap || !svg) return;
-        overlay.textContent = '';
-        const wrapRect = wrap.getBoundingClientRect();
-        const svgRect = svg.getBoundingClientRect();
-        const courtLeftPct = ((svgRect.left - wrapRect.left) / wrapRect.width) * 100;
-        const courtTopPct = ((svgRect.top - wrapRect.top) / wrapRect.height) * 100;
-        const courtWidthPct = (svgRect.width / wrapRect.width) * 100;
-        const courtHeightPct = (svgRect.height / wrapRect.height) * 100;
-        const vb = this.getPerformanceCourtViewBox();
-        const list = this.performancePointShots || [];
-        list.forEach((shot) => {
-            const leftPct = courtLeftPct + (shot.x / vb.width) * courtWidthPct;
-            const topPct = courtTopPct + (shot.y / vb.height) * courtHeightPct;
-            const el = document.createElement('div');
-            el.className = 'performance-court-marker';
-            el.style.left = leftPct + '%';
-            el.style.top = topPct + '%';
-            const numEl = document.createElement('span');
-            numEl.className = 'performance-court-marker-num';
-            numEl.textContent = String(shot.index);
-            el.appendChild(numEl);
-            if (shot.symbol) {
-                const symEl = document.createElement('span');
-                symEl.className = 'performance-court-marker-symbol ' + shot.symbol;
-                symEl.textContent = shot.symbol.indexOf('triangle') !== -1 ? '▲' : '×';
-                el.appendChild(symEl);
-            }
-            overlay.appendChild(el);
-        });
-    }
-
-    setupPerformanceCourtClick() {
-        const wrap = document.getElementById('performance-court-wrap');
-        if (!wrap || wrap.dataset.clickBound) return;
-        wrap.dataset.clickBound = '1';
-        const threshold = MatchRecorder.PERFORMANCE_DRAG_THRESHOLD;
-
-        const onPointerDown = (ev) => {
-            if (ev.button !== 0 && ev.pointerType !== 'touch') return;
-            const coords = this.getPerformanceCourtClickCoords(ev);
-            if (!coords) return;
-            wrap.setPointerCapture(ev.pointerId);
-            const index = (this.performancePointShots.length || 0) + 1;
-            this._performancePending = {
-                x: coords.x,
-                y: coords.y,
-                index,
-                startClientX: ev.clientX,
-                startClientY: ev.clientY,
-                hasDrag: false,
-                endClientX: ev.clientX,
-                endClientY: ev.clientY
-            };
-        };
-
-        const onPointerMove = (ev) => {
-            if (!this._performancePending) return;
-            const dx = ev.clientX - this._performancePending.startClientX;
-            const dy = ev.clientY - this._performancePending.startClientY;
-            if (Math.sqrt(dx * dx + dy * dy) >= threshold) {
-                this._performancePending.hasDrag = true;
-                this._performancePending.endClientX = ev.clientX;
-                this._performancePending.endClientY = ev.clientY;
-            }
-        };
-
-        const onPointerUp = (ev) => {
-            if (!this._performancePending) return;
-            try { wrap.releasePointerCapture(ev.pointerId); } catch (_) {}
-            const p = this._performancePending;
-            let symbol = null;
-            if (p.hasDrag) {
-                const dx = p.endClientX - p.startClientX;
-                const dy = p.endClientY - p.startClientY;
-                const angle = Math.atan2(dy, dx);
-                symbol = this.getPerformanceSymbolFromAngle(angle);
-            }
-            this.performancePointShots.push({ x: p.x, y: p.y, index: p.index, symbol });
-            this._performancePending = null;
-            this.renderPerformanceCourtMarkers();
-        };
-
-        const onPointerCancel = (ev) => {
-            try { wrap.releasePointerCapture(ev.pointerId); } catch (_) {}
-            this._performancePending = null;
-        };
-
-        wrap.addEventListener('pointerdown', onPointerDown, { passive: true });
-        wrap.addEventListener('pointermove', onPointerMove, { passive: true });
-        wrap.addEventListener('pointerup', onPointerUp, { passive: true });
-        wrap.addEventListener('pointercancel', onPointerCancel, { passive: true });
-        wrap.addEventListener('pointerleave', onPointerCancel, { passive: true });
-    }
-
-    updatePerformanceCourtScore() {
-        if (!this.currentMatch || !this.matchEngine) return;
-        const setEl = document.getElementById('performance-score-set');
-        const gamesEl = document.getElementById('performance-score-games');
-        const gameEl = document.getElementById('performance-score-game');
-        if (!setEl && !gamesEl && !gameEl) return;
-        let gameScore = '0-0';
-        let gamesScore = '0-0';
-        let setsScore = '0-0';
-        let currentSetNumber = 1;
-        if (this.currentMatch.log && this.currentMatch.log.length > 0) {
-            const last = this.currentMatch.log[this.currentMatch.log.length - 1];
-            if (last.gameScore) gameScore = last.gameScore;
-            if (last.gamesScore) gamesScore = last.gamesScore;
-            if (last.setsScore) setsScore = last.setsScore;
-        }
-        const parse = (s) => {
-            if (!s) return { p1: '0', p2: '0' };
-            const parts = String(s).split('-');
-            if (parts.length >= 2) return { p1: parts[0].trim(), p2: parts[1].trim() };
-            return { p1: '0', p2: '0' };
-        };
-        const setsParsed = parse(setsScore);
-        currentSetNumber = (parseInt(setsParsed.p1, 10) || 0) + (parseInt(setsParsed.p2, 10) || 0) + 1;
-        const gamesParsed = parse(gamesScore);
-        if (setEl) setEl.textContent = String(currentSetNumber);
-        if (gamesEl) gamesEl.textContent = gamesParsed.p1 + '-' + gamesParsed.p2;
-        if (gameEl) gameEl.textContent = gameScore;
     }
 
     // Pro Tracking Serve: get whether serve tracking is on (from match settings)
@@ -922,9 +714,6 @@ class MatchRecorder {
 
     async maybeShowServeZonePicker() {
         if (!this.currentMatch || !this.matchEngine || this.currentMatch.status === 'completed') return;
-        // Performance tracking mode: no serve zone picker (user taps court for shot; or on Record page after leaving court)
-        // 使用 performance 跟踪模式时：不弹出发球落点选择
-        if (this.currentMatch.settings && this.currentMatch.settings.trackingMode === 'performance') return;
         // Match already won, waiting for user to confirm end – do not show serve zone picker
         // 比赛已分出胜负、等待用户确认结束时不弹出发球落点选择
         if (this.currentMatch.winner && this.currentMatch.status !== 'completed') return;
@@ -1184,15 +973,6 @@ class MatchRecorder {
             
             if (extraPointInfo && extraPointInfo.afterProTrackingGreen) {
                 this.pendingAfterGreenZone = false;
-            }
-            if (this.currentMatch.settings && this.currentMatch.settings.trackingMode === 'performance' && this.performancePointShots && this.performancePointShots.length > 0) {
-                const log = this.currentMatch.log || [];
-                const lastEntry = log[log.length - 1];
-                if (lastEntry) {
-                    lastEntry.performanceShots = JSON.parse(JSON.stringify(this.performancePointShots));
-                }
-                this.performancePointShots = [];
-                await storage.saveMatch(this.currentMatch);
             }
             
             // Reload match to get updated log
@@ -1884,15 +1664,6 @@ class MatchRecorder {
             this.updateButtonVisibility(currentServer);
             if (!skipServeZonePickerCheck) this.maybeShowServeZonePicker();
         }, 150);
-
-        // Performance mode: always keep full-court page score in sync with log (so it’s correct when we switch back)
-        if (this.currentMatch.settings && this.currentMatch.settings.trackingMode === 'performance') {
-            this.updatePerformanceCourtScore();
-        }
-        // Performance mode: after recording a point, jump back to full-court recording page
-        if (this.currentMatch.settings && this.currentMatch.settings.trackingMode === 'performance' && typeof app !== 'undefined' && app.currentPage === 'match-recording') {
-            app.showPage('match-recording-performance');
-        }
     }
 
         // Update set scores from log
@@ -2041,41 +1812,6 @@ class MatchRecorder {
         if (p1Server || p1Receiver || p2Server || p2Receiver) {
             void document.body.offsetHeight;
         }
-    }
-
-    // Performance page footer: show tracked/other names and server/receiver buttons
-    updatePerformanceFooterVisibility(currentServer) {
-        const tracking = this.getTrackingPlayerSide();
-        if (!tracking) return;
-        const other = tracking === 'player1' ? 'player2' : 'player1';
-        const trackedNameEl = document.getElementById('performance-footer-tracked-name');
-        const otherNameEl = document.getElementById('performance-footer-other-name');
-        if (trackedNameEl && this.player1 && this.player2) {
-            trackedNameEl.textContent = tracking === 'player1' ? this.player1.name : this.player2.name;
-        }
-        if (otherNameEl && this.player1 && this.player2) {
-            otherNameEl.textContent = other === 'player1' ? this.player1.name : this.player2.name;
-        }
-        const trackedServer = document.getElementById('performance-tracked-server-buttons');
-        const trackedReceiver = document.getElementById('performance-tracked-receiver-buttons');
-        const otherServer = document.getElementById('performance-other-server-buttons');
-        const otherReceiver = document.getElementById('performance-other-receiver-buttons');
-        const show = (el, visible) => {
-            if (!el) return;
-            if (visible) {
-                el.classList.remove('hidden');
-                el.style.display = 'grid';
-                el.style.visibility = 'visible';
-                el.style.opacity = '1';
-            } else {
-                el.classList.add('hidden');
-                el.style.display = 'none';
-            }
-        };
-        show(trackedServer, currentServer === tracking);
-        show(trackedReceiver, currentServer === other);
-        show(otherServer, currentServer === other);
-        show(otherReceiver, currentServer === tracking);
     }
 
     // Load match for recording (resume)
