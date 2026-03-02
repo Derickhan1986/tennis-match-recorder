@@ -447,7 +447,10 @@ body {
     display: flex;
     flex-direction: column;
     height: 100vh;
-    min-height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    overflow: hidden;
     background-color: #1a237e;
 }
 .performance-court-header {
@@ -480,6 +483,7 @@ body {
     justify-content: center;
     padding: 0;
     min-height: 0;
+    overflow: hidden;
     cursor: crosshair;
 }
 /* Full-court markers overlay: same size as wrap, does not capture pointer */
@@ -555,16 +559,17 @@ body {
 .performance-score-block {
     white-space: nowrap;
 }
-/* Court: smaller than wrap so clickable area = court + outer margin (wrap), aspect ratio viewBox 270×470 */
+/* Court: fit within wrap without overflow; aspect ratio viewBox 270×470 */
 .performance-full-court-svg {
-    width: 85%;
-    height: 85%;
-    max-width: 85%;
-    max-height: 85%;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
     aspect-ratio: 270 / 470;
     object-fit: contain;
     display: block;
     pointer-events: none;
+    flex-shrink: 0;
 }
 
 /* Court: long side along viewport height, baseline along width; orientation locked to portrait on this page so no rotation/transform needed */
