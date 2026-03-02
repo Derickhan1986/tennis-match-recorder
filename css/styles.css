@@ -441,6 +441,7 @@ body {
 }
 
 /* Performance recording: full court only; fixed to viewport so no page scroll */
+/* Wrap height = viewport H - header - footer (no fixed 60dvh); court centered in wrap */
 #match-recording-performance-page.active {
     padding: 0;
     overflow: hidden;
@@ -452,7 +453,7 @@ body {
     position: fixed;
     inset: 0;
     --performance-top-bar: 48px;
-    --performance-bottom-bar: var(--performance-top-bar);
+    --performance-bottom-bar: 48px;
     display: flex;
     flex-direction: column;
     height: 100vh;
@@ -464,7 +465,7 @@ body {
 }
 .performance-court-container {
     --performance-top-bar: 48px;
-    --performance-bottom-bar: var(--performance-top-bar);
+    --performance-bottom-bar: 48px;
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -476,9 +477,11 @@ body {
     display: flex;
     align-items: center;
     padding: 6px 10px;
+    height: var(--performance-top-bar);
     min-height: var(--performance-top-bar);
-    color: #fff;
     flex-shrink: 0;
+    color: #fff;
+    box-sizing: border-box;
 }
 .performance-court-header-center {
     flex: 1;
@@ -494,21 +497,23 @@ body {
     font-weight: 600;
     text-align: center;
 }
+/* Wrap = remaining height (H - header - footer); court centered inside */
 .performance-court-wrap {
     position: relative;
     flex: 1;
-    max-height: 60vh;
-    max-height: 60dvh;
+    min-height: 0;
+    height: calc(100vh - var(--performance-top-bar) - var(--performance-bottom-bar));
+    height: calc(100dvh - var(--performance-top-bar) - var(--performance-bottom-bar));
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
-    min-height: 0;
     overflow: hidden;
     cursor: crosshair;
     touch-action: none;
     -webkit-user-select: none;
     user-select: none;
+    box-sizing: border-box;
 }
 /* Full-court markers overlay: same size as wrap, does not capture pointer */
 .performance-court-markers {
@@ -551,9 +556,11 @@ body {
     align-items: center;
     justify-content: center;
     padding: 8px;
+    height: var(--performance-bottom-bar);
     min-height: var(--performance-bottom-bar);
     flex-shrink: 0;
     background-color: #1a237e;
+    box-sizing: border-box;
 }
 .performance-footer-record-btn {
     padding: 10px 24px;
@@ -583,7 +590,7 @@ body {
 .performance-score-block {
     white-space: nowrap;
 }
-/* Court: 60% of clickable wrap; aspect ratio viewBox 270×470 */
+/* Court: 60% of wrap, centered in wrap; aspect ratio viewBox 270×470 */
 .performance-full-court-svg {
     width: 60%;
     height: 60%;
@@ -594,6 +601,7 @@ body {
     display: block;
     pointer-events: none;
     flex-shrink: 0;
+    margin: auto;
 }
 
 /* Court: long side along viewport height, baseline along width; orientation locked to portrait on this page so no rotation/transform needed */
