@@ -44,6 +44,7 @@ const app = {
         this.setupEventListeners();
         this.setupAccountEvents();
         this.setupAddToHomeScreen();
+        this.setupOrientationLock();
         if (typeof auth !== 'undefined' && auth.init) {
             await auth.init().catch(() => {});
             this.storeReferralParamIfNeeded();
@@ -77,6 +78,24 @@ const app = {
         this.showPage(initialPage);
     },
     
+    // Lock screen to portrait so the app never rotates with device (requires user gesture in most browsers)
+    setupOrientationLock() {
+        const tryLock = () => {
+            try {
+                if (typeof screen !== 'undefined' && screen.orientation && typeof screen.orientation.lock === 'function') {
+                    screen.orientation.lock('portrait').then(() => {
+                        document.removeEventListener('click', tryLock);
+                        document.removeEventListener('touchstart', tryLock, { capture: true });
+                    }).catch(() => {});
+                }
+            } catch (e) { /* ignore */ }
+            document.removeEventListener('click', tryLock);
+            document.removeEventListener('touchstart', tryLock, { capture: true });
+        };
+        document.addEventListener('click', tryLock, { once: false });
+        document.addEventListener('touchstart', tryLock, { capture: true, once: false });
+    },
+
     // Setup navigation
     // 设置导航
     setupNavigation() {
