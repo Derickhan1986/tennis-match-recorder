@@ -559,12 +559,12 @@ body {
 .performance-score-block {
     white-space: nowrap;
 }
-/* Court: fit within wrap without overflow; aspect ratio viewBox 270×470 */
+/* Court: 70% of clickable wrap; aspect ratio viewBox 270×470 */
 .performance-full-court-svg {
-    width: 100%;
-    height: 100%;
-    max-width: 100%;
-    max-height: 100%;
+    width: 70%;
+    height: 70%;
+    max-width: 70%;
+    max-height: 70%;
     aspect-ratio: 270 / 470;
     object-fit: contain;
     display: block;
