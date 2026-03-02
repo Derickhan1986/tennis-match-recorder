@@ -541,10 +541,59 @@ body {
     font-size: 10px;
     line-height: 1;
 }
+.performance-court-marker-symbol.red-square { color: #e53935; }
+.performance-court-marker-symbol.red-circle { color: #e53935; }
 .performance-court-marker-symbol.red-triangle { color: #e53935; }
 .performance-court-marker-symbol.red-x { color: #e53935; }
-.performance-court-marker-symbol.green-triangle { color: #43a047; }
-.performance-court-marker-symbol.green-x { color: #43a047; }
+
+/* Radial symbol picker (4 sectors) shown when holding after tap */
+.performance-symbol-picker {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.35);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+.performance-symbol-picker-label {
+    position: absolute;
+    font-size: 14px;
+    font-weight: 700;
+    text-shadow: 0 0 2px #000;
+    color: rgba(255, 255, 255, 0.6);
+}
+.performance-symbol-picker-label.sector-0 { /* right / 0 deg */
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+}
+.performance-symbol-picker-label.sector-1 { /* up / 90 deg */
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+.performance-symbol-picker-label.sector-2 { /* left / 180 deg */
+    top: 50%;
+    left: 6px;
+    transform: translateY(-50%);
+}
+.performance-symbol-picker-label.sector-3 { /* down / 270 deg */
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+.performance-symbol-picker[data-active-sector="0"] .performance-symbol-picker-label.sector-0,
+.performance-symbol-picker[data-active-sector="1"] .performance-symbol-picker-label.sector-1,
+.performance-symbol-picker[data-active-sector="2"] .performance-symbol-picker-label.sector-2,
+.performance-symbol-picker[data-active-sector="3"] .performance-symbol-picker-label.sector-3 {
+    color: #fff;
+    text-shadow: 0 0 4px #000;
+}
+
 /* Bottom 10dvh: Record button only */
 .performance-court-footer {
     flex: 0 0 10vh;

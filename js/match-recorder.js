@@ -795,7 +795,8 @@ class MatchRecorder {
         let a = angleRad;
         if (a < 0) a += 2 * Math.PI;
         const sector = Math.floor(a / (Math.PI / 2)) % 4;
-        const symbols = ['green-x', 'green-triangle', 'red-x', 'red-triangle'];
+        // 4 red symbols: square, circle, triangle, X – order must match radial picker sectors
+        const symbols = ['red-square', 'red-circle', 'red-triangle', 'red-x'];
         return symbols[sector];
     }
 
@@ -820,7 +821,12 @@ class MatchRecorder {
             if (shot.symbol) {
                 const symEl = document.createElement('span');
                 symEl.className = 'performance-court-marker-symbol ' + shot.symbol;
-                symEl.textContent = shot.symbol.indexOf('triangle') !== -1 ? '▲' : '×';
+                let ch = '';
+                if (shot.symbol.indexOf('square') !== -1) ch = '■';
+                else if (shot.symbol.indexOf('circle') !== -1) ch = '●';
+                else if (shot.symbol.indexOf('triangle') !== -1) ch = '▲';
+                else ch = '×';
+                symEl.textContent = ch;
                 el.appendChild(symEl);
             }
             overlay.appendChild(el);
@@ -832,6 +838,55 @@ class MatchRecorder {
         if (!wrap || wrap.dataset.clickBound) return;
         wrap.dataset.clickBound = '1';
         const threshold = MatchRecorder.PERFORMANCE_DRAG_THRESHOLD;
+
+        // Radial symbol picker (4 sectors) – purely visual, selection still based on drag angle.
+        let symbolPickerEl = null;
+        const ensureSymbolPicker = () => {
+            if (symbolPickerEl) return symbolPickerEl;
+            symbolPickerEl = document.createElement('div');
+            symbolPickerEl.className = 'performance-symbol-picker';
+            // Four labels for the 4 symbols (red square, circle, triangle, X), arranged E/N/W/S
+            const labels = [
+                { cls: 'sector-0', text: '■' }, // red-square (right)
+                { cls: 'sector-1', text: '●' }, // red-circle (up)
+                { cls: 'sector-2', text: '▲' }, // red-triangle (left)
+                { cls: 'sector-3', text: '×' }  // red-x (down)
+            ];
+            labels.forEach((info, idx) => {
+                const span = document.createElement('span');
+                span.className = 'performance-symbol-picker-label ' + info.cls;
+                span.textContent = info.text;
+                symbolPickerEl.appendChild(span);
+            });
+            wrap.appendChild(symbolPickerEl);
+            return symbolPickerEl;
+        };
+
+        const showSymbolPickerAt = (clientX, clientY) => {
+            const el = ensureSymbolPicker();
+            const rect = wrap.getBoundingClientRect();
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            el.style.display = 'flex';
+            el.setAttribute('data-active-sector', '');
+        };
+
+        const hideSymbolPicker = () => {
+            if (!symbolPickerEl) return;
+            symbolPickerEl.style.display = 'none';
+            symbolPickerEl.setAttribute('data-active-sector', '');
+        };
+
+        const updateSymbolPickerActiveSector = (sectorIndex) => {
+            if (!symbolPickerEl) return;
+            if (sectorIndex == null || sectorIndex < 0) {
+                symbolPickerEl.setAttribute('data-active-sector', '');
+            } else {
+                symbolPickerEl.setAttribute('data-active-sector', String(sectorIndex));
+            }
+        };
 
         const onPointerDown = (ev) => {
             if (ev.button !== 0 && ev.pointerType !== 'touch') return;
@@ -849,6 +904,7 @@ class MatchRecorder {
                 endClientX: ev.clientX,
                 endClientY: ev.clientY
             };
+            showSymbolPickerAt(ev.clientX, ev.clientY);
         };
 
         const onPointerMove = (ev) => {
@@ -859,6 +915,13 @@ class MatchRecorder {
                 this._performancePending.hasDrag = true;
                 this._performancePending.endClientX = ev.clientX;
                 this._performancePending.endClientY = ev.clientY;
+                const angle = Math.atan2(dy, dx);
+                let a = angle;
+                if (a < 0) a += 2 * Math.PI;
+                const sector = Math.floor(a / (Math.PI / 2)) % 4;
+                updateSymbolPickerActiveSector(sector);
+            } else {
+                updateSymbolPickerActiveSector(null);
             }
         };
 
@@ -876,11 +939,13 @@ class MatchRecorder {
             this.performancePointShots.push({ x: p.x, y: p.y, index: p.index, symbol });
             this._performancePending = null;
             this.renderPerformanceCourtMarkers();
+            hideSymbolPicker();
         };
 
         const onPointerCancel = (ev) => {
             try { wrap.releasePointerCapture(ev.pointerId); } catch (_) {}
             this._performancePending = null;
+            hideSymbolPicker();
         };
 
         wrap.addEventListener('pointerdown', onPointerDown, { passive: true });
