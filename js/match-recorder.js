@@ -658,9 +658,9 @@ class MatchRecorder {
             this.matchEngine = new MatchEngine(match);
             
             if (settings.trackingMode === 'performance') {
-                app.showPage('match-recording-performance');
+                app.showPage('match-recording');
                 setTimeout(() => {
-                    if (typeof this.initPerformanceCourtDisplay === 'function') this.initPerformanceCourtDisplay();
+                    this.showPerformanceFullCourtPopup();
                     this.updateDisplay();
                 }, 200);
             } else {
@@ -675,18 +675,85 @@ class MatchRecorder {
         }
     }
 
-    // Performance recording: full-court UI init and score update
-    initPerformanceCourtDisplay() {
-        // Lock orientation to portrait so court stays fixed (long side along height, no rotation)
+    /** Build full court modal DOM (same pattern as court zone picker: create overlay, append to body). */
+    buildPerformanceFullCourtModal() {
+        const existing = document.querySelectorAll('.modal.performance-full-court-modal');
+        existing.forEach(el => { if (el.parentNode) el.parentNode.removeChild(el); });
+
+        const overlay = document.createElement('div');
+        overlay.className = 'modal performance-full-court-modal';
+        overlay.setAttribute('aria-label', 'Live Match');
+
+        const container = document.createElement('div');
+        container.className = 'performance-court-container';
+
+        container.innerHTML =
+            '<div class="performance-court-header">' +
+            '<button type="button" class="nav-back" id="performance-court-back" aria-label="Back">←</button>' +
+            '<div class="performance-court-header-center">' +
+            '<h2 class="performance-court-title">Live Match</h2>' +
+            '<div class="performance-court-score" id="performance-court-score" aria-label="Score">' +
+            '<span class="performance-score-block">Set <span id="performance-score-set">1</span></span> ' +
+            '<span class="performance-score-block">Game <span id="performance-score-games">0-0</span></span> ' +
+            '<span class="performance-score-block">Score <span id="performance-score-game">0-0</span></span>' +
+            '</div></div></div>' +
+            '<div class="performance-court-wrap" id="performance-court-wrap">' +
+            '<svg id="performance-full-court-svg" class="performance-full-court-svg" viewBox="0 0 270 470" aria-label="Full tennis court" xmlns="http://www.w3.org/2000/svg">' +
+            '<rect x="0" y="0" width="270" height="470" fill="#1a237e"/>' +
+            '<rect x="25" y="25" width="220" height="420" fill="#4a90e2" stroke="#fff" stroke-width="2"/>' +
+            '<line x1="50" y1="25" x2="50" y2="445" stroke="#fff" stroke-width="2"/>' +
+            '<line x1="220" y1="25" x2="220" y2="445" stroke="#fff" stroke-width="2"/>' +
+            '<line x1="50" y1="130" x2="220" y2="130" stroke="#fff" stroke-width="2"/>' +
+            '<line x1="50" y1="340" x2="220" y2="340" stroke="#fff" stroke-width="2"/>' +
+            '<line x1="135" y1="130" x2="135" y2="235" stroke="#fff" stroke-width="2"/>' +
+            '<line x1="135" y1="235" x2="135" y2="340" stroke="#fff" stroke-width="2"/>' +
+            '<line x1="12.5" y1="235" x2="257.5" y2="235" stroke="#fff" stroke-width="2"/>' +
+            '<circle cx="12.5" cy="235" r="3" fill="none" stroke="#fff" stroke-width="2"/>' +
+            '<circle cx="257.5" cy="235" r="3" fill="none" stroke="#fff" stroke-width="2"/>' +
+            '</svg>' +
+            '<div id="performance-court-markers" class="performance-court-markers" aria-hidden="true"></div>' +
+            '</div>' +
+            '<div class="performance-court-footer" id="performance-court-footer">' +
+            '<button type="button" class="performance-footer-record-btn" id="performance-footer-record-btn">Record</button>' +
+            '</div>';
+
+        overlay.appendChild(container);
+        document.body.appendChild(overlay);
+        return overlay;
+    }
+
+    showPerformanceFullCourtPopup() {
+        this.buildPerformanceFullCourtModal();
         try {
             if (typeof screen !== 'undefined' && screen.orientation && typeof screen.orientation.lock === 'function') {
                 screen.orientation.lock('portrait').catch(() => {});
             }
         } catch (e) { /* ignore */ }
+        if (typeof this.initPerformanceCourtDisplay === 'function') this.initPerformanceCourtDisplay();
+    }
+
+    hidePerformanceFullCourtPopup() {
+        const overlay = document.querySelector('.modal.performance-full-court-modal');
+        if (overlay) {
+            overlay.classList.add('hidden');
+            setTimeout(() => {
+                if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+            }, 300);
+        }
+        try {
+            if (typeof screen !== 'undefined' && screen.orientation && typeof screen.orientation.unlock === 'function') {
+                screen.orientation.unlock();
+            }
+        } catch (e) { /* ignore */ }
+    }
+
+    // Performance recording: full-court UI init and score update
+    initPerformanceCourtDisplay() {
         const backBtn = document.getElementById('performance-court-back');
         if (backBtn && !backBtn.dataset.bound) {
             backBtn.dataset.bound = '1';
             backBtn.addEventListener('click', () => {
+                this.hidePerformanceFullCourtPopup();
                 if (typeof app !== 'undefined' && app.showPage) app.showPage('matches');
             });
         }
@@ -694,6 +761,7 @@ class MatchRecorder {
         if (recordBtn && !recordBtn.dataset.bound) {
             recordBtn.dataset.bound = '1';
             recordBtn.addEventListener('click', () => {
+                this.hidePerformanceFullCourtPopup();
                 if (typeof app !== 'undefined' && app.showPage) app.showPage('match-recording');
             });
         }
@@ -1889,9 +1957,9 @@ class MatchRecorder {
         if (this.currentMatch.settings && this.currentMatch.settings.trackingMode === 'performance') {
             this.updatePerformanceCourtScore();
         }
-        // Performance mode: after recording a point, jump back to full-court recording page
+        // Performance mode: after recording a point, show full-court popup again
         if (this.currentMatch.settings && this.currentMatch.settings.trackingMode === 'performance' && typeof app !== 'undefined' && app.currentPage === 'match-recording') {
-            app.showPage('match-recording-performance');
+            this.showPerformanceFullCourtPopup();
         }
     }
 

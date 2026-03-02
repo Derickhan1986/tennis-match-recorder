@@ -591,14 +591,6 @@ const app = {
     // Show page
     // 显示页面
     showPage(pageName) {
-        // When leaving performance full-court page, unlock screen orientation
-        if (this.currentPage === 'match-recording-performance' && pageName !== 'match-recording-performance') {
-            try {
-                if (typeof screen !== 'undefined' && screen.orientation && typeof screen.orientation.unlock === 'function') {
-                    screen.orientation.unlock();
-                }
-            } catch (e) { /* ignore */ }
-        }
         // Hide all pages
         // 隐藏所有页面
         const pages = document.querySelectorAll('.page');
