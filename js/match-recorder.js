@@ -773,11 +773,11 @@ class MatchRecorder {
         return { width: 270, height: 470 };
     }
 
-    // Convert screen click to court viewBox coordinates (0..270, 0..470). Page orientation is locked so no rotation conversion needed.
+    // Convert screen click to viewBox coordinates (0..270, 0..470). Use wrap rect so full clickable area maps 1:1 (not SVG, which is only 50% of wrap).
     getPerformanceCourtClickCoords(ev) {
-        const svg = document.getElementById('performance-full-court-svg');
-        if (!svg) return null;
-        const rect = svg.getBoundingClientRect();
+        const wrap = document.getElementById('performance-court-wrap');
+        if (!wrap) return null;
+        const rect = wrap.getBoundingClientRect();
         const vb = this.getPerformanceCourtViewBox();
         const x = ((ev.clientX - rect.left) / rect.width) * vb.width;
         const y = ((ev.clientY - rect.top) / rect.height) * vb.height;
@@ -802,20 +802,13 @@ class MatchRecorder {
     renderPerformanceCourtMarkers() {
         const overlay = document.getElementById('performance-court-markers');
         const wrap = document.getElementById('performance-court-wrap');
-        const svg = document.getElementById('performance-full-court-svg');
-        if (!overlay || !wrap || !svg) return;
+        if (!overlay || !wrap) return;
         overlay.textContent = '';
-        const wrapRect = wrap.getBoundingClientRect();
-        const svgRect = svg.getBoundingClientRect();
-        const courtLeftPct = ((svgRect.left - wrapRect.left) / wrapRect.width) * 100;
-        const courtTopPct = ((svgRect.top - wrapRect.top) / wrapRect.height) * 100;
-        const courtWidthPct = (svgRect.width / wrapRect.width) * 100;
-        const courtHeightPct = (svgRect.height / wrapRect.height) * 100;
         const vb = this.getPerformanceCourtViewBox();
         const list = this.performancePointShots || [];
         list.forEach((shot) => {
-            const leftPct = courtLeftPct + (shot.x / vb.width) * courtWidthPct;
-            const topPct = courtTopPct + (shot.y / vb.height) * courtHeightPct;
+            const leftPct = (shot.x / vb.width) * 100;
+            const topPct = (shot.y / vb.height) * 100;
             const el = document.createElement('div');
             el.className = 'performance-court-marker';
             el.style.left = leftPct + '%';

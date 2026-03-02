@@ -505,11 +505,16 @@ body {
     user-select: none;
     box-sizing: border-box;
 }
-/* Full-court markers overlay: same size as wrap, does not capture pointer */
+/* Markers layer: same size as wrap (95vw × 80dvh), no percentage so not affected by flex */
 .performance-court-markers {
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    width: 95vw;
+    height: 80vh;
+    height: 80dvh;
     pointer-events: none;
+    box-sizing: border-box;
 }
 .performance-court-marker {
     position: absolute;
@@ -583,12 +588,12 @@ body {
 .performance-score-block {
     white-space: nowrap;
 }
-/* Court: 50% of wrap, aspect ratio 270×470 */
+/* Court: 70% of wrap, aspect ratio 270×470 */
 .performance-full-court-svg {
-    width: 50%;
-    height: 50%;
-    max-width: 50%;
-    max-height: 50%;
+    width: 70%;
+    height: 70%;
+    max-width: 70%;
+    max-height: 70%;
     aspect-ratio: 270 / 470;
     object-fit: contain;
     display: block;
