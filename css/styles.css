@@ -456,9 +456,8 @@ body {
     height: 100%;
     overflow: hidden;
 }
+/* Three parts: top 10% (score), middle 80% (click/court/markers), bottom 10% (Record) */
 .performance-court-container {
-    --performance-top-bar: 48px;
-    --performance-bottom-bar: 48px;
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -467,36 +466,19 @@ body {
     background-color: #1a237e;
 }
 .performance-court-header {
+    flex: 0 0 10%;
+    min-height: 0;
     display: flex;
     align-items: center;
-    padding: 6px 10px;
-    height: var(--performance-top-bar);
-    min-height: var(--performance-top-bar);
-    flex-shrink: 0;
+    padding: 0 10px;
     color: #fff;
     box-sizing: border-box;
 }
-.performance-court-header-center {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-}
-.performance-court-title {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-    text-align: center;
-}
-/* Wrap = remaining height (H - header - footer); court centered inside */
+/* Wrap = middle 80%, fills with click layer + court + markers */
 .performance-court-wrap {
     position: relative;
-    flex: 1;
+    flex: 0 0 80%;
     min-height: 0;
-    height: calc(100vh - var(--performance-top-bar) - var(--performance-bottom-bar));
-    height: calc(100dvh - var(--performance-top-bar) - var(--performance-bottom-bar));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -543,15 +525,14 @@ body {
 .performance-court-marker-symbol.red-x { color: #e53935; }
 .performance-court-marker-symbol.green-triangle { color: #43a047; }
 .performance-court-marker-symbol.green-x { color: #43a047; }
-/* Bottom bar: single Record button – goes to normal recording page */
+/* Bottom 10%: Record button only, no extra box */
 .performance-court-footer {
+    flex: 0 0 10%;
+    min-height: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 8px;
-    height: var(--performance-bottom-bar);
-    min-height: var(--performance-bottom-bar);
-    flex-shrink: 0;
+    padding: 0;
     background-color: #1a237e;
     box-sizing: border-box;
 }
@@ -570,6 +551,7 @@ body {
 }
 /* Score: in header next to Live Match, no rotation */
 .performance-court-score {
+    flex: 1;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -583,12 +565,12 @@ body {
 .performance-score-block {
     white-space: nowrap;
 }
-/* Court: 60% of wrap, centered in wrap; aspect ratio viewBox 270×470 */
+/* Court: fill middle area as much as possible, keep aspect ratio 270×470 */
 .performance-full-court-svg {
-    width: 60%;
-    height: 60%;
-    max-width: 60%;
-    max-height: 60%;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
     aspect-ratio: 270 / 470;
     object-fit: contain;
     display: block;

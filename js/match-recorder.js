@@ -690,13 +690,11 @@ class MatchRecorder {
         container.innerHTML =
             '<div class="performance-court-header">' +
             '<button type="button" class="nav-back" id="performance-court-back" aria-label="Back">←</button>' +
-            '<div class="performance-court-header-center">' +
-            '<h2 class="performance-court-title">Live Match</h2>' +
             '<div class="performance-court-score" id="performance-court-score" aria-label="Score">' +
             '<span class="performance-score-block">Set <span id="performance-score-set">1</span></span> ' +
             '<span class="performance-score-block">Game <span id="performance-score-games">0-0</span></span> ' +
             '<span class="performance-score-block">Score <span id="performance-score-game">0-0</span></span>' +
-            '</div></div></div>' +
+            '</div></div>' +
             '<div class="performance-court-wrap" id="performance-court-wrap">' +
             '<svg id="performance-full-court-svg" class="performance-full-court-svg" viewBox="0 0 270 470" aria-label="Full tennis court" xmlns="http://www.w3.org/2000/svg">' +
             '<rect x="0" y="0" width="270" height="470" fill="#1a237e"/>' +
