@@ -794,10 +794,16 @@ class MatchRecorder {
     getPerformanceSymbolFromAngle(angleRad) {
         let a = angleRad;
         if (a < 0) a += 2 * Math.PI;
-        const sector = Math.floor(a / (Math.PI / 2)) % 4;
-        // 4 red symbols: square, circle, triangle, X – order must match radial picker sectors
+        // Rotate by 45deg so boundaries are at 45/135/225/315 degrees
+        a += Math.PI / 4;
+        if (a >= 2 * Math.PI) a -= 2 * Math.PI;
+        const rawSector = Math.floor(a / (Math.PI / 2)) % 4; // 0:right, 1:down, 2:left, 3:up in screen coords (with 45deg boundaries)
+        // Map movement direction sector → visual sector index used by radial picker (0:right,1:up,2:left,3:down)
+        const sectorMap = [0, 3, 2, 1];
+        const visualSector = sectorMap[rawSector];
+        // 4 red symbols: square (right), circle (up), triangle (left), X (down)
         const symbols = ['red-square', 'red-circle', 'red-triangle', 'red-x'];
-        return symbols[sector];
+        return symbols[visualSector];
     }
 
     renderPerformanceCourtMarkers() {
@@ -918,8 +924,13 @@ class MatchRecorder {
                 const angle = Math.atan2(dy, dx);
                 let a = angle;
                 if (a < 0) a += 2 * Math.PI;
-                const sector = Math.floor(a / (Math.PI / 2)) % 4;
-                updateSymbolPickerActiveSector(sector);
+                // Rotate by 45deg so sector boundaries are at 45/135/225/315
+                a += Math.PI / 4;
+                if (a >= 2 * Math.PI) a -= 2 * Math.PI;
+                const rawSector = Math.floor(a / (Math.PI / 2)) % 4; // 0:right,1:down,2:left,3:up with 45deg boundaries
+                const sectorMap = [0, 3, 2, 1]; // map to visual sectors: right,up,left,down
+                const visualSector = sectorMap[rawSector];
+                updateSymbolPickerActiveSector(visualSector);
             } else {
                 updateSymbolPickerActiveSector(null);
             }
