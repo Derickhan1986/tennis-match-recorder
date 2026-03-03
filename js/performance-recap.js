@@ -166,10 +166,6 @@
                     const entry = entries[currentEntryIndex];
                     const shots = entry.performanceShots && entry.performanceShots.length > 0 ? entry.performanceShots : [];
                     const visibleShots = shots.slice(0, currentShotIndex + 1);
-                    function sliceToIndex(arr, maxIdx) {
-                        if (!arr || arr.length === 0) return [];
-                        return arr.slice(0, Math.min(maxIdx + 1, arr.length));
-                    }
                     if (displayMode === 1) {
                         return visibleShots.map(function (s) {
                             return { shot: s, dimmed: false };
@@ -190,12 +186,8 @@
                     }
                     if (displayMode === 3) {
                         const out = [];
-                        entries.forEach(function (e, i) {
-                            const dimmed = i !== currentEntryIndex;
-                            const sList = (i === currentEntryIndex) ? visibleShots : sliceToIndex(e.performanceShots || [], currentShotIndex);
-                            sList.forEach(function (s) {
-                                out.push({ shot: s, dimmed: dimmed });
-                            });
+                        shots.forEach(function (s, i) {
+                            out.push({ shot: s, dimmed: i !== currentShotIndex });
                         });
                         return out;
                     }
