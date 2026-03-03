@@ -112,7 +112,7 @@
                 btnLeft.setAttribute('aria-label', 'Previous');
                 const btnDisplay = document.createElement('button');
                 btnDisplay.className = 'btn-secondary';
-                btnDisplay.textContent = 'Display 1';
+                btnDisplay.textContent = 'Mode 1';
                 const btnRight = document.createElement('button');
                 btnRight.className = 'btn-secondary';
                 btnRight.textContent = '→';
@@ -172,18 +172,14 @@
                     }
                     if (displayMode === 2) {
                         const out = [];
-                        if (currentEntryIndex > 0) {
-                            sliceToIndex(entries[currentEntryIndex - 1].performanceShots, currentShotIndex).forEach(function (s) {
-                                out.push({ shot: s, dimmed: true });
-                            });
+                        if (currentShotIndex > 0 && shots[currentShotIndex - 1]) {
+                            out.push({ shot: shots[currentShotIndex - 1], dimmed: true });
                         }
-                        visibleShots.forEach(function (s) {
-                            out.push({ shot: s, dimmed: false });
-                        });
-                        if (currentEntryIndex < entries.length - 1) {
-                            sliceToIndex(entries[currentEntryIndex + 1].performanceShots, currentShotIndex).forEach(function (s) {
-                                out.push({ shot: s, dimmed: true });
-                            });
+                        if (shots[currentShotIndex]) {
+                            out.push({ shot: shots[currentShotIndex], dimmed: false });
+                        }
+                        if (currentShotIndex < shots.length - 1 && shots[currentShotIndex + 1]) {
+                            out.push({ shot: shots[currentShotIndex + 1], dimmed: true });
                         }
                         return out;
                     }
@@ -203,9 +199,7 @@
 
                 function renderMarkers() {
                     if (!markersEl) return;
-                    while (markersEl.firstChild) {
-                        markersEl.removeChild(markersEl.firstChild);
-                    }
+                    markersEl.innerHTML = '';
                     const items = getShotsToRender();
                     items.forEach(function (item) {
                         markersEl.appendChild(createMarkerEl(item.shot, item.dimmed));
@@ -224,7 +218,7 @@
                     renderMarkers();
                     btnLeft.disabled = currentEntryIndex === 0;
                     btnRight.disabled = currentEntryIndex === entries.length - 1;
-                    btnDisplay.textContent = 'Display ' + displayMode;
+                    btnDisplay.textContent = 'Mode ' + displayMode;
                 }
 
                 progressInput.addEventListener('input', function () {
@@ -234,7 +228,7 @@
                     currentShotIndex = Math.max(0, Math.min(maxShot, currentShotIndex));
                     updateTopRegion();
                     renderMarkers();
-                    btnDisplay.textContent = 'Display ' + displayMode;
+                    btnDisplay.textContent = 'Mode ' + displayMode;
                 });
 
                 btnLeft.addEventListener('click', function () {
