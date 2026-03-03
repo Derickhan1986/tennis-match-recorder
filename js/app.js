@@ -2411,13 +2411,14 @@ const app = {
             </div>
             <div class="modal-body">
                 <p class="setting-hint">Share this match to another user, cost 1 credit.</p>
-                <div class="form-group">
+                <div class="form-group share-email-group">
                     <label>Recipient email *</label>
                     <div class="share-email-row">
-                        <input type="email" id="share-recipient-email" list="share-email-list" placeholder="email@example.com" required>
+                        <input type="email" id="share-recipient-email" placeholder="email@example.com" required autocomplete="off">
                         <button type="button" class="share-email-add-btn" title="Save email for quick select">+</button>
+                        <button type="button" class="share-email-remove-btn" title="Remove email from saved list">−</button>
                     </div>
-                    <datalist id="share-email-list"></datalist>
+                    <div class="share-email-dropdown hidden" id="share-email-dropdown"></div>
                 </div>
                 <div class="form-group">
                     <label>Message (optional)</label>
@@ -2441,7 +2442,7 @@ const app = {
         const statusEl = content.querySelector('#share-modal-status');
         const submitBtn = content.querySelector('#share-submit-btn');
         const emailInput = content.querySelector('#share-recipient-email');
-        const datalist = content.querySelector('#share-email-list');
+        const dropdown = content.querySelector('#share-email-dropdown');
         const SHARE_EMAILS_KEY = 'share-recipient-emails';
         const getSavedEmails = () => {
             try {
@@ -2452,15 +2453,28 @@ const app = {
         const setSavedEmails = (emails) => {
             localStorage.setItem(SHARE_EMAILS_KEY, JSON.stringify(emails));
         };
-        const refreshDatalist = () => {
-            datalist.innerHTML = '';
-            getSavedEmails().forEach((e) => {
-                const opt = document.createElement('option');
-                opt.value = e;
-                datalist.appendChild(opt);
+        const showDropdown = () => {
+            const emails = getSavedEmails();
+            dropdown.innerHTML = '';
+            if (emails.length === 0) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+            emails.forEach((e) => {
+                const item = document.createElement('div');
+                item.className = 'share-email-dropdown-item';
+                item.textContent = e;
+                item.addEventListener('click', () => {
+                    emailInput.value = e;
+                    dropdown.classList.add('hidden');
+                });
+                dropdown.appendChild(item);
             });
+            dropdown.classList.remove('hidden');
         };
-        refreshDatalist();
+        const hideDropdown = () => dropdown.classList.add('hidden');
+        emailInput.addEventListener('focus', showDropdown);
+        emailInput.addEventListener('blur', () => setTimeout(hideDropdown, 150));
         content.querySelector('.share-email-add-btn').addEventListener('click', () => {
             const email = (emailInput.value || '').trim().toLowerCase();
             if (!email) {
@@ -2470,9 +2484,24 @@ const app = {
             let emails = getSavedEmails();
             emails = emails.filter((x) => x.toLowerCase() !== email);
             emails.unshift(email);
-            setSavedEmails(emails.slice(0, 50));
-            refreshDatalist();
+            setSavedEmails(emails.slice(0, 10));
             this.showToast('Email saved', 'success');
+        });
+        content.querySelector('.share-email-remove-btn').addEventListener('click', () => {
+            const email = (emailInput.value || '').trim().toLowerCase();
+            if (!email) {
+                this.showToast('Enter an email first', 'info');
+                return;
+            }
+            let emails = getSavedEmails();
+            const before = emails.length;
+            emails = emails.filter((x) => x.toLowerCase() !== email);
+            if (emails.length < before) {
+                setSavedEmails(emails);
+                this.showToast('Email removed', 'success');
+            } else {
+                this.showToast('Email not in saved list', 'info');
+            }
         });
         submitBtn.addEventListener('click', async () => {
             const email = (content.querySelector('#share-recipient-email').value || '').trim();

@@ -439,7 +439,8 @@ body {
     flex: 1;
     min-width: 0;
 }
-.share-email-add-btn {
+.share-email-add-btn,
+.share-email-remove-btn {
     flex-shrink: 0;
     width: 40px;
     min-width: 40px;
@@ -453,8 +454,42 @@ body {
     color: var(--text-primary);
     cursor: pointer;
 }
-.share-email-add-btn:hover {
+.share-email-add-btn:hover,
+.share-email-remove-btn:hover {
     background-color: var(--border-color);
+}
+
+.share-email-group {
+    position: relative;
+}
+.share-email-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 4px;
+    max-height: 180px;
+    overflow-y: auto;
+    background-color: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+}
+.share-email-dropdown.hidden {
+    display: none;
+}
+.share-email-dropdown-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border-color);
+}
+.share-email-dropdown-item:last-child {
+    border-bottom: none;
+}
+.share-email-dropdown-item:hover {
+    background-color: rgba(0, 0, 0, 0.05);
 }
 
 .form-actions {
