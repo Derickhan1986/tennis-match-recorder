@@ -23,7 +23,7 @@
         el.className = 'performance-court-marker';
         el.style.left = leftPct + '%';
         el.style.top = topPct + '%';
-        if (dimmed) el.style.opacity = '0.3';
+        if (dimmed) el.style.opacity = '0.5';
         const numEl = document.createElement('span');
         numEl.className = 'performance-court-marker-num';
         numEl.textContent = String(shot.index);
@@ -186,9 +186,9 @@
                     }
                     if (displayMode === 3) {
                         const out = [];
-                        shots.forEach(function (s, i) {
-                            out.push({ shot: s, dimmed: i !== currentShotIndex });
-                        });
+                        for (let i = 0; i < shots.length; i++) {
+                            out.push({ shot: shots[i], dimmed: i !== currentShotIndex });
+                        }
                         return out;
                     }
                     return [];
