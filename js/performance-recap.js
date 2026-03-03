@@ -75,6 +75,15 @@
 
                 const topRegion = document.createElement('div');
                 topRegion.className = 'performance-recap-top';
+                const topContent = document.createElement('div');
+                topContent.className = 'performance-recap-top-content';
+                const btnCloseX = document.createElement('button');
+                btnCloseX.className = 'modal-close performance-recap-close';
+                btnCloseX.setAttribute('aria-label', 'Close');
+                btnCloseX.textContent = '×';
+                btnCloseX.type = 'button';
+                topRegion.appendChild(topContent);
+                topRegion.appendChild(btnCloseX);
 
                 const midRegion = document.createElement('div');
                 midRegion.className = 'performance-recap-middle';
@@ -117,13 +126,9 @@
                 btnRight.className = 'btn-secondary';
                 btnRight.textContent = '→';
                 btnRight.setAttribute('aria-label', 'Next');
-                const btnClose = document.createElement('button');
-                btnClose.className = 'btn-secondary';
-                btnClose.textContent = 'Close';
                 btnWrap.appendChild(btnLeft);
                 btnWrap.appendChild(btnDisplay);
                 btnWrap.appendChild(btnRight);
-                btnWrap.appendChild(btnClose);
                 botRegion.appendChild(progressWrap);
                 botRegion.appendChild(btnWrap);
 
@@ -151,7 +156,7 @@
 
                 function updateTopRegion() {
                     const entry = entries[currentEntryIndex];
-                    topRegion.innerHTML =
+                    topContent.innerHTML =
                         '<div class="performance-recap-line1">' + formatEntryLine1(entry) + '</div>' +
                         '<div class="performance-recap-line2">' + player1Name + ' vs ' + player2Name + '</div>' +
                         '<div class="performance-recap-line3">Score: ' + (entry.gameScore || '-') + ', Game: ' + (entry.gamesScore || '-') + ', Set: ' + (entry.setsScore || '-') + '</div>';
@@ -264,7 +269,7 @@
                     } catch (e) {}
                 }
 
-                btnClose.addEventListener('click', closeModal);
+                btnCloseX.addEventListener('click', closeModal);
 
                 overlay.addEventListener('click', function (ev) {
                     if (ev.target === overlay) closeModal();
