@@ -653,6 +653,120 @@ body {
 
 /* Court: long side along viewport height, baseline along width; orientation locked to portrait on this page so no rotation/transform needed */
 
+/* Performance Recap modal – read-only replay */
+.performance-recap-modal {
+    padding: 0 !important;
+    background-color: #1a237e !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    width: 90vw !important;
+    height: 90vh !important;
+    height: 90dvh !important;
+    max-width: 90vw !important;
+    max-height: 90vh !important;
+    max-height: 90dvh !important;
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: translate(-50%, -50%) !important;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.performance-recap-modal .performance-recap-top {
+    flex: 0 0 10%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 8px 12px;
+    color: #fff;
+    text-align: center;
+}
+.performance-recap-line1 {
+    font-weight: 700;
+    font-size: 1rem;
+}
+.performance-recap-line2 {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+.performance-recap-line3 {
+    font-size: 0.85rem;
+    opacity: 0.85;
+}
+.performance-recap-modal .performance-recap-middle {
+    flex: 1 1 80%;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+.performance-recap-court-wrap {
+    position: relative;
+    width: 95vw;
+    max-width: 95vw;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.performance-recap-court-wrap .performance-full-court-svg {
+    width: 70%;
+    height: 70%;
+    max-width: 70%;
+    max-height: 70%;
+    aspect-ratio: 270 / 470;
+    object-fit: contain;
+    flex-shrink: 0;
+    margin: auto;
+}
+.performance-recap-markers {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    box-sizing: border-box;
+}
+.performance-recap-modal .performance-recap-bottom {
+    flex: 0 0 10%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    gap: 8px;
+}
+.performance-recap-progress-wrap {
+    width: 90%;
+    display: flex;
+    justify-content: center;
+}
+.performance-recap-progress {
+    width: 100%;
+    accent-color: #fff;
+}
+.performance-recap-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+.performance-recap-buttons .btn-secondary {
+    min-width: 60px;
+}
+.performance-recap-buttons .btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Live Match Recording */
 .live-match-container {
     max-width: 100%;

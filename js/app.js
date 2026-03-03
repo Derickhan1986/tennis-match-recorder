@@ -1020,6 +1020,7 @@ const app = {
             const shareBtnLabel = 'Share';
             const shareBtnClass = matchReviewLoggedIn ? 'btn-secondary' : 'btn-secondary share-btn-disabled';
             const shareBtnHtml = `<button class="${shareBtnClass}" onclick="app.openShareModal('${match.id}')">${shareBtnLabel}</button>`;
+            const hasPerformanceRecap = match.log && match.log.some(e => e.performanceShots && e.performanceShots.length > 0);
             // Both buttons always clickable; when not logged in, click shows "Log in to use". Comment needs only login; Match Review needs login + credit.
             console.log('[MatchReview Debug] button state: loggedIn=', matchReviewLoggedIn, ', text=', matchReviewBtnText, ', auth.user=', !!auth?.user, ', auth.accessToken=', !!auth?.accessToken);
             
@@ -1070,6 +1071,7 @@ const app = {
                     ${shareBtnHtml}
                     <button class="btn-danger" onclick="app.deleteMatch('${match.id}')">Delete Match</button>
                 </div>
+                ${hasPerformanceRecap ? `<div class="form-actions"><button class="btn-secondary" onclick="app.showPerformanceRecap('${match.id}')">Recap Performance</button></div>` : ''}
             `;
             
             // Add event listeners for tab switching
@@ -2373,6 +2375,13 @@ const app = {
             return MATCH_REVIEW_API_URL.replace(/\/api\/match-review\/?$/, '');
         }
         return '';
+    },
+
+    async showPerformanceRecap(matchId) {
+        await (typeof window.showPerformanceOrientationTipModal === 'function' && window.showPerformanceOrientationTipModal());
+        if (typeof window.showPerformanceRecapModal === 'function') {
+            window.showPerformanceRecapModal(matchId);
+        }
     },
 
     async openShareModal(matchId) {

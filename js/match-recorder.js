@@ -543,11 +543,25 @@ class MatchRecorder {
                 return;
             }
 
+            const trackingServeEl = document.getElementById('match-tracking-serve');
+            const trackingMode = trackingServeEl ? String(trackingServeEl.value || '').trim() : '';
+
             const player1 = await storage.getPlayer(player1Id);
             const player2 = await storage.getPlayer(player2Id);
-            this.showFirstServerModal(player1, player2, (firstServer) => {
-                this.doStartMatch(firstServer);
-            });
+
+            const proceedToFirstServer = () => {
+                this.showFirstServerModal(player1, player2, (firstServer) => {
+                    this.doStartMatch(firstServer);
+                });
+            };
+
+            // For Tracking Performance mode, show a one-time orientation lock tip before starting
+            if (trackingMode === 'performance') {
+                await (typeof window.showPerformanceOrientationTipModal === 'function' && window.showPerformanceOrientationTipModal());
+                proceedToFirstServer();
+            } else {
+                proceedToFirstServer();
+            }
         } catch (error) {
             console.error('Error in startMatch:', error);
             app.showToast('Error starting match', 'error');
