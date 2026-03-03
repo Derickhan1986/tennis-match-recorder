@@ -41,10 +41,11 @@
         if (typeof storage === 'undefined' || !storage.getMatch) return;
         storage.getMatch(matchId).then(function (match) {
             if (!match || !match.log) return;
-            const entries = match.log.filter(function (e) {
+            const entries = match.log;
+            const hasAnyShots = entries.some(function (e) {
                 return e.performanceShots && e.performanceShots.length > 0;
             });
-            if (entries.length === 0) return;
+            if (!hasAnyShots) return;
 
             const player1Id = match.player1Id;
             const player2Id = match.player2Id;
@@ -64,7 +65,8 @@
             }
 
             function renderModal() {
-                let currentIndex = 0;
+                let currentEntryIndex = 0;  // which 分 (log entry)
+                let currentShotIndex = 0;   // within current 分, show shots 0..currentShotIndex (set in updateAll)
                 let displayMode = 1;
 
                 const overlay = document.createElement('div');
@@ -100,9 +102,6 @@
                 progressWrap.className = 'performance-recap-progress-wrap';
                 const progressInput = document.createElement('input');
                 progressInput.type = 'range';
-                progressInput.min = 0;
-                progressInput.max = Math.max(0, entries.length - 1);
-                progressInput.value = 0;
                 progressInput.className = 'performance-recap-progress';
                 progressWrap.appendChild(progressInput);
                 const btnWrap = document.createElement('div');
@@ -151,7 +150,7 @@
                 }
 
                 function updateTopRegion() {
-                    const entry = entries[currentIndex];
+                    const entry = entries[currentEntryIndex];
                     topRegion.innerHTML =
                         '<div class="performance-recap-line1">' + formatEntryLine1(entry) + '</div>' +
                         '<div class="performance-recap-line2">' + player1Name + ' vs ' + player2Name + '</div>' +
@@ -159,23 +158,30 @@
                 }
 
                 function getShotsToRender() {
+                    const entry = entries[currentEntryIndex];
+                    const shots = entry.performanceShots && entry.performanceShots.length > 0 ? entry.performanceShots : [];
+                    const visibleShots = shots.slice(0, currentShotIndex + 1);
+                    function sliceToIndex(arr, maxIdx) {
+                        if (!arr || arr.length === 0) return [];
+                        return arr.slice(0, Math.min(maxIdx + 1, arr.length));
+                    }
                     if (displayMode === 1) {
-                        return entries[currentIndex].performanceShots.map(function (s) {
+                        return visibleShots.map(function (s) {
                             return { shot: s, dimmed: false };
                         });
                     }
                     if (displayMode === 2) {
                         const out = [];
-                        if (currentIndex > 0) {
-                            entries[currentIndex - 1].performanceShots.forEach(function (s) {
+                        if (currentEntryIndex > 0) {
+                            sliceToIndex(entries[currentEntryIndex - 1].performanceShots, currentShotIndex).forEach(function (s) {
                                 out.push({ shot: s, dimmed: true });
                             });
                         }
-                        entries[currentIndex].performanceShots.forEach(function (s) {
+                        visibleShots.forEach(function (s) {
                             out.push({ shot: s, dimmed: false });
                         });
-                        if (currentIndex < entries.length - 1) {
-                            entries[currentIndex + 1].performanceShots.forEach(function (s) {
+                        if (currentEntryIndex < entries.length - 1) {
+                            sliceToIndex(entries[currentEntryIndex + 1].performanceShots, currentShotIndex).forEach(function (s) {
                                 out.push({ shot: s, dimmed: true });
                             });
                         }
@@ -184,8 +190,9 @@
                     if (displayMode === 3) {
                         const out = [];
                         entries.forEach(function (e, i) {
-                            const dimmed = i !== currentIndex;
-                            (e.performanceShots || []).forEach(function (s) {
+                            const dimmed = i !== currentEntryIndex;
+                            const sList = (i === currentEntryIndex) ? visibleShots : sliceToIndex(e.performanceShots || [], currentShotIndex);
+                            sList.forEach(function (s) {
                                 out.push({ shot: s, dimmed: dimmed });
                             });
                         });
@@ -196,7 +203,9 @@
 
                 function renderMarkers() {
                     if (!markersEl) return;
-                    markersEl.textContent = '';
+                    while (markersEl.firstChild) {
+                        markersEl.removeChild(markersEl.firstChild);
+                    }
                     const items = getShotsToRender();
                     items.forEach(function (item) {
                         markersEl.appendChild(createMarkerEl(item.shot, item.dimmed));
@@ -204,30 +213,42 @@
                 }
 
                 function updateAll() {
+                    const shots = entries[currentEntryIndex].performanceShots;
+                    const hasShots = shots && shots.length > 0;
+                    const maxShot = hasShots ? Math.max(0, shots.length - 1) : 0;
+                    progressInput.min = 0;
+                    progressInput.max = maxShot;
+                    progressInput.value = currentShotIndex;
+                    progressInput.disabled = !hasShots;
                     updateTopRegion();
                     renderMarkers();
-                    progressInput.value = currentIndex;
-                    btnLeft.disabled = currentIndex === 0;
-                    btnRight.disabled = currentIndex === entries.length - 1;
+                    btnLeft.disabled = currentEntryIndex === 0;
+                    btnRight.disabled = currentEntryIndex === entries.length - 1;
                     btnDisplay.textContent = 'Display ' + displayMode;
                 }
 
                 progressInput.addEventListener('input', function () {
-                    currentIndex = parseInt(progressInput.value, 10) || 0;
-                    currentIndex = Math.max(0, Math.min(entries.length - 1, currentIndex));
-                    updateAll();
+                    const shots = entries[currentEntryIndex].performanceShots;
+                    const maxShot = Math.max(0, shots.length - 1);
+                    currentShotIndex = parseInt(progressInput.value, 10) || 0;
+                    currentShotIndex = Math.max(0, Math.min(maxShot, currentShotIndex));
+                    updateTopRegion();
+                    renderMarkers();
+                    btnDisplay.textContent = 'Display ' + displayMode;
                 });
 
                 btnLeft.addEventListener('click', function () {
-                    if (currentIndex > 0) {
-                        currentIndex--;
+                    if (currentEntryIndex > 0) {
+                        currentEntryIndex--;
+                        currentShotIndex = 0;
                         updateAll();
                     }
                 });
 
                 btnRight.addEventListener('click', function () {
-                    if (currentIndex < entries.length - 1) {
-                        currentIndex++;
+                    if (currentEntryIndex < entries.length - 1) {
+                        currentEntryIndex++;
+                        currentShotIndex = 0;
                         updateAll();
                     }
                 });
@@ -255,6 +276,7 @@
                     if (ev.target === overlay) closeModal();
                 });
 
+                currentShotIndex = 0;
                 updateAll();
             }
         }).catch(function () {});

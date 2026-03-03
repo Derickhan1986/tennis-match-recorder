@@ -683,6 +683,8 @@ body {
     padding: 8px 12px;
     color: #fff;
     text-align: center;
+    position: relative;
+    z-index: 10;
 }
 .performance-recap-line1 {
     font-weight: 700;
@@ -703,6 +705,8 @@ body {
     align-items: center;
     justify-content: center;
     padding: 0;
+    position: relative;
+    z-index: 0;
 }
 .performance-recap-court-wrap {
     position: relative;
@@ -743,6 +747,8 @@ body {
     justify-content: center;
     padding: 8px 12px;
     gap: 8px;
+    position: relative;
+    z-index: 10;
 }
 .performance-recap-progress-wrap {
     width: 90%;
@@ -755,12 +761,15 @@ body {
 }
 .performance-recap-buttons {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-wrap: nowrap;
+    gap: 6px;
     justify-content: center;
+    align-items: center;
+    width: 100%;
 }
 .performance-recap-buttons .btn-secondary {
-    min-width: 60px;
+    flex: 1;
+    min-width: 0;
 }
 .performance-recap-buttons .btn-secondary:disabled {
     opacity: 0.5;
