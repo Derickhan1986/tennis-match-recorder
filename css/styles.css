@@ -430,6 +430,33 @@ body {
     color: var(--text-secondary);
 }
 
+.share-email-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+.share-email-row input {
+    flex: 1;
+    min-width: 0;
+}
+.share-email-add-btn {
+    flex-shrink: 0;
+    width: 40px;
+    min-width: 40px;
+    padding: 0;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--card-background);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+.share-email-add-btn:hover {
+    background-color: var(--border-color);
+}
+
 .form-actions {
     display: flex;
     gap: 12px;
