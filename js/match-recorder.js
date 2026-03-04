@@ -826,10 +826,6 @@ class MatchRecorder {
         if (!overlay || !wrap) return;
         overlay.textContent = '';
         const vb = this.getPerformanceCourtViewBox();
-        if (this.currentMatch?.log?.length > 0) {
-            const last = this.currentMatch.log[this.currentMatch.log.length - 1];
-            if (last.action === 'Serve Fault' || last.action === 'Double Fault') this.performancePointShots = [];
-        }
         const list = this.performancePointShots || [];
         list.forEach((shot) => {
             const leftPct = (shot.x / vb.width) * 100;
@@ -1123,11 +1119,7 @@ class MatchRecorder {
 
             if (PRO_TRACKING_SERVE_BROWN_ZONES.indexOf(zoneId) >= 0) {
                 storage.appendProTrackingServeEntry(this.currentMatch.id, entry);
-                this.matchEngine.recordPoint(server, 'Serve Fault', null);
-                if (this.currentMatch.settings?.trackingMode === 'performance') this.performancePointShots = [];
-                this.currentMatch = await storage.getMatch(this.currentMatch.id);
-                this.matchEngine = new MatchEngine(this.currentMatch);
-                this.updateDisplay();
+                await this.recordPoint(server, 'Serve Fault', null);
                 setTimeout(() => this.maybeShowServeZonePicker(), 150);
             } else {
                 storage.appendProTrackingServeEntry(this.currentMatch.id, entry);
@@ -1140,7 +1132,7 @@ class MatchRecorder {
 
     // Handle action button click
     // 处理操作按钮点击
-    handleActionButton(action, player) {
+    async handleActionButton(action, player) {
         if (!this.matchEngine || !this.currentMatch) {
             app.showToast('Match not initialized', 'error');
             return;
@@ -1167,24 +1159,9 @@ class MatchRecorder {
             case 'serve-fault':
                 // Serve fault - only valid if clicked by server
                 // 发球失误 - 只有发球方点击才有效（双误时对手得分，match engine 会更新 match.winner）
+                // 与 Winner/ACE 等一致：通过 recordPoint 保存 performancePointShots 后清空
                 if (player === server) {
-                    this.matchEngine.recordPoint(server, 'Serve Fault', null);
-                    if (this.currentMatch.settings?.trackingMode === 'performance') this.performancePointShots = [];
-                    this.updateDisplay();
-                    // Same as recordPoint: show match end confirmation if this point ended the match (e.g. double fault)
-                    // 与 recordPoint 一致：若此分结束比赛（如双误）则显示结束确认框
-                    if (this.currentMatch.winner && this.currentMatch.status !== 'completed') {
-                        this.showMatchEndConfirmation();
-                    } else if (this.currentMatch.status === 'completed') {
-                        app.showToast('Match completed!', 'success');
-                        setTimeout(() => {
-                            app.showPage('matches');
-                            this.currentMatch = null;
-                            this.matchEngine = null;
-                            this.player1 = null;
-                            this.player2 = null;
-                        }, 2000);
-                    }
+                    await this.recordPoint(server, 'Serve Fault', null);
                     return;
                 }
                 break;
