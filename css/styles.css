@@ -656,7 +656,7 @@ body {
     text-shadow: 0 0 4px #000;
 }
 
-/* Bottom 10dvh: Record button only */
+/* Bottom 10dvh: serve indicator, Record, Serve Fault */
 .performance-court-footer {
     flex: 0 0 10vh;
     flex: 0 0 10dvh;
@@ -665,12 +665,51 @@ body {
     min-height: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 0;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 12px;
     background-color: #1a237e;
     box-sizing: border-box;
 }
+.performance-footer-serve {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+}
+.performance-footer-serve-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80px;
+}
+.performance-footer-serve-balls .tennis-ball-small {
+    font-size: 14px;
+    opacity: 0.3;
+}
+.performance-footer-serve-balls .tennis-ball-small.active {
+    opacity: 1;
+}
+.performance-footer-serve-fault-btn {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 6px;
+    cursor: pointer;
+}
+.performance-footer-serve-fault-btn:active {
+    opacity: 0.9;
+}
 .performance-footer-record-btn {
+    flex-shrink: 0;
     padding: 10px 24px;
     font-size: 16px;
     font-weight: 600;

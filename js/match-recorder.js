@@ -670,6 +670,9 @@ class MatchRecorder {
             // 初始化比赛引擎
             this.currentMatch = match;
             this.matchEngine = new MatchEngine(match);
+            // Clear in-memory performance markers so new match doesn't inherit from previous
+            // 清空内存中的击球点，避免新比赛继承上一场比赛的数据
+            this.performancePointShots = [];
             
             if (settings.trackingMode === 'performance') {
                 app.showPage('match-recording');
@@ -726,7 +729,9 @@ class MatchRecorder {
             '<div id="performance-court-markers" class="performance-court-markers" aria-hidden="true"></div>' +
             '</div>' +
             '<div class="performance-court-footer" id="performance-court-footer">' +
+            '<span class="performance-footer-serve" id="performance-footer-serve"><span class="performance-footer-serve-name"></span><span class="performance-footer-serve-balls"><span class="tennis-ball-small">🎾</span><span class="tennis-ball-small">🎾</span></span></span>' +
             '<button type="button" class="performance-footer-record-btn" id="performance-footer-record-btn">Record</button>' +
+            '<button type="button" class="performance-footer-serve-fault-btn" id="performance-footer-serve-fault-btn">Serve Fault</button>' +
             '</div>';
 
         overlay.appendChild(container);
@@ -782,7 +787,21 @@ class MatchRecorder {
                 if (typeof app !== 'undefined' && app.showPage) app.showPage('match-recording');
             });
         }
+        const serveFaultBtn = document.getElementById('performance-footer-serve-fault-btn');
+        if (serveFaultBtn && !serveFaultBtn.dataset.bound) {
+            serveFaultBtn.dataset.bound = '1';
+            serveFaultBtn.addEventListener('click', async () => {
+                if (!this.matchEngine || !this.currentMatch) return;
+                let server = this.matchEngine.match.currentServer || this.currentMatch.settings.firstServer;
+                if (this.currentMatch.log && this.currentMatch.log.length > 0) {
+                    const last = this.currentMatch.log[this.currentMatch.log.length - 1];
+                    if (last.currentServer) server = last.currentServer;
+                }
+                await this.handleActionButton('serve-fault', server);
+            });
+        }
         this.updatePerformanceCourtScore();
+        this.updatePerformanceFooterServe();
         this.setupPerformanceCourtClick();
         if (typeof this.renderPerformanceCourtMarkers === 'function') this.renderPerformanceCourtMarkers();
     }
@@ -1013,6 +1032,38 @@ class MatchRecorder {
         if (setEl) setEl.textContent = String(currentSetNumber);
         if (gamesEl) gamesEl.textContent = gamesParsed.p1 + '-' + gamesParsed.p2;
         if (gameEl) gameEl.textContent = gameScore;
+    }
+
+    // Update full-court footer: who is serving + 1st/2nd serve (tennis balls like score page)
+    // 更新 full court 页脚：谁发球 + 一发/二发（与记分页相同的网球标记）
+    updatePerformanceFooterServe() {
+        const serveEl = document.getElementById('performance-footer-serve');
+        if (!serveEl || !this.currentMatch || !this.player1 || !this.player2) return;
+        let currentServer = this.matchEngine ? this.matchEngine.match.currentServer : this.currentMatch.settings.firstServer;
+        let currentServeNumber = 1;
+        if (this.currentMatch.log && this.currentMatch.log.length > 0) {
+            const last = this.currentMatch.log[this.currentMatch.log.length - 1];
+            if (last.currentServer) currentServer = last.currentServer;
+            if (last.currentServeNumber !== undefined && last.currentServeNumber !== null) currentServeNumber = last.currentServeNumber;
+        } else if (this.matchEngine) {
+            currentServeNumber = this.matchEngine.match.currentServeNumber || 1;
+        }
+        const nameEl = serveEl.querySelector('.performance-footer-serve-name');
+        const ballsEl = serveEl.querySelector('.performance-footer-serve-balls');
+        if (nameEl) {
+            const name = currentServer === 'player1' ? (this.player1.name || 'P1') : (this.player2.name || 'P2');
+            nameEl.textContent = name + ' ';
+        }
+        if (ballsEl) {
+            const balls = ballsEl.querySelectorAll('.tennis-ball-small');
+            // Like score page: first ball = server, second ball = 1st (active) or 2nd (inactive) serve
+            balls[0].classList.add('active');
+            if (currentServeNumber === 1) {
+                balls[1].classList.add('active');
+            } else {
+                balls[1].classList.remove('active');
+            }
+        }
     }
 
     // Pro Tracking Serve: get whether serve tracking is on (from match settings)
@@ -2031,6 +2082,7 @@ class MatchRecorder {
         // Performance mode: always keep full-court page score in sync with log (so it’s correct when we switch back)
         if (this.currentMatch.settings && this.currentMatch.settings.trackingMode === 'performance') {
             this.updatePerformanceCourtScore();
+            this.updatePerformanceFooterServe();
         }
         // Performance mode: after recording a point, show full-court popup again
         if (this.currentMatch.settings && this.currentMatch.settings.trackingMode === 'performance' && typeof app !== 'undefined' && app.currentPage === 'match-recording') {
