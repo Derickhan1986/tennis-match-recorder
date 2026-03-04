@@ -741,10 +741,6 @@ class MatchRecorder {
                 screen.orientation.lock('portrait').catch(() => {});
             }
         } catch (e) { /* ignore */ }
-        if (this.currentMatch?.log?.length > 0) {
-            const last = this.currentMatch.log[this.currentMatch.log.length - 1];
-            if (last.action === 'Serve Fault') this.performancePointShots = [];
-        }
         if (typeof this.initPerformanceCourtDisplay === 'function') this.initPerformanceCourtDisplay();
     }
 
@@ -830,6 +826,10 @@ class MatchRecorder {
         if (!overlay || !wrap) return;
         overlay.textContent = '';
         const vb = this.getPerformanceCourtViewBox();
+        if (this.currentMatch?.log?.length > 0) {
+            const last = this.currentMatch.log[this.currentMatch.log.length - 1];
+            if (last.action === 'Serve Fault' || last.action === 'Double Fault') this.performancePointShots = [];
+        }
         const list = this.performancePointShots || [];
         list.forEach((shot) => {
             const leftPct = (shot.x / vb.width) * 100;
