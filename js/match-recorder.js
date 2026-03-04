@@ -1413,6 +1413,12 @@ class MatchRecorder {
                 storage.removeLastProTrackingServeEntry(this.currentMatch.id);
             }
             
+            // Performance mode: clear in-memory markers so next point starts fresh (undo removes last log entry)
+            // Performance 模式：清空内存中的击球点，使下一分从零开始记录
+            if (this.currentMatch.settings?.trackingMode === 'performance') {
+                this.performancePointShots = [];
+            }
+            
             // Reload match to get updated log
             // 重新加载比赛以获取更新的日志
             this.currentMatch = await storage.getMatch(this.currentMatch.id);
