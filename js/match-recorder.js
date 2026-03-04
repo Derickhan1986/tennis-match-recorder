@@ -741,6 +741,10 @@ class MatchRecorder {
                 screen.orientation.lock('portrait').catch(() => {});
             }
         } catch (e) { /* ignore */ }
+        if (this.currentMatch?.log?.length > 0) {
+            const last = this.currentMatch.log[this.currentMatch.log.length - 1];
+            if (last.action === 'Serve Fault') this.performancePointShots = [];
+        }
         if (typeof this.initPerformanceCourtDisplay === 'function') this.initPerformanceCourtDisplay();
     }
 
@@ -1120,7 +1124,6 @@ class MatchRecorder {
             if (PRO_TRACKING_SERVE_BROWN_ZONES.indexOf(zoneId) >= 0) {
                 storage.appendProTrackingServeEntry(this.currentMatch.id, entry);
                 this.matchEngine.recordPoint(server, 'Serve Fault', null);
-                if (this.currentMatch.settings?.trackingMode === 'performance') this.performancePointShots = [];
                 this.currentMatch = await storage.getMatch(this.currentMatch.id);
                 this.matchEngine = new MatchEngine(this.currentMatch);
                 this.updateDisplay();
@@ -1165,7 +1168,6 @@ class MatchRecorder {
                 // 发球失误 - 只有发球方点击才有效（双误时对手得分，match engine 会更新 match.winner）
                 if (player === server) {
                     this.matchEngine.recordPoint(server, 'Serve Fault', null);
-                    if (this.currentMatch.settings?.trackingMode === 'performance') this.performancePointShots = [];
                     this.updateDisplay();
                     // Same as recordPoint: show match end confirmation if this point ended the match (e.g. double fault)
                     // 与 recordPoint 一致：若此分结束比赛（如双误）则显示结束确认框
