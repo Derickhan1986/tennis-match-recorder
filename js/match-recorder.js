@@ -735,12 +735,17 @@ class MatchRecorder {
     }
 
     showPerformanceFullCourtPopup() {
-        this.buildPerformanceFullCourtModal();
-        try {
-            if (typeof screen !== 'undefined' && screen.orientation && typeof screen.orientation.lock === 'function') {
-                screen.orientation.lock('portrait').catch(() => {});
-            }
-        } catch (e) { /* ignore */ }
+        const existing = document.querySelector('.modal.performance-full-court-modal');
+        if (!existing) {
+            this.buildPerformanceFullCourtModal();
+            try {
+                if (typeof screen !== 'undefined' && screen.orientation && typeof screen.orientation.lock === 'function') {
+                    screen.orientation.lock('portrait').catch(() => {});
+                }
+            } catch (e) { /* ignore */ }
+        } else {
+            existing.classList.remove('hidden');
+        }
         if (typeof this.initPerformanceCourtDisplay === 'function') this.initPerformanceCourtDisplay();
     }
 
