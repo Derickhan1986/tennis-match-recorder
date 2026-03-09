@@ -819,11 +819,14 @@ body {
     position: relative;
     z-index: 0;
 }
+/* Same dimensions as recording wrap (95vw × 80dvh) so marker positions match existing recordings */
 .performance-recap-court-wrap {
     position: relative;
     width: 95vw;
     max-width: 95vw;
-    flex: 1;
+    flex: 0 0 80dvh;
+    height: 80vh;
+    height: 80dvh;
     min-height: 0;
     display: flex;
     align-items: center;
@@ -840,12 +843,14 @@ body {
     flex-shrink: 0;
     margin: auto;
 }
+/* Same size as wrap (95vw × 80dvh) to match recording page marker overlay */
 .performance-recap-markers {
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    width: 95vw;
+    height: 80vh;
+    height: 80dvh;
     pointer-events: none;
     box-sizing: border-box;
 }

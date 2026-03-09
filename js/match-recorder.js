@@ -811,7 +811,7 @@ class MatchRecorder {
         return { width: 270, height: 470 };
     }
 
-    // Convert screen click to viewBox coordinates (0..270, 0..470). Use wrap rect so full clickable area maps 1:1 (not SVG, which is only 50% of wrap).
+    // Convert screen click to viewBox coordinates (0..270, 0..470). Full wrap maps to viewBox (legacy format for existing recordings).
     getPerformanceCourtClickCoords(ev) {
         const wrap = document.getElementById('performance-court-wrap');
         if (!wrap) return null;
