@@ -2084,8 +2084,10 @@ class MatchRecorder {
             this.updatePerformanceCourtScore();
             this.updatePerformanceFooterServe();
         }
-        // Performance mode: after recording a point, show full-court popup again
-        if (this.currentMatch.settings && this.currentMatch.settings.trackingMode === 'performance' && typeof app !== 'undefined' && app.currentPage === 'match-recording') {
+        // Performance mode: after recording a point, show full-court popup again (skip if match has ended – go to match finish instead)
+        // 比赛结束后不再弹出 performance 页面，直接进入 match finish
+        const matchEnded = this.currentMatch.winner && this.currentMatch.status !== 'completed';
+        if (this.currentMatch.settings && this.currentMatch.settings.trackingMode === 'performance' && typeof app !== 'undefined' && app.currentPage === 'match-recording' && !matchEnded) {
             this.showPerformanceFullCourtPopup();
         }
     }
